@@ -1,0 +1,118 @@
+const API_URL = "/api";
+
+interface ApiOptions {
+  method?: string;
+  body?: any;
+  token?: string;
+}
+
+async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
+  const { method = "GET", body, token } = options;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Error en la solicitud");
+  }
+
+  return data;
+}
+
+// Auth
+export const authApi = {
+  register: (data: { name: string; email: string; password: string; phone?: string }) =>
+    api<{ token: string; user: any }>("/auth/register", { method: "POST", body: data }),
+
+  login: (data: { email: string; password: string }) =>
+    api<{ token: string; user: any }>("/auth/login", { method: "POST", body: data }),
+
+  me: (token: string) =>
+    api<{ user: any }>("/auth/me", { token }),
+};
+
+// Products
+export const productsApi = {
+  list: (params?: Record<string, string>) => {
+    const query = params ? "?" + new URLSearchParams(params).toString() : "";
+    return api<{ products: any[] }>(`/products${query}`);
+  },
+
+  get: (id: string) =>
+    api<{ product: any }>(`/products/${id}`),
+
+  availability: (id: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return api<{ booked: Array<{ start: string; end: string }> }>(`/products/${id}/availability${query}`);
+  },
+};
+
+// Rentals
+export const rentalsApi = {
+  create: (data: { productId: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
+    api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
+
+  my: (token: string) =>
+    api<{ rentals: any[] }>("/rentals/my", { token }),
+
+  get: (id: string, token: string) =>
+    api<{ rental: any }>(`/rentals/${id}`, { token }),
+};
+
+// Stripe
+export const stripeApi = {
+  createCheckoutSession: (rentalId: string, token: string) =>
+    api<{ url?: string; mode?: string; message?: string; rental?: any }>("/stripe/create-checkout-session", {
+      method: "POST",
+      body: { rentalId },
+      token,
+    }),
+};
+
+// Admin
+export const adminApi = {
+  dashboard: (token: string) =>
+    api<{ dashboard: any }>("/admin/dashboard", { token }),
+
+  // Products CRUD
+  createProduct: (data: any, token: string) =>
+    api<{ product: any }>("/admin/products", { method: "POST", body: data, token }),
+
+  updateProduct: (id: string, data: any, token: string) =>
+    api<{ product: any }>(`/admin/products/${id}`, { method: "PUT", body: data, token }),
+
+  deleteProduct: (id: string, token: string) =>
+    api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
+
+  // Rentals
+  rentals: (token: string, status?: string) => {
+    const query = status ? `?status=${status}` : "";
+    return api<{ rentals: any[] }>(`/admin/rentals${query}`, { token });
+  },
+
+  updateRentalStatus: (id: string, status: string, token: string) =>
+    api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
+
+  // Users
+  users: (token: string) =>
+    api<{ users: any[] }>("/admin/users", { token }),
+
+  userRentals: (userId: string, token: string) =>
+    api<{ rentals: any[] }>(`/admin/users/${userId}/rentals`, { token }),
+};
