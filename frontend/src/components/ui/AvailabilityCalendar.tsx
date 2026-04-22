@@ -165,7 +165,10 @@ export default function AvailabilityCalendar({
 
       // Check if the proposed range overlaps any booked period
       if (rangeOverlapsBooked(startDate, iso, bookedRanges)) {
-        // Don't allow — stay in "waiting for end" mode and let the red highlight communicate the issue
+        // Instead of ignoring the click, we assume they want to start a new range
+        onStartDateChange(iso);
+        onEndDateChange("");
+        setWaitingForEnd(true);
         return;
       }
 
@@ -237,7 +240,8 @@ export default function AvailabilityCalendar({
         {days.map((day) => {
           const iso   = isoDate(day);
           const state = getDayState(iso);
-          const isDisabled = state === "past" || state === "booked" || state === "conflictEnd";
+          // Allow clicking 'conflictEnd' so we can restart the selection!
+          const isDisabled = state === "past" || state === "booked";
 
           let cellClass =
             "h-9 w-full flex items-center justify-center text-sm transition-colors select-none rounded-sm ";
