@@ -86,6 +86,9 @@ export const rentalsApi = {
 
   get: (id: string, token: string) =>
     api<{ rental: any }>(`/rentals/${id}`, { token }),
+
+  cancel: (id: string, token: string) =>
+    api<{ message: string; rental: any }>(`/rentals/${id}`, { method: "DELETE", token }),
 };
 
 // Stripe
