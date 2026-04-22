@@ -48,7 +48,7 @@ export async function createStripeSession(
     ],
     mode: "payment",
     success_url: `${origin}/confirmation?rental=${rental._id}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/checkout/${rental.product_id}?cancelled=1`,
+    cancel_url: `${origin}/checkout/${(product as any)._id}?cancelled=1`,
     metadata: {
       rentalId: rental._id.toString(),
       userId: rental.user_id.toString(),
