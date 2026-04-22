@@ -241,6 +241,9 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
    ```
 5. Guarda los cambios. La próxima vez que este usuario inicie sesión, o cuando su sesión refresque su token en unos minutos, la plataforma le habilitará el acceso a todas las rutas protegidas bajo `/admin`.
 
+> [!TIP]
+> **Sincronización a prueba de fallos (Desarrollo Local):** Si los webhooks fallan (muy común usando túneles locales si la URL cambia o se cae), hemos inyectado un sincronizador de respaldo en el endpoint `/api/auth/me`. Cada vez que el frontend inicializa la sesión (al recargar la página), el backend le pregunta a Clerk en vivo el rol actual del usuario y actualiza MongoDB automáticamente si hay alguna discrepancia.
+
 ---
 
 ## Variables de Entorno
