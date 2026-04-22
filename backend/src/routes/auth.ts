@@ -6,9 +6,29 @@ import { AppError } from "../lib/errors.js";
 
 const auth = new Hono<{ Variables: AuthVariables }>();
 
+import { createClerkClient } from "@clerk/backend";
+
+const clerkClient = createClerkClient({
+  secretKey: process.env.CLERK_SECRET_KEY,
+});
+
 // GET /api/auth/me — returns the MongoDB profile of the authenticated user
 auth.get("/me", authMiddleware, async (c) => {
   const user = c.get("user");
+
+  // En entorno local los webhooks pueden fallar. Sincronizamos el rol de Clerk al cargar la sesión.
+  try {
+    const clerkUser = await clerkClient.users.getUser(user.clerkId);
+    const role = (clerkUser.publicMetadata?.role as "client" | "admin") ?? "client";
+    
+    if (user.role !== role) {
+      user.role = role;
+      await user.save();
+    }
+  } catch (err) {
+    console.error("[Auth] Error sync role from Clerk on /me:", err);
+  }
+
   return c.json({
     user: {
       id: user._id,
