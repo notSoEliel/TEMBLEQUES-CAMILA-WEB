@@ -1,11 +1,11 @@
 import { Hono } from "hono";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { Product } from "../models/Product.js";
 import { checkAvailability } from "../services/availability.js";
 import { calculateTotal } from "../services/rental.js";
 
-const stripe = new Hono();
+const stripe = new Hono<{ Variables: AuthVariables }>();
 
 // POST /api/stripe/create-checkout-session
 stripe.post("/create-checkout-session", authMiddleware, async (c) => {
