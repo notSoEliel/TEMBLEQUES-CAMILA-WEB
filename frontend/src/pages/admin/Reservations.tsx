@@ -10,7 +10,7 @@ import { Calendar, RefreshCw } from "lucide-react";
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente", paid: "Pagado", confirmed: "Confirmado",
   delivered: "Entregado", returned: "Devuelto", late: "Atrasado",
-  damaged: "Danado", cancelled: "Cancelado",
+  damaged: "Dañado", cancelled: "Cancelado",
 };
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

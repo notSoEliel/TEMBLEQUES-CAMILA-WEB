@@ -65,7 +65,7 @@ export default function Checkout() {
     }
 
     if (!termsAccepted) {
-      setError("Debes aceptar los terminos y condiciones para continuar.");
+      setError("Debes aceptar los términos y condiciones para continuar.");
       return;
     }
 
@@ -110,7 +110,7 @@ export default function Checkout() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Producto no encontrado</h2>
-        <Button onClick={() => navigate("/catalog")}>Volver al Catalogo</Button>
+        <Button onClick={() => navigate("/catalog")}>Volver al Catálogo</Button>
       </div>
     );
   }
@@ -141,7 +141,7 @@ export default function Checkout() {
                 <div>
                   <h3 className="font-bold text-lg">{product.name}</h3>
                   <p className="text-sm text-muted-foreground">{product.description}</p>
-                  <p className="text-lg font-bold text-primary mt-2">${product.rental_price}/dia</p>
+                  <p className="text-lg font-bold text-primary mt-2">${product.rental_price}/día</p>
                 </div>
               </CardContent>
             </Card>
@@ -168,7 +168,7 @@ export default function Checkout() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="end-date">Fecha de Devolucion</Label>
+                    <Label htmlFor="end-date">Fecha de Devolución</Label>
                     <Input
                       id="end-date"
                       type="date"
@@ -181,7 +181,7 @@ export default function Checkout() {
                 </div>
                 {calculateDays() > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Duracion: <strong>{calculateDays()} dia(s)</strong>
+                    Duración: <strong>{calculateDays()} día(s)</strong>
                   </p>
                 )}
               </CardContent>
@@ -192,15 +192,15 @@ export default function Checkout() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5 text-primary" />
-                  Terminos y Condiciones
+                  Términos y Condiciones
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-muted/50 border-2 border-border rounded-lg p-4 text-sm text-muted-foreground leading-relaxed">
                   <p className="mb-2">El cliente acepta devolver el producto en las mismas condiciones en que fue entregado.</p>
-                  <p className="mb-2">En caso de perdida, dano, rotura, manchas permanentes o deterioro causado durante el alquiler, el cliente asume la responsabilidad total del costo de reparacion o reposicion.</p>
-                  <p className="mb-2">Si el alquiler corresponde unicamente a accesorios (tembleques, peinetas, joyeria, etc.), el cliente sera responsable en su totalidad por cualquier dano o perdida del articulo.</p>
-                  <p>Retrasos en devolucion podran generar cargos adicionales.</p>
+                  <p className="mb-2">En caso de pérdida, daño, rotura, manchas permanentes o deterioro causado durante el alquiler, el cliente asume la responsabilidad total del costo de reparación o reposición.</p>
+                  <p className="mb-2">Si el alquiler corresponde únicamente a accesorios (tembleques, peinetas, joyería, etc.), el cliente será responsable en su totalidad por cualquier daño o pérdida del artículo.</p>
+                  <p>Retrasos en devolución podrán generar cargos adicionales.</p>
                 </div>
 
                 <div className="flex items-start gap-3">
@@ -211,7 +211,7 @@ export default function Checkout() {
                     data-testid="terms-checkbox"
                   />
                   <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-                    He leido y acepto los terminos y condiciones de alquiler. Entiendo mi responsabilidad sobre el cuidado del producto.
+                    He leído y acepto los términos y condiciones de alquiler. Entiendo mi responsabilidad sobre el cuidado del producto.
                   </Label>
                 </div>
               </CardContent>
@@ -238,11 +238,11 @@ export default function Checkout() {
                 {calculateDays() > 0 && (
                   <>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Duracion</span>
-                      <span className="font-medium">{calculateDays()} dia(s)</span>
+                      <span className="text-muted-foreground">Duración</span>
+                      <span className="font-medium">{calculateDays()} día(s)</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Precio por dia</span>
+                      <span className="text-muted-foreground">Precio por día</span>
                       <span className="font-medium">${product.rental_price}</span>
                     </div>
                   </>
@@ -285,7 +285,7 @@ export default function Checkout() {
 
                 {!termsAccepted && startDate && endDate && (
                   <p className="text-xs text-center text-destructive">
-                    Debes aceptar los terminos para continuar.
+                    Debes aceptar los términos para continuar.
                   </p>
                 )}
               </CardContent>

@@ -17,20 +17,20 @@ const CATEGORIES = [
 const STEPS = [
   { icon: Calendar, title: "Elige tus Fechas", description: "Selecciona el periodo de alquiler en nuestro calendario." },
   { icon: CreditCard, title: "Paga Seguro", description: "Realiza tu pago de forma segura con Stripe." },
-  { icon: CheckCircle, title: "Recibe y Luce", description: "Recoge tu vestuario y luce la tradicion panamena." },
+  { icon: CheckCircle, title: "Recibe y Luce", description: "Recoge tu vestuario y luce la tradición panameña." },
 ];
 
 const TESTIMONIALS = [
-  { name: "Ana Garcia", text: "El proceso de reserva fue increiblemente facil. La pollera estaba en condiciones impecables.", rating: 5 },
-  { name: "Carlos Mendoza", text: "Alquile el traje tipico masculino para el desfile. Excelente calidad y servicio.", rating: 5 },
-  { name: "Maria Fernandez", text: "Los tembleques eran hermosos. Sin duda volvere a alquilar para el proximo evento.", rating: 4 },
+  { name: "Ana Garcia", text: "El proceso de reserva fue increíblemente fácil. La pollera estaba en condiciones impecables.", rating: 5 },
+  { name: "Carlos Mendoza", text: "Alquilé el traje típico masculino para el desfile. Excelente calidad y servicio.", rating: 5 },
+  { name: "Maria Fernandez", text: "Los tembleques eran hermosos. Sin duda volveré a alquilar para el próximo evento.", rating: 4 },
 ];
 
 const FAQS = [
-  { q: "Como funciona el alquiler?", a: "Seleccionas el producto, eliges las fechas, aceptas los terminos y pagas en linea. Asi de facil." },
-  { q: "Que pasa si se dana la prenda?", a: "El cliente asume la responsabilidad total del costo de reparacion o reposicion segun los terminos aceptados." },
-  { q: "Cuanto tiempo dura el alquiler?", a: "Tu eliges las fechas. El precio se calcula por dia de alquiler." },
-  { q: "Puedo cancelar mi reserva?", a: "Las reservas pueden cancelarse antes de la entrega. Consulta los terminos para detalles sobre reembolsos." },
+  { q: "¿Cómo funciona el alquiler?", a: "Seleccionas el producto, eliges las fechas, aceptas los términos y pagas en línea. Así de fácil." },
+  { q: "¿Qué pasa si se daña la prenda?", a: "El cliente asume la responsabilidad total del costo de reparación o reposición según los términos aceptados." },
+  { q: "¿Cuánto tiempo dura el alquiler?", a: "Tú eliges las fechas. El precio se calcula por día de alquiler." },
+  { q: "¿Puedo cancelar mi reserva?", a: "Las reservas pueden cancelarse antes de la entrega. Consulta los términos para detalles sobre reembolsos." },
 ];
 
 export default function Landing() {
@@ -44,11 +44,11 @@ export default function Landing() {
               className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight mb-6"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
-              La tradicion se luce mejor cuando se{" "}
-              <span className="text-primary italic">reserva facil.</span>
+              La tradición se luce mejor cuando se{" "}
+              <span className="text-primary italic">reserva fácil.</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl">
-              Alquila vestimenta tipica panamena y accesorios folcloricos con la elegancia que mereces. Reserva en minutos, luce con orgullo.
+              Alquila vestimenta típica panameña y accesorios folclóricos con la elegancia que mereces. Reserva en minutos, luce con orgullo.
             </p>
             <div className="flex flex-wrap gap-4">
               <Button size="lg" asChild>
@@ -58,7 +58,7 @@ export default function Landing() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link to="/catalog">Ver Catalogo</Link>
+                <Link to="/catalog">Ver Catálogo</Link>
               </Button>
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
         <div className="text-center mb-12">
           <h2 className="text-3xl lg:text-4xl font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Catalogo Destacado
+            Catálogo Destacado
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Desde la majestuosa pollera de gala hasta los delicados tembleques artesanales.
@@ -107,7 +107,7 @@ export default function Landing() {
           <h2 className="text-3xl lg:text-4xl font-bold mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
             Reserva en Minutos
           </h2>
-          <p className="text-muted-foreground">Tres pasos simples para lucir la tradicion panamena.</p>
+          <p className="text-muted-foreground">Tres pasos simples para lucir la tradición panameña.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -185,10 +185,10 @@ export default function Landing() {
             className="text-3xl lg:text-4xl font-bold mb-4"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Alquila tradicion panamena con elegancia
+            Alquila tradición panameña con elegancia
           </h2>
           <p className="text-lg mb-8 opacity-90 max-w-2xl mx-auto">
-            No es solo alquiler de ropa. Es alquiler premium de identidad cultural panamena con gestion digital profesional.
+            No es solo alquiler de ropa. Es alquiler premium de identidad cultural panameña con gestión digital profesional.
           </p>
           <Button size="lg" variant="outline" className="bg-white text-primary border-white hover:bg-white/90" asChild>
             <Link to="/catalog">

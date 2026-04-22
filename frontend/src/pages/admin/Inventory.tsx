@@ -113,17 +113,17 @@ export default function AdminInventory() {
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <Label>Categoria</Label>
+                <Label>Categoría</Label>
                 <select className="flex h-11 w-full rounded-lg border-2 border-border bg-input px-4 py-2 text-sm" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                   {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                 </select>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Descripcion</Label>
+                <Label>Descripción</Label>
                 <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
               </div>
               <div className="space-y-2">
-                <Label>Precio por Dia ($)</Label>
+                <Label>Precio por Día ($)</Label>
                 <Input type="number" min={0} value={form.rental_price} onChange={(e) => setForm({ ...form, rental_price: Number(e.target.value) })} required />
               </div>
               <div className="space-y-2">
@@ -143,7 +143,7 @@ export default function AdminInventory() {
                 </select>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>URLs de Imagenes (separadas por coma)</Label>
+                <Label>URLs de Imágenes (separadas por coma)</Label>
                 <Input value={form.images} onChange={(e) => setForm({ ...form, images: e.target.value })} placeholder="https://..." />
               </div>
               <div className="md:col-span-2">
@@ -177,7 +177,7 @@ export default function AdminInventory() {
                     <h3 className="font-bold">{product.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[product.category]}</Badge>
-                      <span className="text-sm text-primary font-bold">${product.rental_price}/dia</span>
+                      <span className="text-sm text-primary font-bold">${product.rental_price}/día</span>
                       <span className="text-xs text-muted-foreground">Stock: {product.stock}</span>
                     </div>
                   </div>

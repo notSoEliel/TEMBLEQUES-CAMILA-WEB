@@ -63,9 +63,9 @@ export default function Catalog() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-          Catalogo
+          Catálogo
         </h1>
-        <p className="text-muted-foreground">Explora nuestra coleccion de vestimenta tipica panamena.</p>
+        <p className="text-muted-foreground">Explora nuestra colección de vestimenta típica panameña.</p>
       </div>
 
       {/* Search & Filters */}
@@ -95,7 +95,7 @@ export default function Catalog() {
       {/* Category Filters */}
       {showFilters && (
         <div className="mb-6 p-4 border-2 border-border rounded-lg bg-card">
-          <h3 className="font-bold mb-3">Categoria</h3>
+          <h3 className="font-bold mb-3">Categoría</h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
               <Button
@@ -142,7 +142,7 @@ export default function Catalog() {
       ) : products.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-xl font-bold mb-2">No se encontraron productos</p>
-          <p className="text-muted-foreground">Intenta con otros filtros o terminos de busqueda.</p>
+          <p className="text-muted-foreground">Intenta con otros filtros o términos de búsqueda.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -163,7 +163,7 @@ export default function Catalog() {
                   <h3 className="font-bold line-clamp-1">{product.name}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-lg font-bold text-primary">${product.rental_price}/dia</span>
+                    <span className="text-lg font-bold text-primary">${product.rental_price}/día</span>
                     {product.size && (
                       <span className="text-xs text-muted-foreground">Talla: {product.size}</span>
                     )}

@@ -31,7 +31,7 @@ export default function ClientLayout() {
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/catalog">Catalogo</Link>
+                <Link to="/catalog">Catálogo</Link>
               </Button>
               {user ? (
                 <>
@@ -54,7 +54,7 @@ export default function ClientLayout() {
               ) : (
                 <>
                   <Button variant="ghost" size="sm" asChild>
-                    <Link to="/login">Iniciar Sesion</Link>
+                    <Link to="/login">Iniciar Sesión</Link>
                   </Button>
                   <Button size="sm" asChild>
                     <Link to="/register">Registrarse</Link>
@@ -74,7 +74,7 @@ export default function ClientLayout() {
         {menuOpen && (
           <div className="md:hidden border-t-2 border-border bg-background px-4 py-4 space-y-2">
             <Link to="/catalog" className="block py-2 font-medium" onClick={() => setMenuOpen(false)}>
-              Catalogo
+              Catálogo
             </Link>
             {user ? (
               <>
@@ -87,13 +87,13 @@ export default function ClientLayout() {
                   </Link>
                 )}
                 <button onClick={handleLogout} className="block py-2 font-medium text-destructive">
-                  Cerrar Sesion
+                  Cerrar Sesión
                 </button>
               </>
             ) : (
               <>
                 <Link to="/login" className="block py-2 font-medium" onClick={() => setMenuOpen(false)}>
-                  Iniciar Sesion
+                  Iniciar Sesión
                 </Link>
                 <Link to="/register" className="block py-2 font-medium text-primary" onClick={() => setMenuOpen(false)}>
                   Registrarse
@@ -118,15 +118,15 @@ export default function ClientLayout() {
                 Tembleques Camila
               </h3>
               <p className="text-muted-foreground text-sm">
-                Alquiler premium de vestimenta tipica panamena y accesorios folcloricos. La tradicion se luce mejor cuando se reserva facil.
+                Alquiler premium de vestimenta típica panameña y accesorios folclóricos. La tradición se luce mejor cuando se reserva fácil.
               </p>
             </div>
             <div>
-              <h4 className="font-bold mb-4">Navegacion</h4>
+              <h4 className="font-bold mb-4">Navegación</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link to="/catalog" className="hover:text-primary transition-colors">Catalogo</Link></li>
+                <li><Link to="/catalog" className="hover:text-primary transition-colors">Catálogo</Link></li>
                 <li><Link to="/register" className="hover:text-primary transition-colors">Crear Cuenta</Link></li>
-                <li><Link to="/login" className="hover:text-primary transition-colors">Iniciar Sesion</Link></li>
+                <li><Link to="/login" className="hover:text-primary transition-colors">Iniciar Sesión</Link></li>
               </ul>
             </div>
             <div>
@@ -134,7 +134,7 @@ export default function ClientLayout() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>contacto@temblequescamila.com</li>
                 <li>+507 6000-0000</li>
-                <li>Panama, PA</li>
+                <li>Panamá, PA</li>
               </ul>
             </div>
           </div>

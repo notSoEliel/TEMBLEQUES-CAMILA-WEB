@@ -31,7 +31,7 @@ export default function Confirmation() {
           Reserva Confirmada
         </h1>
         <p className="text-muted-foreground">
-          Tu reserva ha sido procesada exitosamente. Recibiras los detalles por correo electronico.
+          Tu reserva ha sido procesada exitosamente. Recibirás los detalles por correo electrónico.
         </p>
       </div>
 
@@ -54,7 +54,7 @@ export default function Confirmation() {
                 <p className="font-medium">{new Date(rental.start_date).toLocaleDateString("es-PA")}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Fecha Devolucion</p>
+                <p className="text-muted-foreground">Fecha Devolución</p>
                 <p className="font-medium">{new Date(rental.end_date).toLocaleDateString("es-PA")}</p>
               </div>
               <div>

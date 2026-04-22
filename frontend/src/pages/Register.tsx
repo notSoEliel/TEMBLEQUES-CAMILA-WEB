@@ -38,7 +38,7 @@ export default function Register() {
           <CardTitle className="text-2xl" style={{ fontFamily: "'Playfair Display', serif" }}>
             Crear Cuenta
           </CardTitle>
-          <CardDescription>Registrate para empezar a reservar</CardDescription>
+          <CardDescription>Regístrate para empezar a reservar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -51,11 +51,11 @@ export default function Register() {
               <Input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contrasena</Label>
-              <Input id="password" type="password" placeholder="Minimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+              <Label htmlFor="password">Contraseña</Label>
+              <Input id="password" type="password" placeholder="Mínimo 6 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefono (opcional)</Label>
+              <Label htmlFor="phone">Teléfono (opcional)</Label>
               <Input id="phone" placeholder="+507 6000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
 
@@ -72,9 +72,9 @@ export default function Register() {
           <Separator className="my-6" />
 
           <p className="text-center text-sm text-muted-foreground">
-            Ya tienes cuenta?{" "}
+            ¿Ya tienes cuenta?{" "}
             <Link to="/login" className="text-primary font-semibold hover:underline">
-              Inicia sesion
+              Inicia sesión
             </Link>
           </p>
         </CardContent>

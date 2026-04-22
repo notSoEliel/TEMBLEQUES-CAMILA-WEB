@@ -24,7 +24,7 @@ const STATUS_LABELS: Record<string, string> = {
   delivered: "Entregado",
   returned: "Devuelto",
   late: "Atrasado",
-  damaged: "Danado",
+  damaged: "Dañado",
   cancelled: "Cancelado",
 };
 
@@ -79,8 +79,8 @@ export default function Profile() {
         <Card>
           <CardContent className="p-8 text-center">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-bold mb-1">Sin reservas aun</p>
-            <p className="text-muted-foreground text-sm">Explora nuestro catalogo para hacer tu primera reserva.</p>
+            <p className="text-lg font-bold mb-1">Sin reservas aún</p>
+            <p className="text-muted-foreground text-sm">Explora nuestro catálogo para hacer tu primera reserva.</p>
           </CardContent>
         </Card>
       ) : (

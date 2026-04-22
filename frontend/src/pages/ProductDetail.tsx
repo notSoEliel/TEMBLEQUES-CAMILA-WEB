@@ -59,7 +59,7 @@ export default function ProductDetail() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center">
         <h2 className="text-2xl font-bold mb-4">Producto no encontrado</h2>
-        <Button onClick={() => navigate("/catalog")}>Volver al Catalogo</Button>
+        <Button onClick={() => navigate("/catalog")}>Volver al Catálogo</Button>
       </div>
     );
   }
@@ -71,7 +71,7 @@ export default function ProductDetail() {
       {/* Back */}
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate("/catalog")}>
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver al Catalogo
+        Volver al Catálogo
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -113,13 +113,13 @@ export default function ProductDetail() {
             <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
               {product.name}
             </h1>
-            <p className="text-3xl font-bold text-primary">${product.rental_price} <span className="text-base font-normal text-muted-foreground">/ dia</span></p>
+            <p className="text-3xl font-bold text-primary">${product.rental_price} <span className="text-base font-normal text-muted-foreground">/ día</span></p>
           </div>
 
           <Separator />
 
           <div>
-            <h3 className="font-bold mb-2">Descripcion</h3>
+            <h3 className="font-bold mb-2">Descripción</h3>
             <p className="text-muted-foreground leading-relaxed">{product.description}</p>
           </div>
 
@@ -172,7 +172,7 @@ export default function ProductDetail() {
 
           {!user && (
             <p className="text-sm text-muted-foreground text-center">
-              Debes iniciar sesion para reservar.
+              Debes iniciar sesión para reservar.
             </p>
           )}
         </div>

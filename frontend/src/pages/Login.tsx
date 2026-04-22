@@ -24,7 +24,7 @@ export default function Login() {
       await login(email, password);
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Error al iniciar sesion");
+      setError(err.message || "Error al iniciar sesión");
     }
     setLoading(false);
   };
@@ -34,7 +34,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Iniciar Sesion
+            Iniciar Sesión
           </CardTitle>
           <CardDescription>Accede a tu cuenta para reservar</CardDescription>
         </CardHeader>
@@ -45,8 +45,8 @@ export default function Login() {
               <Input id="email" type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Contrasena</Label>
-              <Input id="password" type="password" placeholder="Tu contrasena" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Label htmlFor="password">Contraseña</Label>
+              <Input id="password" type="password" placeholder="Tu contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
 
             {error && (
@@ -55,16 +55,16 @@ export default function Login() {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}
-              Iniciar Sesion
+              Iniciar Sesión
             </Button>
           </form>
 
           <Separator className="my-6" />
 
           <p className="text-center text-sm text-muted-foreground">
-            No tienes cuenta?{" "}
+            ¿No tienes cuenta?{" "}
             <Link to="/register" className="text-primary font-semibold hover:underline">
-              Registrate aqui
+              Regístrate aquí
             </Link>
           </p>
 

@@ -73,7 +73,7 @@ export default function AdminDashboard() {
         <Card className="border-destructive">
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="font-medium">{dashboard.damagedCount} producto(s) reportado(s) como danado(s).</span>
+            <span className="font-medium">{dashboard.damagedCount} producto(s) reportado(s) como dañado(s).</span>
           </CardContent>
         </Card>
       )}
@@ -84,7 +84,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              Productos Mas Alquilados
+              Productos Más Alquilados
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">Sin datos aun.</p>
+              <p className="text-muted-foreground text-sm">Sin datos aún.</p>
             )}
           </CardContent>
         </Card>
@@ -111,7 +111,7 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalendarCheck className="h-5 w-5 text-primary" />
-              Proximas Devoluciones
+              Próximas Devoluciones
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">No hay devoluciones proximas.</p>
+              <p className="text-muted-foreground text-sm">No hay devoluciones próximas.</p>
             )}
           </CardContent>
         </Card>
