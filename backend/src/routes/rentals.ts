@@ -59,5 +59,31 @@ rentals.get("/:id", async (c) => {
   return c.json({ rental });
 });
 
+// DELETE /api/rentals/:id - Cancel a pending rental
+rentals.delete("/:id", async (c) => {
+  const user = c.get("user") as any;
+  const rental = await Rental.findOne({
+    _id: c.req.param("id"),
+    user_id: user._id,
+  });
+
+  if (!rental) {
+    throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  }
+
+  if (rental.status !== "pending") {
+    throw new AppError(
+      `Solo se pueden cancelar reservas en estado pendiente. Estado actual: ${rental.status}.`,
+      400,
+      "RENTAL_CANNOT_CANCEL",
+    );
+  }
+
+  rental.status = "cancelled";
+  await rental.save();
+
+  return c.json({ message: "Reserva cancelada exitosamente.", rental });
+});
+
 export default rentals;
 
