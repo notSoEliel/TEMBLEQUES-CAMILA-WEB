@@ -111,6 +111,10 @@ catch (err: any) {
 Never use `window.alert()` or bare `<div>` error banners for catch blocks.  
 The modal variant communicates the *type* of error visually (icon + title).
 
+**Current implementations:**
+- **Checkout**: All validation and API errors.
+- **Login/Register**: Auth and network errors.
+
 ### 3. Inline errors (form fields) are OK
 
 For real-time form validation (before submission) a small inline `<p className="text-destructive">` under the field is fine.  

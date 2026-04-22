@@ -340,6 +340,11 @@ Todas las páginas de error incluyen un **botón de volver atrás** y un **botó
 
 Para errores que ocurren durante operaciones en página (envío de formularios, llamadas API), se usa el componente `ErrorModal` con el hook `useErrorModal`. Nunca se usan `alert()` ni banners inline para errores post-submit.
 
+Este modal está implementado actualmente en:
+- **Login**: Errores de credenciales y fallos de red.
+- **Registro**: Errores de validación y correos duplicados.
+- **Checkout**: Validaciones de fechas, aceptación de términos y fallos en el procesamiento del pago/reserva.
+
 ### Mensajes Esperados por Endpoint
 
 | Escenario | Endpoint | HTTP | Mensaje |

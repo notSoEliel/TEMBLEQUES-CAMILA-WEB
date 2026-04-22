@@ -7,24 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { LogIn, Loader2 } from "lucide-react";
+import { useErrorModal } from "@/components/ErrorModal";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { errorModal, showError } = useErrorModal();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       await login(email, password);
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión");
+      showError(err.message || "Error al iniciar sesión", "generic");
     }
     setLoading(false);
   };
@@ -49,9 +49,7 @@ export default function Login() {
               <Input id="password" type="password" placeholder="Tu contraseña" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
 
-            {error && (
-              <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-3 text-sm text-destructive">{error}</div>
-            )}
+          {errorModal}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LogIn className="h-4 w-4 mr-2" />}

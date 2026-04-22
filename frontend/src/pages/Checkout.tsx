@@ -19,7 +19,7 @@ export default function Checkout() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+
 
   const { errorModal, showError } = useErrorModal();
   const [startDate, setStartDate] = useState("");
@@ -50,25 +50,24 @@ export default function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!startDate || !endDate) {
-      setError("Selecciona las fechas de alquiler.");
+      showError("Selecciona las fechas de alquiler.", "validation");
       return;
     }
 
     if (new Date(startDate) >= new Date(endDate)) {
-      setError("La fecha de inicio debe ser anterior a la fecha de fin.");
+      showError("La fecha de inicio debe ser anterior a la fecha de fin.", "validation");
       return;
     }
 
     if (new Date(startDate) < new Date()) {
-      setError("La fecha de inicio no puede ser en el pasado.");
+      showError("La fecha de inicio no puede ser en el pasado.", "validation");
       return;
     }
 
     if (!termsAccepted) {
-      setError("Debes aceptar los términos y condiciones para continuar.");
+      showError("Debes aceptar los términos y condiciones para continuar.", "validation");
       return;
     }
 
@@ -256,11 +255,6 @@ export default function Checkout() {
                   </span>
                 </div>
 
-                {error && (
-                  <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-3 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
 
                 <Button
                   type="submit"
