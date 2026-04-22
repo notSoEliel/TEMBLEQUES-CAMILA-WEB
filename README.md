@@ -260,7 +260,134 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
 
 ---
 
-## Estructura del Código
+## Stripe: Integración de Pagos
+
+### Modo Demo vs. Modo Real
+
+El sistema detecta automáticamente si Stripe está configurado:
+
+| Estado de `STRIPE_SECRET_KEY` | Comportamiento |
+|---|---|
+| `sk_test_placeholder` (por defecto) | **Modo demo**: simula el pago sin contactar Stripe, redirige directamente a `/confirmation`. |
+| Clave real (`sk_test_...`) | **Modo real**: redirige al hosted checkout de Stripe con tarjetas de prueba. |
+
+No se requiere dinero real en ninguno de los dos modos si usas claves de test.
+
+### Configurar Stripe (paso a paso)
+
+#### Paso 1: Obtener las claves
+
+1. Ve a [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → API Keys**.
+2. Copia la **Secret key** (empieza con `sk_test_...`).
+3. Pégala en `.env`:
+   ```env
+   STRIPE_SECRET_KEY=sk_test_TU_CLAVE_AQUI
+   ```
+
+#### Paso 2: Configurar webhooks (para que Stripe notifique al backend)
+
+Stripe necesita enviar eventos al endpoint `POST /api/stripe/webhook` cuando un pago se completa o falla.
+
+**Opción A — Stripe CLI (recomendada para desarrollo local)**
+
+```bash
+# 1. Instalar Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# 2. Autenticarse con tu cuenta Stripe
+stripe login
+
+# 3. En una terminal aparte, reenviar eventos a tu backend local
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+La CLI imprimirá tu webhook secret:
+```
+> Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxxxxxxxxx
+```
+
+Copia ese valor y pégalo en `.env`:
+```env
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+```
+
+> [!NOTE]
+> Con Stripe CLI **no necesitas localtunnel** — actúa como proxy directo entre los servidores de Stripe y tu `localhost:3000`. Es la forma más rápida y confiable.
+
+**Opción B — Localtunnel (para compartir webhook con equipo)**
+
+```bash
+# En una terminal aparte desde el directorio backend/
+cd backend && bun run tunnel
+# → URL pública: https://tembleques-camila.loca.lt
+```
+
+Luego en [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**:
+- URL: `https://tembleques-camila.loca.lt/api/stripe/webhook`
+- Eventos a escuchar:
+  - `checkout.session.completed`
+  - `checkout.session.expired`
+  - `payment_intent.payment_failed`
+- Copia el **Signing secret** generado → `STRIPE_WEBHOOK_SECRET` en `.env`
+
+#### Paso 3: Tarjetas de prueba (sin cobro real)
+
+| Resultado esperado | Número de tarjeta | Fecha | CVV |
+|---|---|---|---|
+| ✅ Pago exitoso | `4242 4242 4242 4242` | Cualquier fecha futura | Cualquier 3 dígitos |
+| ❌ Pago rechazado | `4000 0000 0000 0002` | Cualquier fecha futura | Cualquier 3 dígitos |
+| 🔐 Requiere 3DS | `4000 0025 0000 3155` | Cualquier fecha futura | Cualquier 3 dígitos |
+
+> [!TIP]
+> Usa ZIP `10001` si el formulario de Stripe lo pide (cualquier valor de 5 dígitos funciona).
+
+### Eventos de Webhook manejados
+
+| Evento Stripe | Acción en el sistema |
+|---|---|
+| `checkout.session.completed` | Actualiza reserva a `status: "paid"`, `payment_status: "completed"` |
+| `checkout.session.expired` | Actualiza reserva a `status: "cancelled"`, `payment_status: "failed"` |
+| `payment_intent.payment_failed` | Actualiza `payment_status: "failed"` |
+
+### Flujo técnico completo
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant FE as Frontend
+    participant BE as Backend
+    participant S as Stripe
+    participant W as Webhook
+
+    U->>FE: Selecciona fechas y acepta términos
+    FE->>BE: POST /api/rentals (crea reserva pending)
+    BE-->>FE: { rental._id }
+    FE->>BE: POST /api/stripe/create-checkout-session
+    BE->>BE: Re-valida disponibilidad (anti-race condition)
+    BE->>S: Crea Checkout Session
+    S-->>BE: { url, sessionId }
+    BE-->>FE: { url }
+    FE->>S: Redirige a Stripe Checkout
+    U->>S: Ingresa datos de tarjeta de prueba
+    S->>W: checkout.session.completed
+    W->>BE: POST /api/stripe/webhook
+    BE->>BE: Actualiza rental a "paid"
+    S->>FE: Redirige a /confirmation?rental=...&session_id=...
+    FE->>BE: GET /api/rentals/:id
+    BE-->>FE: Detalles de la reserva
+```
+
+### Futuras funcionalidades de pago (próxima rama)
+
+Las siguientes funcionalidades de Stripe están documentadas en el PRD pero **no implementadas en esta versión**. Se abordarán en una rama dedicada:
+
+- **Depósito de garantía**: Usar `PaymentIntent` con `capture_method: manual` para hacer un hold en la tarjeta del cliente al momento de la reserva. El monto se captura si hay daños, o se libera al devolver el artículo en buenas condiciones.
+- **Penalidades por atraso**: Calcular automáticamente el costo extra cuando `rental.status = "late"` basado en los días de retraso respecto a `end_date`. Requiere un job cron o un mecanismo de revisión periódica.
+- **Cobro adicional por daños**: Desde el panel admin, generar un `PaymentIntent` adicional cuando `status = "damaged"` con el monto de reparación/reposición.
+
+---
+
+
 
 ```
 backend/src/
@@ -275,7 +402,7 @@ backend/src/
   routes/
     auth.ts                 # POST /register, POST /login, GET /me
     products.ts             # GET / (filtros), GET /:id, GET /:id/availability
-    rentals.ts              # POST /, GET /my, GET /:id
+    rentals.ts              # POST /, GET /my, GET /:id, DELETE /:id (cancelar)
     admin.ts                # Dashboard, CRUD productos, gestion reservas
     stripe.ts               # Checkout session, webhook
   middleware/
@@ -283,6 +410,7 @@ backend/src/
   services/
     availability.ts         # Validación de solapamiento de fechas
     rental.ts               # Cálculo de totales, creación, transiciones de estado
+    stripe.ts               # Lógica de Stripe: createSession, handleWebhookEvent
 
 frontend/src/
   index.css                 # Tema OKLCH neobrutalista (fuente de verdad de estilos)
@@ -294,6 +422,7 @@ frontend/src/
     api.ts                  # Capa de acceso a todos los endpoints del backend
   components/
     ui/                     # Componentes shadcn/ui adaptados al tema
+        AvailabilityCalendar.tsx  # Mini-calendario con fechas bloqueadas y stock
     layouts/
       ClientLayout.tsx      # Navbar + Footer para el sitio publico
       AdminLayout.tsx       # Sidebar para el panel de administración
