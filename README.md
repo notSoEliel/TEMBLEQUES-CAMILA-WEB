@@ -548,84 +548,37 @@ Este modal está implementado actualmente en:
 
 ---
 
-## Componente ImageUpload
+## Troubleshooting y Errores Comunes
 
-`frontend/src/components/ImageUpload.tsx` — sube imágenes a Cloudinary directamente desde el navegador y entrega la URL final optimizada en WebP al componente padre.
+Durante el desarrollo, pueden surgir ciertos errores conocidos. Aquí se documentan sus causas y cómo se resolvieron para mantener un registro histórico y facilitar el mantenimiento.
 
-### Configuración de Cloudinary
+### 1. Error 500 en Stripe Checkout (`url_invalid`)
+**Síntoma:** Al intentar pagar, el backend devuelve un error 500 y en los logs aparece `code: "url_invalid"` y `param: "cancel_url"`.
+**Causa:** La URL de cancelación (`cancel_url`) enviada a Stripe contenía un objeto de Mongoose poblado en lugar de un ID de texto. Al concatenarse en un template string, se convertía en `http://.../checkout/[object Object]?cancelled=1`, lo cual es una URL inválida por contener espacios y corchetes.
+**Solución:** Extraer y forzar explícitamente el `_id` (`(product as any)._id`) al armar la URL en `backend/src/services/stripe.ts`.
 
-| Parámetro | Valor |
-|---|---|
-| Cloud Name | `dfshkpehf` |
-| Upload Preset | `TemblequesCamila` (unsigned) |
-| Endpoint | `https://api.cloudinary.com/v1_1/dfshkpehf/image/upload` |
+### 2. Error 401 (Unauthorized) al pagar o cancelar desde el Perfil
+**Síntoma:** El usuario intenta cancelar una reserva pendiente o reintentar el pago tras dejar la pestaña inactiva unos minutos, y recibe un error *"Token inválido o expirado"*.
+**Causa:** Los tokens JWT de Clerk tienen una caducidad muy corta por seguridad (~1 minuto). Si el frontend guarda el token en el estado de React (`useAuth`), este se vuelve obsoleto rápidamente.
+**Solución:** Se implementó un interceptor en `frontend/src/services/api.ts` que ignora el token en caché y siempre solicita uno fresco antes de la petición usando `window.Clerk.session.getToken()`.
 
-### Flujo de subida
+### 3. Calendario atascado al seleccionar fechas conflictivas
+**Síntoma:** Si el usuario escoge una fecha de inicio (ej. Lunes) y existen reservas en días intermedios (Martes/Miércoles), los días posteriores (Jueves/Viernes) se pintan de rojo y quedan bloqueados (`disabled`), impidiendo seleccionarlos siquiera como un *nuevo* inicio.
+**Causa:** El atributo HTML `disabled` cancela el evento `onClick`. 
+**Solución:** Se retiró el `disabled` de los estados `conflictEnd`. Ahora, si el usuario hace clic en una fecha que generaría solapamiento, el calendario asume inteligentemente que se desea iniciar un nuevo rango y reinicia la fecha de inicio (`onStartDateChange`) a ese día. La fórmula de validación de rangos usada es `A.start <= B.end && A.end >= B.start`.
 
-```
-Usuario selecciona / arrastra un archivo
-        ↓
-Validación local (tipo MIME + tamaño)
-    JPG/PNG  ·  máximo 8 MB
-        ↓
-fetch POST → Cloudinary (FormData unsigned)
-        ↓
-Respuesta: { secure_url: "https://res.cloudinary.com/.../foto.jpg" }
-        ↓
-Transformación WebP:
-  /upload/ → /upload/f_auto,q_auto/
-        ↓
-onUpload(urlFinal) → componente padre
+### 4. Variables del archivo `.env` ignoradas por Docker
+**Síntoma:** Tras cambiar la variable `STRIPE_SECRET_KEY` de "demo" a una clave real en `.env`, el backend sigue funcionando en modo demo incluso ejecutando `docker restart backend`.
+**Causa:** Docker Compose "cachea" las variables de entorno en la creación inicial del contenedor. Un reinicio simple (`restart`) solo reinicia el proceso interno con las variables cacheadas en memoria.
+**Solución:** Para que Docker lea nuevamente el `.env`, es obligatorio forzar la recreación del contenedor:
+```bash
+docker-compose up -d --force-recreate backend
 ```
 
-### Prop de comunicación
-
-| Prop | Tipo | Descripción |
-|---|---|---|
-| `onUpload` | `(url: string) => void` | Se llama una vez confirmada la subida con la URL ya transformada. |
-| `className` | `string?` | Clase Tailwind adicional para el contenedor raíz. |
-
-### Uso en un formulario
-
-```tsx
-import ImageUpload from "@/components/ImageUpload";
-
-function AdminProductForm() {
-  const [imageUrl, setImageUrl] = useState("");
-
-  async function handleSubmit() {
-    // imageUrl ya tiene f_auto,q_auto — lista para guardar en MongoDB
-    await adminApi.createProduct({ ..., images: [imageUrl] }, token);
-  }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <ImageUpload onUpload={(url) => setImageUrl(url)} />
-    </form>
-  );
-}
-```
-
-### Estados de la interfaz
-
-| Estado | Lo que ve el usuario |
-|---|---|
-| Inactivo | Icono + texto + botón "Elegir archivo". Soporta drag-and-drop. |
-| Subiendo | Spinner animado + texto "Subiendo...". El área queda bloqueada. |
-| Completado | Thumbnail de la imagen subida + icono de check. Toca para cambiarla. |
-| Error | Mensaje en rojo debajo del área (tipo o tamaño inválido). |
-
-### Formato de URL resultante
-
-```
-# Respuesta original de Cloudinary:
-https://res.cloudinary.com/dfshkpehf/image/upload/v1234567890/foto.jpg
-
-# URL que recibe onUpload (con transformación WebP):
-https://res.cloudinary.com/dfshkpehf/image/upload/f_auto,q_auto/v1234567890/foto.jpg
-```
-
-Con `f_auto`, Cloudinary detecta el soporte del navegador y entrega WebP, AVIF o JPG según corresponda. Con `q_auto`, ajusta la calidad de forma automática para minimizar el peso sin pérdida perceptible.
+### 5. Errores de "content.js" o "addListener" en consola
+**Síntoma:** Errores en la consola del navegador como `Uncaught TypeError: Cannot read properties of undefined (reading 'addListener')` indicando archivos como `content.js` o `ff-content.js`.
+**Causa:** Estos errores provienen de extensiones de terceros instaladas en el navegador del usuario (bloqueadores de anuncios, gestores de contraseñas, extensiones de DevTools). El código fuente del proyecto no inyecta esos archivos.
+**Solución:** Se pueden ignorar de forma segura, o deshabilitar las extensiones en modo incógnito/desarrollo para tener una consola más limpia.
 
 ---
 
@@ -636,7 +589,7 @@ Con `f_auto`, Cloudinary detecta el soporte del navegador y entrega WebP, AVIF o
 - [x] **Autenticación con Clerk** — Login con email, Google y Microsoft. Verificación de cuenta, recuperación de contraseña y notificaciones de seguridad gestionadas por Clerk. El rol `admin` se asigna desde el Clerk Dashboard vía `publicMetadata`.
 - [x] **Recuperación de contraseña** — Gestionada por Clerk de forma nativa (email de código de reset). Sin necesidad de Resend ni servicio externo.
 - [x] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
-- [ ] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
+- [x] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
 - [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.
 - [ ] **Penalidades por atraso** — Calculo y cobro automático cuando `status = late` supera la fecha de devolución.
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
@@ -646,7 +599,7 @@ Con `f_auto`, Cloudinary detecta el soporte del navegador y entrega WebP, AVIF o
 
 - [ ] **Testing unitario** — Cubrir los servicios críticos (`availability.ts`, `rental.ts`, calculo de totales) con pruebas usando `bun test`. Meta: 80% de cobertura en modulos de negocio.
 - [ ] **Testing E2E con Playwright** — Automatizar los flujos principales: registro, login, reserva completa, bloqueo de checkout sin términos, y gestión admin.
-- [ ] **Variables de entorno en producción** — Configurar secrets reales para `JWT_SECRET`, `STRIPE_SECRET_KEY` y `MONGO_URI` antes de cualquier despliegue.
+- [x] **Variables de entorno en producción** — Configurar secrets reales para `JWT_SECRET`, `STRIPE_SECRET_KEY` y `MONGO_URI` antes de cualquier despliegue.
 - [ ] **Dockerfile de producción** — Los Dockerfiles actuales corren en modo desarrollo con hot reload. Crear variantes de producción con builds optimizados.
 - [ ] **HTTPS** — Configurar certificados SSL (Let's Encrypt via Traefik o Nginx) para el despliegue en servidor.
 - [ ] **Documentación de API** — Generar documentación interactiva de los endpoints (OpenAPI / Swagger).
