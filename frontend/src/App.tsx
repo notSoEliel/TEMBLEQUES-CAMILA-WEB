@@ -1,6 +1,7 @@
 import React from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/useAuth";
 import ClientLayout from "@/components/layouts/ClientLayout";
 import AdminLayout from "@/components/layouts/AdminLayout";
 import Landing from "@/pages/Landing";
@@ -23,7 +24,7 @@ import AdminUsers from "@/pages/admin/Users";
  * so the user understands WHY they were blocked.
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, token } = useAuth();
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -33,12 +34,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Had a token but it failed → session expired
-  if (!user && token) {
-    return <ErrorPage variant="session-expired" />;
-  }
-
-  // Never logged in
   if (!user) {
     return <ErrorPage variant="unauthorized" />;
   }
@@ -82,8 +77,11 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            {/* Clerk handles the full auth UI — routing="path" must match these paths */}
             <Route path="/login" element={<Login />} />
+            <Route path="/login/*" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/register/*" element={<Register />} />
             <Route
               path="/checkout/:productId"
               element={
@@ -131,5 +129,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
-

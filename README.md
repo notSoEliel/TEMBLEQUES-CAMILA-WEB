@@ -64,7 +64,7 @@ graph TD
 | **Backend** | Bun runtime, Hono framework |
 | **Validacion** | Zod |
 | **Base de Datos** | MongoDB 7 via Mongoose |
-| **Autenticación** | JWT (jsonwebtoken + bcryptjs) |
+| **Autenticación** | Clerk (email, Google, Microsoft, OTP, password recovery) |
 | **Pagos** | Stripe Checkout Sessions |
 | **Contenedores** | Docker + Docker Compose |
 
@@ -164,12 +164,7 @@ Este comando construye las imágenes de frontend y backend, espera a que MongoDB
 | Panel administrador | http://localhost:5173/admin |
 | API REST | http://localhost:3000 |
 
-### Cuentas Precargadas
 
-| Rol | Email | Contraseña |
-|---|---|---|
-| Administrador | `admin@tembleques.com` | `admin123` |
-| Cliente demo | `cliente@demo.com` | `demo123` |
 
 ### Comandos Útiles
 
@@ -191,6 +186,61 @@ docker compose down -v
 docker compose restart backend
 ```
 
+### Desarrollo Colaborativo y Webhooks Locales
+
+Para que servicios de terceros como **Clerk** o **Stripe** puedan enviar notificaciones (webhooks) a tu entorno de desarrollo (`localhost:3000`), necesitas exponer un túnel público.
+
+Para facilitarlo, hemos incluido un script que usa `localtunnel` con un subdominio fijo:
+
+```bash
+cd backend
+bun run tunnel
+```
+
+Esto generará la URL constante: `https://tembleques-camila.loca.lt`
+
+Deberás configurar esta URL en los respectivos dashboards:
+- **Clerk:** `https://tembleques-camila.loca.lt/api/auth/webhook`
+- **Stripe:** `https://tembleques-camila.loca.lt/api/stripe/webhook`
+
+#### Trabajando con otros desarrolladores:
+
+Se recomienda usar **entornos separados** para no sobrescribir datos locales mutuamente:
+1. Cada desarrollador se crea una cuenta gratuita en Clerk y levanta su propia aplicación en el dashboard de Clerk.
+2. Cada desarrollador coloca *sus propias* API Keys (`VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, etc.) en su archivo `.env` local.
+3. Así, las bases de usuarios de prueba en Clerk estarán aisladas, permitiendo probar sin interrumpir el trabajo del otro. *(Si ambos usan el túnel al mismo tiempo y chocan, simplemente cambien el flag `--subdomain` en su `backend/package.json` temporalmente)*.
+
+---
+
+## Gestión de Usuarios (Clerk y MongoDB)
+
+El sistema delega la autenticación, seguridad y flujos de cuenta a **Clerk**, pero mantiene una copia en **MongoDB** para poder relacionar las Reservas (`Rentals`) con un usuario específico de forma rápida en el backend.
+
+### 1. Hacer el Nombre y Apellido Obligatorios
+Dado que los formularios de Login/Registro son controlados por Clerk, estos ajustes se hacen desde tu Dashboard de Clerk (no en el código):
+1. Ve a tu Dashboard de Clerk: **User & Authentication** > **Email, Phone, Web**.
+2. En la sección **Personal Information**, busca **Name**.
+3. Haz clic en el ícono de la tuerca (Ajustes) al lado de Name.
+4. Marca la opción para pedir "First Name" y "Last Name", y asegúrate de marcar la casilla **"Required"**.
+5. Guarda los cambios. El formulario de tu frontend se actualizará automáticamente.
+
+### 2. Sincronización Automática (Webhooks)
+Cuando un usuario se registra o elimina su cuenta en el componente de Clerk de tu frontend, Clerk envía un **Webhook** hacia tu ruta `/api/auth/webhook`. 
+- Si es `user.created` o `user.updated`: El backend toma los datos y hace un *upsert* en la colección `users` de MongoDB usando su `clerkId`.
+- Si es `user.deleted`: El backend lo borra de tu colección en MongoDB.
+
+### 3. Asignación del Rol de Administrador
+Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una ruta para registrar admins desde la UI**. El rol se asigna directamente como un metadato en Clerk:
+
+1. Entra a [dashboard.clerk.com](https://dashboard.clerk.com) → **Users**.
+2. Selecciona el usuario que quieres convertir en Administrador.
+3. Baja hasta la sección **Public Metadata**.
+4. Haz clic en editar y escribe el siguiente JSON:
+   ```json
+   { "role": "admin" }
+   ```
+5. Guarda los cambios. La próxima vez que este usuario inicie sesión, o cuando su sesión refresque su token en unos minutos, la plataforma le habilitará el acceso a todas las rutas protegidas bajo `/admin`.
+
 ---
 
 ## Variables de Entorno
@@ -198,7 +248,9 @@ docker compose restart backend
 | Variable | Descripción | Default |
 |---|---|---|
 | `MONGO_URI` | URI de conexión a MongoDB | `mongodb://mongodb:27017/tembleques_camila` |
-| `JWT_SECRET` | Clave secreta para firmar tokens JWT | Cambiar en producción |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Clave pública de Clerk (`pk_test_...`) | Requerida |
+| `CLERK_SECRET_KEY` | Clave secreta de Clerk (`sk_test_...`) | Requerida |
+| `CLERK_WEBHOOK_SECRET` | Firma del webhook de Clerk (`whsec_...`) | Requerida en producción |
 | `STRIPE_SECRET_KEY` | Clave secreta de Stripe (modo test) | Placeholder (activa modo demo) |
 | `STRIPE_WEBHOOK_SECRET` | Clave para validar webhooks de Stripe | Placeholder |
 | `VITE_API_URL` | URL de la API desde el frontend | `http://localhost:3000` |
@@ -224,7 +276,7 @@ backend/src/
     admin.ts                # Dashboard, CRUD productos, gestion reservas
     stripe.ts               # Checkout session, webhook
   middleware/
-    auth.ts                 # Verificacion JWT, guard de admin
+    auth.ts                 # Verificacion Clerk JWT, guard de admin, upsert automático
   services/
     availability.ts         # Validación de solapamiento de fechas
     rental.ts               # Cálculo de totales, creación, transiciones de estado
@@ -264,9 +316,8 @@ frontend/src/
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `POST` | `/api/auth/register` | No | Registro de usuario |
-| `POST` | `/api/auth/login` | No | Inicio de sesión |
-| `GET` | `/api/auth/me` | JWT | Usuario autenticado |
+| `GET` | `/api/auth/me` | Clerk JWT | Usuario autenticado (perfil MongoDB) |
+| `POST` | `/api/auth/webhook` | Svix signature | Sincronización usuarios Clerk → MongoDB |
 | `GET` | `/api/products` | No | Catálogo con filtros |
 | `GET` | `/api/products/:id` | No | Detalle de producto |
 | `GET` | `/api/products/:id/availability` | No | Fechas ocupadas |
@@ -367,8 +418,8 @@ Este modal está implementado actualmente en:
 
 ### Funcionalidades
 
-- [ ] **Autenticación con Clerk** — Reemplazar el JWT propio por Clerk para soportar login con Google y OTP. La arquitectura actual está preparada para esta migración.
-- [ ] **Recuperación de contraseña** — Flujo de reset por email (requiere servicio de correo como Resend).
+- [x] **Autenticación con Clerk** — Login con email, Google y Microsoft. Verificación de cuenta, recuperación de contraseña y notificaciones de seguridad gestionadas por Clerk. El rol `admin` se asigna desde el Clerk Dashboard vía `publicMetadata`.
+- [x] **Recuperación de contraseña** — Gestionada por Clerk de forma nativa (email de código de reset). Sin necesidad de Resend ni servicio externo.
 - [ ] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
 - [ ] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
 - [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.

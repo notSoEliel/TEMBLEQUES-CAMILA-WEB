@@ -1,5 +1,3 @@
-import bcrypt from "bcryptjs";
-import { User } from "./models/User.js";
 import { Product } from "./models/Product.js";
 
 const SEED_PRODUCTS = [
@@ -111,35 +109,9 @@ const SEED_PRODUCTS = [
 
 export async function seedDatabase() {
   try {
-    // Seed admin user
-    const adminExists = await User.findOne({ email: "admin@tembleques.com" });
-    if (!adminExists) {
-      const hashedPassword = await bcrypt.hash("admin123", 12);
-      await User.create({
-        name: "Camila Admin",
-        email: "admin@tembleques.com",
-        password: hashedPassword,
-        role: "admin",
-        phone: "+507-6000-0000",
-      });
-      console.log("[Seed] Admin user created: admin@tembleques.com / admin123");
-    }
-
-    // Seed demo client
-    const clientExists = await User.findOne({ email: "cliente@demo.com" });
-    if (!clientExists) {
-      const hashedPassword = await bcrypt.hash("demo123", 12);
-      await User.create({
-        name: "Maria Demo",
-        email: "cliente@demo.com",
-        password: hashedPassword,
-        role: "client",
-        phone: "+507-6111-1111",
-      });
-      console.log("[Seed] Demo client created: cliente@demo.com / demo123");
-    }
-
-    // Seed products
+    // Users are managed by Clerk — no user seeding needed.
+    // To assign admin role: Clerk Dashboard → Users → select user
+    //   → Public Metadata → set { "role": "admin" }
     const productCount = await Product.countDocuments();
     if (productCount === 0) {
       await Product.insertMany(
