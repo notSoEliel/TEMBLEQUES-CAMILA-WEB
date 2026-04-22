@@ -50,14 +50,9 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 }
 
 
-// Auth
+// Auth — login, register y gestión de sesión los maneja Clerk.
+// Solo mantenemos un helper para obtener el perfil de MongoDB si se necesita fuera del hook.
 export const authApi = {
-  register: (data: { name: string; email: string; password: string; phone?: string }) =>
-    api<{ token: string; user: any }>("/auth/register", { method: "POST", body: data }),
-
-  login: (data: { email: string; password: string }) =>
-    api<{ token: string; user: any }>("/auth/login", { method: "POST", body: data }),
-
   me: (token: string) =>
     api<{ user: any }>("/auth/me", { token }),
 };

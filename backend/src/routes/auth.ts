@@ -1,94 +1,18 @@
 import { Hono } from "hono";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import { z } from "zod";
+import { Webhook } from "svix";
 import { User } from "../models/User.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { AppError } from "../lib/errors.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret";
+const auth = new Hono<{ Variables: AuthVariables }>();
 
-const auth = new Hono();
-
-const registerSchema = z.object({
-  name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-  email: z.string().email("Correo electrónico inválido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-  phone: z.string().optional(),
-});
-
-const loginSchema = z.object({
-  email: z.string().email("Correo electrónico inválido"),
-  password: z.string().min(1, "La contraseña es requerida"),
-});
-
-// POST /api/auth/register
-auth.post("/register", async (c) => {
-  const body = await c.req.json();
-  const data = registerSchema.parse(body); // ZodError → global handler
-
-  const existing = await User.findOne({ email: data.email });
-  if (existing) {
-    throw new AppError("Ya existe una cuenta con ese correo electrónico", 400, "AUTH_EMAIL_TAKEN");
-  }
-
-  const hashedPassword = await bcrypt.hash(data.password, 12);
-  const user = await User.create({
-    name: data.name,
-    email: data.email,
-    password: hashedPassword,
-    phone: data.phone,
-    role: "client",
-  });
-
-  const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
-
-  return c.json({
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-  });
-});
-
-// POST /api/auth/login
-auth.post("/login", async (c) => {
-  const body = await c.req.json();
-  const data = loginSchema.parse(body); // ZodError → global handler
-
-  const user = await User.findOne({ email: data.email });
-  if (!user) {
-    // Deliberately vague to avoid user enumeration
-    throw new AppError("Credenciales inválidas", 401, "AUTH_INVALID_CREDENTIALS");
-  }
-
-  const isValid = await bcrypt.compare(data.password, user.password);
-  if (!isValid) {
-    throw new AppError("Credenciales inválidas", 401, "AUTH_INVALID_CREDENTIALS");
-  }
-
-  const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
-
-  return c.json({
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-  });
-});
-
-// GET /api/auth/me
+// GET /api/auth/me — returns the MongoDB profile of the authenticated user
 auth.get("/me", authMiddleware, async (c) => {
   const user = c.get("user");
   return c.json({
     user: {
       id: user._id,
+      clerkId: user.clerkId,
       name: user.name,
       email: user.email,
       role: user.role,
@@ -97,5 +21,71 @@ auth.get("/me", authMiddleware, async (c) => {
   });
 });
 
-export default auth;
+/**
+ * POST /api/auth/webhook
+ * Receives Clerk webhook events and syncs them to MongoDB.
+ * Verifies the request signature using svix before processing.
+ *
+ * Configure in Clerk Dashboard → Webhooks:
+ *   URL: https://your-domain/api/auth/webhook
+ *   Events: user.created, user.updated, user.deleted
+ */
+auth.post("/webhook", async (c) => {
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+  if (!WEBHOOK_SECRET || WEBHOOK_SECRET.startsWith("whsec_placeholder")) {
+    console.warn("[Webhook] CLERK_WEBHOOK_SECRET not configured — skipping signature verification");
+    return c.json({ received: true });
+  }
 
+  // Collect raw body and Svix headers for signature verification
+  const body = await c.req.text();
+  const svixId = c.req.header("svix-id");
+  const svixTimestamp = c.req.header("svix-timestamp");
+  const svixSignature = c.req.header("svix-signature");
+
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    throw new AppError("Headers de webhook inválidos", 400, "VALIDATION_ERROR");
+  }
+
+  let event: any;
+  try {
+    const wh = new Webhook(WEBHOOK_SECRET);
+    event = wh.verify(body, {
+      "svix-id": svixId,
+      "svix-timestamp": svixTimestamp,
+      "svix-signature": svixSignature,
+    });
+  } catch {
+    throw new AppError("Firma de webhook inválida", 400, "VALIDATION_ERROR");
+  }
+
+  const { type, data } = event;
+  console.log(`[Webhook] Clerk event: ${type}`);
+
+  if (type === "user.created" || type === "user.updated") {
+    const clerkId: string = data.id;
+    const primaryEmail: string =
+      data.email_addresses?.find((e: any) => e.id === data.primary_email_address_id)
+        ?.email_address ?? "";
+    const name =
+      `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() || primaryEmail;
+    const role: "client" | "admin" =
+      (data.public_metadata?.role as "client" | "admin") ?? "client";
+
+    await User.findOneAndUpdate(
+      { clerkId },
+      { clerkId, name, email: primaryEmail, role },
+      { upsert: true, new: true },
+    );
+    console.log(`[Webhook] User upserted in MongoDB: ${clerkId}`);
+  }
+
+  if (type === "user.deleted") {
+    await User.findOneAndDelete({ clerkId: data.id });
+    console.log(`[Webhook] User deleted from MongoDB: ${data.id}`);
+  }
+
+  return c.json({ received: true });
+});
+
+export default auth;

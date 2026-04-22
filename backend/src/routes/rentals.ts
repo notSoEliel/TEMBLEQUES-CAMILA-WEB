@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { authMiddleware } from "../middleware/auth.js";
+import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { createRental } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
 
-const rentals = new Hono();
+const rentals = new Hono<{ Variables: AuthVariables }>();
 
 // All rental routes require authentication
 rentals.use("/*", authMiddleware);
