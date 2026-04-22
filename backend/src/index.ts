@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import mongoose from "mongoose";
 import { ZodError } from "zod";
 import { connectDB } from "./db.js";
 import { seedDatabase } from "./seed.js";
@@ -19,6 +20,17 @@ app.use("/*", cors({
   credentials: true,
 }));
 app.use("/*", logger());
+
+// Avoid route-level DB errors while Mongo is still booting.
+app.use("/api/*", async (c, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return c.json(
+      { error: "El servidor se esta iniciando. Intenta nuevamente en unos segundos.", code: "SERVICE_UNAVAILABLE" },
+      503,
+    );
+  }
+  await next();
+});
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 // All unhandled errors bubble up here. Never exposes raw stack traces or

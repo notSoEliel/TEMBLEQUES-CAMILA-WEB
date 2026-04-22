@@ -66,6 +66,7 @@ graph TD
 | **Base de Datos** | MongoDB 7 via Mongoose |
 | **Autenticación** | Clerk (email, Google, Microsoft, OTP, password recovery) |
 | **Pagos** | Stripe Checkout Sessions |
+| **Imágenes** | Cloudinary (unsigned upload + WebP via `f_auto,q_auto`) |
 | **Contenedores** | Docker + Docker Compose |
 
 ---
@@ -294,6 +295,7 @@ frontend/src/
     api.ts                  # Capa de acceso a todos los endpoints del backend
   components/
     ui/                     # Componentes shadcn/ui adaptados al tema
+    ImageUpload.tsx         # Subida unsigned a Cloudinary con validación y preview WebP
     layouts/
       ClientLayout.tsx      # Navbar + Footer para el sitio publico
       AdminLayout.tsx       # Sidebar para el panel de administración
@@ -417,13 +419,94 @@ Este modal está implementado actualmente en:
 
 ---
 
+## Componente ImageUpload
+
+`frontend/src/components/ImageUpload.tsx` — sube imágenes a Cloudinary directamente desde el navegador y entrega la URL final optimizada en WebP al componente padre.
+
+### Configuración de Cloudinary
+
+| Parámetro | Valor |
+|---|---|
+| Cloud Name | `dfshkpehf` |
+| Upload Preset | `TemblequesCamila` (unsigned) |
+| Endpoint | `https://api.cloudinary.com/v1_1/dfshkpehf/image/upload` |
+
+### Flujo de subida
+
+```
+Usuario selecciona / arrastra un archivo
+        ↓
+Validación local (tipo MIME + tamaño)
+    JPG/PNG  ·  máximo 8 MB
+        ↓
+fetch POST → Cloudinary (FormData unsigned)
+        ↓
+Respuesta: { secure_url: "https://res.cloudinary.com/.../foto.jpg" }
+        ↓
+Transformación WebP:
+  /upload/ → /upload/f_auto,q_auto/
+        ↓
+onUpload(urlFinal) → componente padre
+```
+
+### Prop de comunicación
+
+| Prop | Tipo | Descripción |
+|---|---|---|
+| `onUpload` | `(url: string) => void` | Se llama una vez confirmada la subida con la URL ya transformada. |
+| `className` | `string?` | Clase Tailwind adicional para el contenedor raíz. |
+
+### Uso en un formulario
+
+```tsx
+import ImageUpload from "@/components/ImageUpload";
+
+function AdminProductForm() {
+  const [imageUrl, setImageUrl] = useState("");
+
+  async function handleSubmit() {
+    // imageUrl ya tiene f_auto,q_auto — lista para guardar en MongoDB
+    await adminApi.createProduct({ ..., images: [imageUrl] }, token);
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <ImageUpload onUpload={(url) => setImageUrl(url)} />
+    </form>
+  );
+}
+```
+
+### Estados de la interfaz
+
+| Estado | Lo que ve el usuario |
+|---|---|
+| Inactivo | Icono + texto + botón "Elegir archivo". Soporta drag-and-drop. |
+| Subiendo | Spinner animado + texto "Subiendo...". El área queda bloqueada. |
+| Completado | Thumbnail de la imagen subida + icono de check. Toca para cambiarla. |
+| Error | Mensaje en rojo debajo del área (tipo o tamaño inválido). |
+
+### Formato de URL resultante
+
+```
+# Respuesta original de Cloudinary:
+https://res.cloudinary.com/dfshkpehf/image/upload/v1234567890/foto.jpg
+
+# URL que recibe onUpload (con transformación WebP):
+https://res.cloudinary.com/dfshkpehf/image/upload/f_auto,q_auto/v1234567890/foto.jpg
+```
+
+Con `f_auto`, Cloudinary detecta el soporte del navegador y entrega WebP, AVIF o JPG según corresponda. Con `q_auto`, ajusta la calidad de forma automática para minimizar el peso sin pérdida perceptible.
+
+---
+
 ## Pendientes
 
 ### Funcionalidades
 
-- [x] **Autenticación con Clerk** — Login con email, Google y Microsoft. Verificación de cuenta, recuperación de contraseña y notificaciones de seguridad gestionadas por Clerk. El rol `admin` se asigna desde el Clerk Dashboard vía `publicMetadata`.
-- [x] **Recuperación de contraseña** — Gestionada por Clerk de forma nativa (email de código de reset). Sin necesidad de Resend ni servicio externo.
-- [ ] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
+- [ ] **Autenticación con Clerk** — Reemplazar el JWT propio por Clerk para soportar login con Google y OTP. La arquitectura actual está preparada para esta migración.
+- [ ] **Recuperación de contraseña** — Flujo de reset por email (requiere servicio de correo como Resend).
+- [x] **Carga de imágenes reales** — Integrado con Cloudinary via `ImageUpload.tsx`. Las imágenes se entregan en WebP optimizado con `f_auto,q_auto`. Ver sección [Componente ImageUpload](#componente-imageupload).
 - [ ] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
 - [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.
 - [ ] **Penalidades por atraso** — Calculo y cobro automático cuando `status = late` supera la fecha de devolución.
