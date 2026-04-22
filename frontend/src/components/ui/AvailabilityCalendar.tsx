@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { productsApi } from "@/services/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface BookedRange {
   start: string;
@@ -14,16 +15,12 @@ interface AvailabilityCalendarProps {
   endDate: string;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
+  /** Called with true when the selected range overlaps a booked period */
+  onConflict?: (hasConflict: boolean) => void;
 }
 
 function isoDate(d: Date): string {
   return d.toISOString().split("T")[0];
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
 }
 
 function startOfMonth(d: Date): Date {
@@ -50,6 +47,52 @@ const MONTH_NAMES_ES = [
 ];
 const DAY_NAMES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 
+// ─── Range overlap check ──────────────────────────────────────────────────────
+/**
+ * Returns true if [rangeStart, rangeEnd] overlaps ANY booked range.
+ * Overlap condition: rangeStart <= bookedEnd AND rangeEnd >= bookedStart
+ */
+function rangeOverlapsBooked(
+  rangeStart: string,
+  rangeEnd: string,
+  bookedRanges: BookedRange[],
+): boolean {
+  for (const r of bookedRanges) {
+    const bStart = isoDate(new Date(r.start));
+    const bEnd   = isoDate(new Date(r.end));
+    // Standard interval overlap: A.start <= B.end AND A.end >= B.start
+    if (rangeStart <= bEnd && rangeEnd >= bStart) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if a given day falls within any booked range
+ * (used to paint individual days red).
+ */
+function dayIsBooked(iso: string, bookedRanges: BookedRange[]): boolean {
+  for (const r of bookedRanges) {
+    const bStart = isoDate(new Date(r.start));
+    const bEnd   = isoDate(new Date(r.end));
+    if (iso >= bStart && iso <= bEnd) return true;
+  }
+  return false;
+}
+
+/**
+ * Returns true if selecting `candidateEnd` as the end date would create a
+ * range [startDate, candidateEnd] that overlaps a booked period.
+ * Used to prevent hovering/clicking on dates that would create a conflicting range.
+ */
+function endWouldConflict(
+  startDate: string,
+  candidateEnd: string,
+  bookedRanges: BookedRange[],
+): boolean {
+  if (candidateEnd <= startDate) return false;
+  return rangeOverlapsBooked(startDate, candidateEnd, bookedRanges);
+}
+
 export default function AvailabilityCalendar({
   productId,
   stock,
@@ -57,22 +100,23 @@ export default function AvailabilityCalendar({
   endDate,
   onStartDateChange,
   onEndDateChange,
+  onConflict,
 }: AvailabilityCalendarProps) {
-  const today = useMemo(() => new Date(isoDate(new Date())), []);
+  const today = useMemo(() => isoDate(new Date()), []);
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [bookedRanges, setBookedRanges] = useState<BookedRange[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
-  const [selectingEnd, setSelectingEnd] = useState(false);
+  const [waitingForEnd, setWaitingForEnd] = useState(false);
 
-  // Fetch booked dates for the current + next month window
+  // Fetch booked ranges for the current month view window
   useEffect(() => {
     if (!productId) return;
     setLoadingAvailability(true);
     const from = isoDate(startOfMonth(viewDate));
-    const to = isoDate(endOfMonth(addDays(endOfMonth(viewDate), 1)));
+    const to = isoDate(endOfMonth(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0)));
     productsApi
       .availability(productId, from, to)
       .then((data) => setBookedRanges(data.booked))
@@ -80,31 +124,20 @@ export default function AvailabilityCalendar({
       .finally(() => setLoadingAvailability(false));
   }, [productId, viewDate]);
 
-  // Set of booked date strings for O(1) lookup
-  const bookedSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const range of bookedRanges) {
-      const s = new Date(range.start);
-      const e = new Date(range.end);
-      const cur = new Date(s);
-      while (cur <= e) {
-        set.add(isoDate(cur));
-        cur.setDate(cur.getDate() + 1);
-      }
-    }
-    return set;
-  }, [bookedRanges]);
+  // Notify parent if the currently selected range has a conflict
+  useEffect(() => {
+    if (!startDate || !endDate || !onConflict) return;
+    onConflict(rangeOverlapsBooked(startDate, endDate, bookedRanges));
+  }, [startDate, endDate, bookedRanges]);
 
   const days = useMemo(
     () => eachDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()),
     [viewDate],
   );
 
-  // Padding days at start (Mon = 0 offset)
   const firstDayOfWeek = useMemo(() => {
     const d = days[0].getDay();
-    // JS: 0=Sun, 1=Mon … convert to Mon-first
-    return d === 0 ? 6 : d - 1;
+    return d === 0 ? 6 : d - 1; // Mon-first
   }, [days]);
 
   const prevMonth = () =>
@@ -114,122 +147,134 @@ export default function AvailabilityCalendar({
 
   function handleDayClick(day: Date) {
     const iso = isoDate(day);
-    if (day < today || bookedSet.has(iso)) return;
+    if (iso < today || dayIsBooked(iso, bookedRanges)) return;
 
-    if (!startDate || selectingEnd === false) {
-      // First click: set start date, enter "selecting end" mode
+    if (!waitingForEnd) {
+      // First click → set start, enter "waiting for end" mode
       onStartDateChange(iso);
       onEndDateChange("");
-      setSelectingEnd(true);
+      setWaitingForEnd(true);
     } else {
-      // Second click: set end date
+      // Second click → validate and set end
       if (iso <= startDate) {
-        // Clicked before or same as start → restart
+        // Clicked same or earlier → restart from here
         onStartDateChange(iso);
         onEndDateChange("");
-      } else {
-        onEndDateChange(iso);
-        setSelectingEnd(false);
+        return;
       }
+
+      // Check if the proposed range overlaps any booked period
+      if (rangeOverlapsBooked(startDate, iso, bookedRanges)) {
+        // Don't allow — stay in "waiting for end" mode and let the red highlight communicate the issue
+        return;
+      }
+
+      onEndDateChange(iso);
+      setWaitingForEnd(false);
     }
   }
 
-  function getDayState(day: Date): "past" | "booked" | "start" | "end" | "inRange" | "available" {
-    const iso = isoDate(day);
-    if (day < today) return "past";
-    if (bookedSet.has(iso)) return "booked";
+  type DayState = "past" | "booked" | "start" | "end" | "inRange" | "conflictEnd" | "available";
+
+  function getDayState(iso: string): DayState {
+    if (iso < today) return "past";
+    if (dayIsBooked(iso, bookedRanges)) return "booked";
     if (iso === startDate) return "start";
     if (iso === endDate) return "end";
     if (startDate && endDate && iso > startDate && iso < endDate) return "inRange";
+    // When waiting for end: shade dates that would create a conflicting range
+    if (waitingForEnd && startDate && iso > startDate) {
+      if (endWouldConflict(startDate, iso, bookedRanges)) return "conflictEnd";
+    }
     return "available";
   }
 
-  // Count active rentals for the currently selected range to show remaining stock
-  const conflictingRanges = useMemo(() => {
+  // Count overlapping rentals for stock availability
+  const conflictingRentals = useMemo(() => {
     if (!startDate || !endDate) return 0;
     return bookedRanges.filter((r) => {
-      const rStart = isoDate(new Date(r.start));
-      const rEnd = isoDate(new Date(r.end));
-      return rStart <= endDate && rEnd >= startDate;
+      const bStart = isoDate(new Date(r.start));
+      const bEnd   = isoDate(new Date(r.end));
+      return startDate <= bEnd && endDate >= bStart;
     }).length;
   }, [bookedRanges, startDate, endDate]);
 
-  const availableUnits = Math.max(0, stock - conflictingRanges);
+  const availableUnits = Math.max(0, stock - conflictingRentals);
+  const hasRangeConflict =
+    startDate && endDate
+      ? rangeOverlapsBooked(startDate, endDate, bookedRanges)
+      : false;
 
   return (
     <div className="space-y-4">
-      {/* Month navigation */}
+      {/* Month nav */}
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={prevMonth}
-          className="w-9 h-9 border-[3px] border-black bg-white flex items-center justify-center hover:bg-black hover:text-white transition-colors active:translate-y-[1px]"
-          aria-label="Mes anterior"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-        <span className="font-bold text-sm tracking-widest uppercase">
+        <Button type="button" variant="outline" size="sm" onClick={prevMonth} aria-label="Mes anterior">
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-semibold">
           {MONTH_NAMES_ES[viewDate.getMonth()]} {viewDate.getFullYear()}
         </span>
-        <button
-          type="button"
-          onClick={nextMonth}
-          className="w-9 h-9 border-[3px] border-black bg-white flex items-center justify-center hover:bg-black hover:text-white transition-colors active:translate-y-[1px]"
-          aria-label="Mes siguiente"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        <Button type="button" variant="outline" size="sm" onClick={nextMonth} aria-label="Mes siguiente">
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-0.5">
         {DAY_NAMES.map((d) => (
-          <div key={d} className="text-center text-[10px] font-bold uppercase text-black/50 py-1">
+          <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1 uppercase">
             {d}
           </div>
         ))}
 
-        {/* Padding cells */}
+        {/* Padding */}
         {Array.from({ length: firstDayOfWeek }).map((_, i) => (
           <div key={`pad-${i}`} />
         ))}
 
-        {/* Day cells */}
+        {/* Days */}
         {days.map((day) => {
-          const state = getDayState(day);
-          const iso = isoDate(day);
-          const isClickable = state !== "past" && state !== "booked";
+          const iso   = isoDate(day);
+          const state = getDayState(iso);
+          const isDisabled = state === "past" || state === "booked" || state === "conflictEnd";
 
           let cellClass =
-            "relative h-9 w-full flex items-center justify-center text-sm font-medium transition-all select-none ";
+            "h-9 w-full flex items-center justify-center text-sm transition-colors select-none rounded-sm ";
 
-          if (state === "past") {
-            cellClass += "text-black/20 cursor-not-allowed";
-          } else if (state === "booked") {
-            cellClass +=
-              "bg-red-100 text-red-400 cursor-not-allowed line-through";
-          } else if (state === "start") {
-            cellClass +=
-              "bg-black text-white cursor-pointer border-[3px] border-black";
-          } else if (state === "end") {
-            cellClass +=
-              "bg-black text-white cursor-pointer border-[3px] border-black";
-          } else if (state === "inRange") {
-            cellClass += "bg-black/10 text-black cursor-pointer";
-          } else {
-            cellClass +=
-              "cursor-pointer border border-transparent hover:border-black hover:bg-black/5";
+          switch (state) {
+            case "past":
+              cellClass += "text-muted-foreground/40 cursor-not-allowed";
+              break;
+            case "booked":
+              cellClass += "bg-destructive/10 text-destructive line-through cursor-not-allowed font-medium";
+              break;
+            case "conflictEnd":
+              // Would cause an overlap — show in muted red to communicate it's forbidden
+              cellClass += "bg-destructive/10 text-destructive/60 cursor-not-allowed";
+              break;
+            case "start":
+              cellClass += "bg-primary text-primary-foreground font-bold cursor-pointer";
+              break;
+            case "end":
+              cellClass += "bg-primary text-primary-foreground font-bold cursor-pointer";
+              break;
+            case "inRange":
+              cellClass += "bg-primary/15 text-primary font-medium cursor-pointer";
+              break;
+            default:
+              cellClass += "cursor-pointer hover:bg-muted font-medium";
           }
 
           return (
             <button
               key={iso}
               type="button"
-              onClick={() => isClickable && handleDayClick(day)}
+              onClick={() => !isDisabled && handleDayClick(day)}
               className={cellClass}
-              aria-label={`${iso}${state === "booked" ? " — reservado" : ""}`}
+              aria-label={`${iso}${state === "booked" ? " — reservado" : state === "conflictEnd" ? " — genera conflicto" : ""}`}
               aria-pressed={state === "start" || state === "end"}
-              disabled={!isClickable}
+              disabled={isDisabled}
             >
               {day.getDate()}
             </button>
@@ -238,52 +283,54 @@ export default function AvailabilityCalendar({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3 text-xs">
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 bg-black inline-block" /> Seleccionado
+          <span className="w-3 h-3 rounded-sm bg-primary inline-block" /> Seleccionado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 bg-black/10 inline-block" /> Rango
+          <span className="w-3 h-3 rounded-sm bg-primary/15 inline-block" /> Rango
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 bg-red-100 border border-red-300 inline-block" /> Reservado
+          <span className="w-3 h-3 rounded-sm bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
         </span>
       </div>
 
-      {/* Loading overlay hint */}
       {loadingAvailability && (
-        <p className="text-xs text-black/40 animate-pulse">Cargando disponibilidad…</p>
+        <p className="text-xs text-muted-foreground animate-pulse">Cargando disponibilidad…</p>
+      )}
+
+      {/* Range conflict warning */}
+      {hasRangeConflict && (
+        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2 font-medium">
+          ✗ El rango seleccionado se solapa con una reserva existente. Por favor elige otras fechas.
+        </div>
       )}
 
       {/* Stock indicator */}
-      {startDate && endDate && (
+      {startDate && endDate && !hasRangeConflict && (
         <div
-          className={`border-[3px] p-3 text-sm font-bold ${
+          className={`text-sm px-3 py-2 rounded-md border font-medium ${
             availableUnits > 0
-              ? "border-black bg-white"
-              : "border-red-500 bg-red-50 text-red-700"
+              ? "bg-muted border-border text-foreground"
+              : "bg-destructive/10 border-destructive/30 text-destructive"
           }`}
         >
-          {availableUnits > 0 ? (
-            <>
-              ✓ {availableUnits} unidad{availableUnits !== 1 ? "es" : ""} disponible
-              {availableUnits !== 1 ? "s" : ""} para estas fechas
-            </>
-          ) : (
-            <>✗ Sin disponibilidad para las fechas seleccionadas</>
-          )}
+          {availableUnits > 0
+            ? `✓ ${availableUnits} unidad${availableUnits !== 1 ? "es" : ""} disponible${availableUnits !== 1 ? "s" : ""} para este período`
+            : "✗ Sin unidades disponibles para las fechas seleccionadas"}
         </div>
       )}
 
       {/* Instruction hint */}
       {!startDate && (
-        <p className="text-xs text-black/50">
-          Haz clic en una fecha para establecer el <strong>inicio</strong> del alquiler.
+        <p className="text-xs text-muted-foreground">
+          Selecciona la fecha de <strong>inicio</strong> del alquiler.
         </p>
       )}
-      {startDate && !endDate && (
-        <p className="text-xs text-black/50">
-          Ahora selecciona la fecha de <strong>devolución</strong>.
+      {waitingForEnd && startDate && !endDate && (
+        <p className="text-xs text-muted-foreground">
+          Ahora selecciona la fecha de <strong>devolución</strong>.{" "}
+          <span className="text-destructive">Las fechas en rojo generarían un conflicto.</span>
         </p>
       )}
     </div>

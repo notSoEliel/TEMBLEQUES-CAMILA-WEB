@@ -37,7 +37,9 @@ admin.get("/dashboard", async (c) => {
     Rental.aggregate([
       {
         $match: {
+          // Only count payments that actually completed AND the rental wasn't cancelled
           payment_status: "completed",
+          status: { $nin: ["cancelled"] },
           createdAt: { $gte: startOfMonth },
         },
       },
