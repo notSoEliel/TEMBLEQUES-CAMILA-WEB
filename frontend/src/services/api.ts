@@ -13,8 +13,21 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
     "Content-Type": "application/json",
   };
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  let currentToken = token;
+  
+  // Clerk tokens expire quickly. If the user stays on the page, the token in useAuth state becomes stale.
+  // We intercept the request here to always fetch a fresh token directly from the Clerk instance.
+  if (typeof window !== "undefined" && (window as any).Clerk?.session) {
+    try {
+      const freshToken = await (window as any).Clerk.session.getToken();
+      if (freshToken) currentToken = freshToken;
+    } catch (e) {
+      console.warn("Failed to get fresh Clerk token", e);
+    }
+  }
+
+  if (currentToken) {
+    headers["Authorization"] = `Bearer ${currentToken}`;
   }
 
   let response: Response;
