@@ -260,7 +260,134 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
 
 ---
 
-## Estructura del Código
+## Stripe: Integración de Pagos
+
+### Modo Demo vs. Modo Real
+
+El sistema detecta automáticamente si Stripe está configurado:
+
+| Estado de `STRIPE_SECRET_KEY` | Comportamiento |
+|---|---|
+| `sk_test_placeholder` (por defecto) | **Modo demo**: simula el pago sin contactar Stripe, redirige directamente a `/confirmation`. |
+| Clave real (`sk_test_...`) | **Modo real**: redirige al hosted checkout de Stripe con tarjetas de prueba. |
+
+No se requiere dinero real en ninguno de los dos modos si usas claves de test.
+
+### Configurar Stripe (paso a paso)
+
+#### Paso 1: Obtener las claves
+
+1. Ve a [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → API Keys**.
+2. Copia la **Secret key** (empieza con `sk_test_...`).
+3. Pégala en `.env`:
+   ```env
+   STRIPE_SECRET_KEY=sk_test_TU_CLAVE_AQUI
+   ```
+
+#### Paso 2: Configurar webhooks (para que Stripe notifique al backend)
+
+Stripe necesita enviar eventos al endpoint `POST /api/stripe/webhook` cuando un pago se completa o falla.
+
+**Opción A — Stripe CLI (recomendada para desarrollo local)**
+
+```bash
+# 1. Instalar Stripe CLI
+brew install stripe/stripe-cli/stripe
+
+# 2. Autenticarse con tu cuenta Stripe
+stripe login
+
+# 3. En una terminal aparte, reenviar eventos a tu backend local
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+La CLI imprimirá tu webhook secret:
+```
+> Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxxxxxxxxx
+```
+
+Copia ese valor y pégalo en `.env`:
+```env
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
+```
+
+> [!NOTE]
+> Con Stripe CLI **no necesitas localtunnel** — actúa como proxy directo entre los servidores de Stripe y tu `localhost:3000`. Es la forma más rápida y confiable.
+
+**Opción B — Localtunnel (para compartir webhook con equipo)**
+
+```bash
+# En una terminal aparte desde el directorio backend/
+cd backend && bun run tunnel
+# → URL pública: https://tembleques-camila.loca.lt
+```
+
+Luego en [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**:
+- URL: `https://tembleques-camila.loca.lt/api/stripe/webhook`
+- Eventos a escuchar:
+  - `checkout.session.completed`
+  - `checkout.session.expired`
+  - `payment_intent.payment_failed`
+- Copia el **Signing secret** generado → `STRIPE_WEBHOOK_SECRET` en `.env`
+
+#### Paso 3: Tarjetas de prueba (sin cobro real)
+
+| Resultado esperado | Número de tarjeta | Fecha | CVV |
+|---|---|---|---|
+| ✅ Pago exitoso | `4242 4242 4242 4242` | Cualquier fecha futura | Cualquier 3 dígitos |
+| ❌ Pago rechazado | `4000 0000 0000 0002` | Cualquier fecha futura | Cualquier 3 dígitos |
+| 🔐 Requiere 3DS | `4000 0025 0000 3155` | Cualquier fecha futura | Cualquier 3 dígitos |
+
+> [!TIP]
+> Usa ZIP `10001` si el formulario de Stripe lo pide (cualquier valor de 5 dígitos funciona).
+
+### Eventos de Webhook manejados
+
+| Evento Stripe | Acción en el sistema |
+|---|---|
+| `checkout.session.completed` | Actualiza reserva a `status: "paid"`, `payment_status: "completed"` |
+| `checkout.session.expired` | Actualiza reserva a `status: "cancelled"`, `payment_status: "failed"` |
+| `payment_intent.payment_failed` | Actualiza `payment_status: "failed"` |
+
+### Flujo técnico completo
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant FE as Frontend
+    participant BE as Backend
+    participant S as Stripe
+    participant W as Webhook
+
+    U->>FE: Selecciona fechas y acepta términos
+    FE->>BE: POST /api/rentals (crea reserva pending)
+    BE-->>FE: { rental._id }
+    FE->>BE: POST /api/stripe/create-checkout-session
+    BE->>BE: Re-valida disponibilidad (anti-race condition)
+    BE->>S: Crea Checkout Session
+    S-->>BE: { url, sessionId }
+    BE-->>FE: { url }
+    FE->>S: Redirige a Stripe Checkout
+    U->>S: Ingresa datos de tarjeta de prueba
+    S->>W: checkout.session.completed
+    W->>BE: POST /api/stripe/webhook
+    BE->>BE: Actualiza rental a "paid"
+    S->>FE: Redirige a /confirmation?rental=...&session_id=...
+    FE->>BE: GET /api/rentals/:id
+    BE-->>FE: Detalles de la reserva
+```
+
+### Futuras funcionalidades de pago (próxima rama)
+
+Las siguientes funcionalidades de Stripe están documentadas en el PRD pero **no implementadas en esta versión**. Se abordarán en una rama dedicada:
+
+- **Depósito de garantía**: Usar `PaymentIntent` con `capture_method: manual` para hacer un hold en la tarjeta del cliente al momento de la reserva. El monto se captura si hay daños, o se libera al devolver el artículo en buenas condiciones.
+- **Penalidades por atraso**: Calcular automáticamente el costo extra cuando `rental.status = "late"` basado en los días de retraso respecto a `end_date`. Requiere un job cron o un mecanismo de revisión periódica.
+- **Cobro adicional por daños**: Desde el panel admin, generar un `PaymentIntent` adicional cuando `status = "damaged"` con el monto de reparación/reposición.
+
+---
+
+
 
 ```
 backend/src/
@@ -275,7 +402,7 @@ backend/src/
   routes/
     auth.ts                 # POST /register, POST /login, GET /me
     products.ts             # GET / (filtros), GET /:id, GET /:id/availability
-    rentals.ts              # POST /, GET /my, GET /:id
+    rentals.ts              # POST /, GET /my, GET /:id, DELETE /:id (cancelar)
     admin.ts                # Dashboard, CRUD productos, gestion reservas
     stripe.ts               # Checkout session, webhook
   middleware/
@@ -283,6 +410,7 @@ backend/src/
   services/
     availability.ts         # Validación de solapamiento de fechas
     rental.ts               # Cálculo de totales, creación, transiciones de estado
+    stripe.ts               # Lógica de Stripe: createSession, handleWebhookEvent
 
 frontend/src/
   index.css                 # Tema OKLCH neobrutalista (fuente de verdad de estilos)
@@ -294,6 +422,7 @@ frontend/src/
     api.ts                  # Capa de acceso a todos los endpoints del backend
   components/
     ui/                     # Componentes shadcn/ui adaptados al tema
+        AvailabilityCalendar.tsx  # Mini-calendario con fechas bloqueadas y stock
     layouts/
       ClientLayout.tsx      # Navbar + Footer para el sitio publico
       AdminLayout.tsx       # Sidebar para el panel de administración
@@ -417,14 +546,48 @@ Este modal está implementado actualmente en:
 
 ---
 
+## Troubleshooting y Errores Comunes
+
+Durante el desarrollo, pueden surgir ciertos errores conocidos. Aquí se documentan sus causas y cómo se resolvieron para mantener un registro histórico y facilitar el mantenimiento.
+
+### 1. Error 500 en Stripe Checkout (`url_invalid`)
+**Síntoma:** Al intentar pagar, el backend devuelve un error 500 y en los logs aparece `code: "url_invalid"` y `param: "cancel_url"`.
+**Causa:** La URL de cancelación (`cancel_url`) enviada a Stripe contenía un objeto de Mongoose poblado en lugar de un ID de texto. Al concatenarse en un template string, se convertía en `http://.../checkout/[object Object]?cancelled=1`, lo cual es una URL inválida por contener espacios y corchetes.
+**Solución:** Extraer y forzar explícitamente el `_id` (`(product as any)._id`) al armar la URL en `backend/src/services/stripe.ts`.
+
+### 2. Error 401 (Unauthorized) al pagar o cancelar desde el Perfil
+**Síntoma:** El usuario intenta cancelar una reserva pendiente o reintentar el pago tras dejar la pestaña inactiva unos minutos, y recibe un error *"Token inválido o expirado"*.
+**Causa:** Los tokens JWT de Clerk tienen una caducidad muy corta por seguridad (~1 minuto). Si el frontend guarda el token en el estado de React (`useAuth`), este se vuelve obsoleto rápidamente.
+**Solución:** Se implementó un interceptor en `frontend/src/services/api.ts` que ignora el token en caché y siempre solicita uno fresco antes de la petición usando `window.Clerk.session.getToken()`.
+
+### 3. Calendario atascado al seleccionar fechas conflictivas
+**Síntoma:** Si el usuario escoge una fecha de inicio (ej. Lunes) y existen reservas en días intermedios (Martes/Miércoles), los días posteriores (Jueves/Viernes) se pintan de rojo y quedan bloqueados (`disabled`), impidiendo seleccionarlos siquiera como un *nuevo* inicio.
+**Causa:** El atributo HTML `disabled` cancela el evento `onClick`. 
+**Solución:** Se retiró el `disabled` de los estados `conflictEnd`. Ahora, si el usuario hace clic en una fecha que generaría solapamiento, el calendario asume inteligentemente que se desea iniciar un nuevo rango y reinicia la fecha de inicio (`onStartDateChange`) a ese día. La fórmula de validación de rangos usada es `A.start <= B.end && A.end >= B.start`.
+
+### 4. Variables del archivo `.env` ignoradas por Docker
+**Síntoma:** Tras cambiar la variable `STRIPE_SECRET_KEY` de "demo" a una clave real en `.env`, el backend sigue funcionando en modo demo incluso ejecutando `docker restart backend`.
+**Causa:** Docker Compose "cachea" las variables de entorno en la creación inicial del contenedor. Un reinicio simple (`restart`) solo reinicia el proceso interno con las variables cacheadas en memoria.
+**Solución:** Para que Docker lea nuevamente el `.env`, es obligatorio forzar la recreación del contenedor:
+```bash
+docker-compose up -d --force-recreate backend
+```
+
+### 5. Errores de "content.js" o "addListener" en consola
+**Síntoma:** Errores en la consola del navegador como `Uncaught TypeError: Cannot read properties of undefined (reading 'addListener')` indicando archivos como `content.js` o `ff-content.js`.
+**Causa:** Estos errores provienen de extensiones de terceros instaladas en el navegador del usuario (bloqueadores de anuncios, gestores de contraseñas, extensiones de DevTools). El código fuente del proyecto no inyecta esos archivos.
+**Solución:** Se pueden ignorar de forma segura, o deshabilitar las extensiones en modo incógnito/desarrollo para tener una consola más limpia.
+
+---
+
 ## Pendientes
 
 ### Funcionalidades
 
 - [x] **Autenticación con Clerk** — Login con email, Google y Microsoft. Verificación de cuenta, recuperación de contraseña y notificaciones de seguridad gestionadas por Clerk. El rol `admin` se asigna desde el Clerk Dashboard vía `publicMetadata`.
 - [x] **Recuperación de contraseña** — Gestionada por Clerk de forma nativa (email de código de reset). Sin necesidad de Resend ni servicio externo.
-- [ ] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
-- [ ] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
+- [x] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
+- [x] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
 - [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.
 - [ ] **Penalidades por atraso** — Calculo y cobro automático cuando `status = late` supera la fecha de devolución.
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
@@ -434,7 +597,7 @@ Este modal está implementado actualmente en:
 
 - [ ] **Testing unitario** — Cubrir los servicios críticos (`availability.ts`, `rental.ts`, calculo de totales) con pruebas usando `bun test`. Meta: 80% de cobertura en modulos de negocio.
 - [ ] **Testing E2E con Playwright** — Automatizar los flujos principales: registro, login, reserva completa, bloqueo de checkout sin términos, y gestión admin.
-- [ ] **Variables de entorno en producción** — Configurar secrets reales para `JWT_SECRET`, `STRIPE_SECRET_KEY` y `MONGO_URI` antes de cualquier despliegue.
+- [x] **Variables de entorno en producción** — Configurar secrets reales para `JWT_SECRET`, `STRIPE_SECRET_KEY` y `MONGO_URI` antes de cualquier despliegue.
 - [ ] **Dockerfile de producción** — Los Dockerfiles actuales corren en modo desarrollo con hot reload. Crear variantes de producción con builds optimizados.
 - [ ] **HTTPS** — Configurar certificados SSL (Let's Encrypt via Traefik o Nginx) para el despliegue en servidor.
 - [ ] **Documentación de API** — Generar documentación interactiva de los endpoints (OpenAPI / Swagger).
