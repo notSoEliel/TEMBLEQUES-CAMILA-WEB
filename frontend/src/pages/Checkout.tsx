@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Calendar, Shield, CreditCard, Loader2 } from "lucide-react";
+import ErrorPage from "@/pages/ErrorPage";
+import { useErrorModal } from "@/components/ErrorModal";
 
 export default function Checkout() {
   const { productId } = useParams();
@@ -17,8 +19,9 @@ export default function Checkout() {
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
+
+  const { errorModal, showError } = useErrorModal();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -47,25 +50,24 @@ export default function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
 
     if (!startDate || !endDate) {
-      setError("Selecciona las fechas de alquiler.");
+      showError("Selecciona las fechas de alquiler.", "validation");
       return;
     }
 
     if (new Date(startDate) >= new Date(endDate)) {
-      setError("La fecha de inicio debe ser anterior a la fecha de fin.");
+      showError("La fecha de inicio debe ser anterior a la fecha de fin.", "validation");
       return;
     }
 
     if (new Date(startDate) < new Date()) {
-      setError("La fecha de inicio no puede ser en el pasado.");
+      showError("La fecha de inicio no puede ser en el pasado.", "validation");
       return;
     }
 
     if (!termsAccepted) {
-      setError("Debes aceptar los términos y condiciones para continuar.");
+      showError("Debes aceptar los términos y condiciones para continuar.", "validation");
       return;
     }
 
@@ -90,7 +92,7 @@ export default function Checkout() {
         navigate(`/confirmation?rental=${rentalData.rental._id}`);
       }
     } catch (err: any) {
-      setError(err.message || "Error al procesar la reserva.");
+      showError(err.message || "Error al procesar la reserva.", "generic");
       setSubmitting(false);
     }
   };
@@ -107,16 +109,12 @@ export default function Checkout() {
   }
 
   if (!product) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold mb-4">Producto no encontrado</h2>
-        <Button onClick={() => navigate("/catalog")}>Volver al Catálogo</Button>
-      </div>
-    );
+    return <ErrorPage variant="product-not-found" />;
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      {errorModal}
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="h-4 w-4 mr-2" />
         Volver
@@ -257,11 +255,6 @@ export default function Checkout() {
                   </span>
                 </div>
 
-                {error && (
-                  <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-3 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
 
                 <Button
                   type="submit"
