@@ -17,20 +17,38 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // Network error (servidor caído, sin conexión)
+    throw new Error("No se pudo conectar con el servidor. Verifica tu conexión a internet.");
+  }
 
-  const data = await response.json();
+  // Try to parse JSON — some error responses (503, nginx pages) are plain HTML
+  let data: any;
+  try {
+    data = await response.json();
+  } catch {
+    if (!response.ok) {
+      throw new Error(
+        `El servidor respondió con un error inesperado (${response.status}). Intenta de nuevo más tarde.`,
+      );
+    }
+    throw new Error("La respuesta del servidor no pudo ser procesada.");
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || "Error en la solicitud");
+    throw new Error(data?.error || "Ocurrió un error inesperado. Por favor, intenta de nuevo.");
   }
 
   return data;
 }
+
 
 // Auth
 export const authApi = {

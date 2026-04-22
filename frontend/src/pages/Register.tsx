@@ -7,26 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { UserPlus, Loader2 } from "lucide-react";
+import { useErrorModal } from "@/components/ErrorModal";
 
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { errorModal, showError } = useErrorModal();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       await register(name, email, password, phone || undefined);
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "Error al registrar");
+      showError(err.message || "Error al registrar", "generic");
     }
     setLoading(false);
   };
@@ -59,9 +59,7 @@ export default function Register() {
               <Input id="phone" placeholder="+507 6000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
 
-            {error && (
-              <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-3 text-sm text-destructive">{error}</div>
-            )}
+          {errorModal}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <UserPlus className="h-4 w-4 mr-2" />}
