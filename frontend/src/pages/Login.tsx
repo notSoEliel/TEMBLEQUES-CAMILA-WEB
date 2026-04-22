@@ -8,6 +8,11 @@ import { SignIn } from "@clerk/clerk-react";
 export default function Login() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+      <style>
+        {`
+          .cl-headerTitle { font-family: 'Playfair Display', serif !important; }
+        `}
+      </style>
       <SignIn
         routing="path"
         path="/login"
@@ -15,38 +20,39 @@ export default function Login() {
         fallbackRedirectUrl="/"
         appearance={{
           elements: {
-            rootBox: "w-full max-w-md",
-            card: [
-              "bg-card border-2 border-black rounded-none shadow-[4px_4px_0px_0px_#000000]",
-              "w-full",
-            ].join(" "),
-            headerTitle: "font-serif text-2xl text-foreground",
-            headerSubtitle: "text-muted-foreground",
+            cardBox: "!bg-[#F7F4E9] !border-[3px] !border-black !rounded-[2rem] !shadow-none w-full !overflow-hidden",
+            card: "!bg-transparent !border-none !shadow-none p-8 pb-4 w-full",
+            headerTitle: "text-4xl !font-black !text-black",
+            headerSubtitle: "!text-black/70 !font-medium",
             socialButtonsBlockButton:
-              "border-2 border-black rounded-none bg-background hover:bg-muted text-foreground font-medium shadow-[2px_2px_0px_0px_#000000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all",
-            dividerLine: "bg-border",
-            dividerText: "text-muted-foreground",
-            formFieldLabel: "text-foreground font-medium",
+              "!border-2 !border-black !rounded-full !bg-white hover:!bg-black/5 !text-black !font-bold !shadow-none transition-all py-3",
+            dividerLine: "!bg-black/20",
+            dividerText: "!text-black/50 !font-bold",
+            formFieldLabel: "!text-black !font-bold",
             formFieldInput:
-              "border-2 border-black rounded-none bg-input text-foreground focus:ring-2 focus:ring-primary focus:border-primary",
+              "!border-2 !border-black !rounded-full !bg-white !text-black focus:!ring-2 focus:!ring-[#F92E73] focus:!border-black !shadow-none py-3 px-4",
             formButtonPrimary:
-              "bg-primary text-primary-foreground border-2 border-black rounded-none shadow-[4px_4px_0px_0px_#000000] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all font-semibold",
-            footerActionLink: "text-primary hover:text-primary/80 font-semibold",
-            identityPreviewText: "text-foreground",
-            identityPreviewEditButton: "text-primary",
-            formResendCodeLink: "text-primary",
-            alertText: "text-destructive",
+              "!bg-[#F92E73] !text-white !border-2 !border-black !rounded-full !shadow-none hover:!opacity-90 transition-all !font-bold text-lg py-3",
+            footerActionLink: "!text-[#F92E73] hover:!text-[#D11A58] !font-bold",
+            footerActionText: "!text-black !font-medium",
+            identityPreviewText: "!text-black !font-medium",
+            identityPreviewEditButton: "!text-[#F92E73] !font-bold",
+            formResendCodeLink: "!text-[#F92E73] !font-bold",
+            alertText: "!text-red-600 !font-bold",
+            alert: "!border-2 !border-red-600 !bg-red-50 !rounded-xl",
+            footer: "!bg-transparent !border-none !pt-0 !pb-6 !px-8",
           },
           variables: {
-            colorPrimary: "oklch(0.6862 0.2061 357.3956)",
-            colorBackground: "oklch(0.9559 0.0146 102.4588)",
-            colorText: "oklch(0 0 0)",
-            colorInputBackground: "oklch(1.0000 0 0)",
-            colorInputText: "oklch(0 0 0)",
-            borderRadius: "0px",
+            colorPrimary: "#F92E73",
+            colorBackground: "#F7F4E9",
+            colorText: "#000000",
+            colorInputBackground: "#FFFFFF",
+            colorInputText: "#000000",
+            borderRadius: "2rem",
             fontFamily: "Inter, sans-serif",
           },
         }}
+
       />
     </div>
   );
