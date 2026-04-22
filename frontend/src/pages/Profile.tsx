@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Calendar, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+import { useErrorModal } from "@/components/ErrorModal";
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -30,6 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function Profile() {
   const { user, token } = useAuth();
+  const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,6 +48,8 @@ export default function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      {errorModal}
+
       {/* Profile Info */}
       <Card className="mb-8">
         <CardContent className="p-6 flex items-center gap-4">
@@ -113,6 +119,45 @@ export default function Profile() {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Actions for pending rentals */}
+                {(rental.status === "pending" || rental.status === "paid") && (
+                  <div className="mt-4 pt-4 border-t border-border flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("¿Estás seguro de que deseas cancelar esta reserva?")) {
+                          rentalsApi.cancel(rental._id, token!)
+                            .then(() => {
+                              // Optimistically update UI
+                              setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
+                            })
+                            .catch(err => showError(err.message, "generic"));
+                        }
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    {rental.status === "pending" && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          import("@/services/api").then(({ stripeApi }) => {
+                            stripeApi.createCheckoutSession(rental._id, token!)
+                              .then((res) => {
+                                if (res.url) window.location.href = res.url;
+                                else window.location.href = `/confirmation?rental=${rental._id}`;
+                              })
+                              .catch(err => showError(err.message, "generic"));
+                          });
+                        }}
+                      >
+                        Pagar ahora
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
