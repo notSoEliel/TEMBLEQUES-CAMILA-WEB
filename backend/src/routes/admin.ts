@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { authMiddleware, requireAdmin } from "../middleware/auth.js";
+import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
 import { Product } from "../models/Product.js";
 import { Rental } from "../models/Rental.js";
 import { User } from "../models/User.js";
 import { updateRentalStatus } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
 
-const admin = new Hono();
+const admin = new Hono<{ Variables: AuthVariables }>();
 
 // All admin routes require auth + admin role
 admin.use("/*", authMiddleware, requireAdmin);
@@ -153,7 +153,7 @@ admin.patch("/rentals/:id/status", async (c) => {
 
 // GET /api/admin/users
 admin.get("/users", async (c) => {
-  const users = await User.find({ role: "client" }).select("-password").sort({ createdAt: -1 });
+  const users = await User.find({ role: "client" }).sort({ createdAt: -1 });
   return c.json({ users });
 });
 
