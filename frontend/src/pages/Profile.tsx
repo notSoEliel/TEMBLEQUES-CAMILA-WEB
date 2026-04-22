@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Calendar, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -113,6 +114,43 @@ export default function Profile() {
                     </Badge>
                   </div>
                 </div>
+
+                {/* Actions for pending rentals */}
+                {rental.status === "pending" && (
+                  <div className="mt-4 pt-4 border-t border-border flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (confirm("¿Estás seguro de que deseas cancelar esta reserva?")) {
+                          rentalsApi.cancel(rental._id, token!)
+                            .then(() => {
+                              // Optimistically update UI
+                              setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
+                            })
+                            .catch(err => alert(err.message));
+                        }
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        import("@/services/api").then(({ stripeApi }) => {
+                          stripeApi.createCheckoutSession(rental._id, token!)
+                            .then((res) => {
+                              if (res.url) window.location.href = res.url;
+                              else window.location.href = `/confirmation?rental=${rental._id}`;
+                            })
+                            .catch(err => alert(err.message));
+                        });
+                      }}
+                    >
+                      Pagar ahora
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
