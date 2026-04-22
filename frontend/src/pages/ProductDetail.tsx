@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Calendar, ShoppingBag, Package } from "lucide-react";
+import ErrorPage from "@/pages/ErrorPage";
 
 const CATEGORY_LABELS: Record<string, string> = {
   pollera: "Polleras",
@@ -56,12 +57,7 @@ export default function ProductDetail() {
   }
 
   if (!product) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold mb-4">Producto no encontrado</h2>
-        <Button onClick={() => navigate("/catalog")}>Volver al Catálogo</Button>
-      </div>
-    );
+    return <ErrorPage variant="product-not-found" />;
   }
 
   const statusInfo = STATUS_LABELS[product.condition_status] || { label: product.condition_status, variant: "secondary" as const };

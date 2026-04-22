@@ -2,6 +2,7 @@ import { Product } from "../models/Product.js";
 import { Rental, type RentalStatus } from "../models/Rental.js";
 import { TermsAcceptance } from "../models/TermsAcceptance.js";
 import { checkAvailability } from "./availability.js";
+import { AppError } from "../lib/errors.js";
 
 /**
  * Calculates the total rental cost based on price per day and the date range.
@@ -29,29 +30,49 @@ export async function createRental(params: {
   const { userId, productId, startDate, endDate, termsAccepted, ipAddress, userAgent } = params;
 
   if (!termsAccepted) {
-    throw new Error("Debe aceptar los terminos y condiciones para continuar.");
+    throw new AppError(
+      "Debe aceptar los términos y condiciones para continuar.",
+      400,
+      "RENTAL_TERMS_NOT_ACCEPTED",
+    );
   }
 
   if (startDate >= endDate) {
-    throw new Error("La fecha de inicio debe ser anterior a la fecha de fin.");
+    throw new AppError(
+      "La fecha de inicio debe ser anterior a la fecha de fin.",
+      400,
+      "RENTAL_INVALID_DATE_RANGE",
+    );
   }
 
   if (startDate < new Date()) {
-    throw new Error("La fecha de inicio no puede ser en el pasado.");
+    throw new AppError(
+      "La fecha de inicio no puede ser en el pasado.",
+      400,
+      "RENTAL_DATE_IN_PAST",
+    );
   }
 
   const product = await Product.findById(productId);
   if (!product) {
-    throw new Error("Producto no encontrado.");
+    throw new AppError("Producto no encontrado.", 404, "PRODUCT_NOT_FOUND");
   }
 
   if (product.condition_status !== "disponible") {
-    throw new Error("Este producto no esta disponible para alquiler.");
+    throw new AppError(
+      "Este producto no está disponible para alquiler en este momento.",
+      409,
+      "PRODUCT_NOT_AVAILABLE",
+    );
   }
 
   const isAvailable = await checkAvailability(productId, startDate, endDate);
   if (!isAvailable) {
-    throw new Error("El producto no esta disponible para las fechas seleccionadas.");
+    throw new AppError(
+      "El producto no está disponible para las fechas seleccionadas.",
+      409,
+      "PRODUCT_DATES_UNAVAILABLE",
+    );
   }
 
   const total = calculateTotal(product.rental_price, startDate, endDate);
@@ -79,6 +100,18 @@ export async function createRental(params: {
   return rental;
 }
 
+// Label map for status transitions — used in error messages
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  paid: "Pagado",
+  confirmed: "Confirmado",
+  delivered: "Entregado",
+  returned: "Devuelto",
+  late: "Atrasado",
+  damaged: "Dañado",
+  cancelled: "Cancelado",
+};
+
 /**
  * Updates the status of a rental (admin action).
  */
@@ -96,12 +129,18 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
 
   const rental = await Rental.findById(rentalId);
   if (!rental) {
-    throw new Error("Reserva no encontrada.");
+    throw new AppError("Reserva no encontrada.", 404, "RENTAL_NOT_FOUND");
   }
 
   const allowed = validTransitions[rental.status] || [];
   if (!allowed.includes(newStatus)) {
-    throw new Error(`No se puede cambiar de '${rental.status}' a '${newStatus}'.`);
+    const from = STATUS_LABELS[rental.status] ?? rental.status;
+    const to = STATUS_LABELS[newStatus] ?? newStatus;
+    throw new AppError(
+      `No se puede cambiar el estado de "${from}" a "${to}".`,
+      400,
+      "RENTAL_INVALID_TRANSITION",
+    );
   }
 
   rental.status = newStatus;
@@ -112,3 +151,5 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
 
   return rental;
 }
+
+

@@ -286,6 +286,78 @@ frontend/src/
 
 ---
 
+## Manejo de Errores
+
+El sistema usa un patrón de errores centralizado. Todos los errores siguen el mismo flujo y formato.
+
+### Flujo en el Backend
+
+```
+Servicio/Ruta  →  throw new AppError(mensaje, statusCode, code)
+                         ↓
+              Manejador global en index.ts
+                         ↓
+              { error: "Mensaje legible", code: "ERROR_CODE" }
+```
+
+Los errores inesperados (caídas de MongoDB, bugs no anticipados) son capturados por el manejador global y devuelven un mensaje genérico seguro — **nunca se expone el stack trace ni mensajes internos de MongoDB al cliente.**
+
+### Códigos de Error del Backend
+
+| Código | HTTP | Cuándo ocurre |
+|---|---|---|
+| `AUTH_TOKEN_REQUIRED` | 401 | No se envió el header `Authorization` |
+| `AUTH_TOKEN_INVALID` | 401 | Token JWT malformado o expirado |
+| `AUTH_USER_NOT_FOUND` | 401 | Token válido pero el usuario fue eliminado |
+| `AUTH_INVALID_CREDENTIALS` | 401 | Email o contraseña incorrectos |
+| `AUTH_EMAIL_TAKEN` | 400 | El correo ya está registrado |
+| `AUTH_FORBIDDEN` | 403 | El usuario no tiene rol de administrador |
+| `PRODUCT_NOT_FOUND` | 404 | El ID del producto no existe |
+| `PRODUCT_NOT_AVAILABLE` | 409 | El producto no está en estado `disponible` |
+| `PRODUCT_DATES_UNAVAILABLE` | 409 | Las fechas se solapan con otra reserva activa |
+| `RENTAL_TERMS_NOT_ACCEPTED` | 400 | `termsAccepted` es `false` |
+| `RENTAL_INVALID_DATE_RANGE` | 400 | `startDate` >= `endDate` |
+| `RENTAL_DATE_IN_PAST` | 400 | `startDate` es una fecha pasada |
+| `RENTAL_NOT_FOUND` | 404 | El ID de reserva no existe |
+| `RENTAL_INVALID_TRANSITION` | 400 | Transición de estado no válida |
+| `VALIDATION_ERROR` | 400 | Fallo en validación Zod (cualquier ruta) |
+| `INTERNAL_ERROR` | 500 | Excepción no controlada en el servidor |
+
+### Páginas de Error en el Frontend
+
+| Variante | Cuándo se muestra |
+|---|---|
+| `not-found` | URL que no coincide con ninguna ruta |
+| `product-not-found` | Producto no encontrado en `/product/:id` o checkout |
+| `unauthorized` | Ruta protegida sin sesión activa |
+| `session-expired` | Token en `localStorage` pero ya expirado |
+| `forbidden` | Usuario autenticado sin rol de administrador |
+| `server-error` | Error 500 inesperado del servidor |
+
+Todas las páginas de error incluyen un **botón de volver atrás** y un **botón de acción principal** contextual (ir al inicio, catálogo, o login según el caso).
+
+### Modal de Error
+
+Para errores que ocurren durante operaciones en página (envío de formularios, llamadas API), se usa el componente `ErrorModal` con el hook `useErrorModal`. Nunca se usan `alert()` ni banners inline para errores post-submit.
+
+### Mensajes Esperados por Endpoint
+
+| Escenario | Endpoint | HTTP | Mensaje |
+|---|---|---|---|
+| Contraseña incorrecta | `POST /api/auth/login` | 401 | "Credenciales inválidas" |
+| Email no registrado | `POST /api/auth/login` | 401 | "Credenciales inválidas" |
+| Email duplicado en registro | `POST /api/auth/register` | 400 | "Ya existe una cuenta con ese correo electrónico" |
+| Contraseña muy corta | `POST /api/auth/register` | 400 | "La contraseña debe tener al menos 6 caracteres" |
+| Sin token | Rutas protegidas | 401 | "Token de autorización requerido" |
+| Token expirado | Rutas protegidas | 401 | "Token inválido o expirado. Inicia sesión nuevamente." |
+| Sin rol admin | Rutas de admin | 403 | "Acceso denegado. Se requiere rol de administrador." |
+| Reservar sin aceptar términos | `POST /api/rentals` | 400 | "Debe aceptar los términos y condiciones para continuar." |
+| Fechas en el pasado | `POST /api/rentals` | 400 | "La fecha de inicio no puede ser en el pasado." |
+| Fechas solapadas | `POST /api/rentals` | 409 | "El producto no está disponible para las fechas seleccionadas." |
+| Producto no disponible | `POST /api/rentals` | 409 | "Este producto no está disponible para alquiler en este momento." |
+
+---
+
 ## Pendientes
 
 ### Funcionalidades
