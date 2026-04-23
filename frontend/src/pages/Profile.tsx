@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Calendar, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -123,22 +124,24 @@ export default function Profile() {
                 {/* Actions for pending rentals */}
                 {(rental.status === "pending" || rental.status === "paid") && (
                   <div className="mt-4 pt-4 border-t border-border flex justify-end gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm("¿Estás seguro de que deseas cancelar esta reserva?")) {
-                          rentalsApi.cancel(rental._id, token!)
-                            .then(() => {
-                              // Optimistically update UI
-                              setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
-                            })
-                            .catch(err => showError(err.message, "generic"));
-                        }
+                    <ConfirmModal
+                      title="Cancelar Reserva"
+                      description="¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer."
+                      confirmText="Sí, cancelar"
+                      variant="destructive"
+                      onConfirm={() => {
+                        rentalsApi.cancel(rental._id, token!)
+                          .then(() => {
+                            // Optimistically update UI
+                            setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
+                          })
+                          .catch(err => showError(err.message, "generic"));
                       }}
                     >
-                      Cancelar
-                    </Button>
+                      <Button variant="outline" size="sm">
+                        Cancelar
+                      </Button>
+                    </ConfirmModal>
                     {rental.status === "pending" && (
                       <Button
                         size="sm"
