@@ -108,10 +108,9 @@ export default function AdminReservations() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Estado Actual</span>
-                    <Badge variant={STATUS_COLORS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
-                  </div>
+                  <Badge variant={STATUS_COLORS[r.status]} className="text-sm px-3 py-1">
+                    {STATUS_LABELS[r.status]}
+                  </Badge>
                   
                   {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
                     <>

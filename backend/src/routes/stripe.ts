@@ -97,6 +97,41 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   return c.json({ url, sessionId });
 });
 
+// ─── GET /api/stripe/verify-session ───────────────────────────────────────────
+// Called by Confirmation page to check session status immediately without waiting for webhook
+stripe.get("/verify-session", authMiddleware, async (c) => {
+  const sessionId = c.req.query("session_id");
+  if (!sessionId) {
+    throw new AppError("session_id es requerido", 400, "BAD_REQUEST");
+  }
+
+  // If in demo mode, just return ok since session isn't real
+  if (!isStripeConfigured()) {
+    return c.json({ verified: true, mode: "demo" });
+  }
+
+  try {
+    const Stripe = (await import("stripe")).default;
+    const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+    const session = await stripeClient.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === "paid") {
+      const rentalId = session.metadata?.rentalId;
+      if (rentalId) {
+        // Update rental just in case webhook hasn't fired yet
+        await Rental.findByIdAndUpdate(rentalId, {
+          status: "paid",
+          payment_status: "completed",
+        });
+      }
+    }
+    return c.json({ verified: true, payment_status: session.payment_status });
+  } catch (error) {
+    console.error("Error verifying session:", error);
+    throw new AppError("Error verificando la sesión", 500, "STRIPE_VERIFY_ERROR");
+  }
+});
+
 // ─── POST /api/stripe/webhook ─────────────────────────────────────────────────
 // CRITICAL: This endpoint must receive the RAW request body (not parsed JSON)
 // so that Stripe can verify the webhook signature. Hono reads the body lazily,
