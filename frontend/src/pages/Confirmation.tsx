@@ -33,12 +33,26 @@ export default function Confirmation() {
 
   useEffect(() => {
     if (!rentalId || !token) { setLoading(false); return; }
-    rentalsApi
-      .get(rentalId, token)
-      .then((data) => setRental(data.rental))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [rentalId, token]);
+    
+    const fetchRental = async () => {
+      try {
+        if (sessionId) {
+          // Manually verify the session with Stripe API just in case the webhook
+          // hasn't fired yet (race condition). This ensures the DB is updated to 'paid'.
+          await import("@/services/api").then(m => m.stripeApi.verifySession(sessionId, token));
+        }
+        
+        const data = await rentalsApi.get(rentalId, token);
+        setRental(data.rental);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRental();
+  }, [rentalId, sessionId, token]);
 
   if (loading) {
     return (

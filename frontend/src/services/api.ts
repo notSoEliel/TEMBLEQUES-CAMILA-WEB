@@ -112,6 +112,8 @@ export const stripeApi = {
       body: { rentalId },
       token,
     }),
+  verifySession: (sessionId: string, token: string) =>
+    api<{ verified: boolean; payment_status?: string }>(`/stripe/verify-session?session_id=${sessionId}`, { token }),
 };
 
 // Admin
