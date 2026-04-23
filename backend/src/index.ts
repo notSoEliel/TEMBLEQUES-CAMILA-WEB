@@ -16,7 +16,11 @@ const app = new Hono();
 
 // Middleware
 app.use("/*", cors({
-  origin: ["http://localhost:5173", "http://frontend:5173"],
+  origin: [
+    "http://localhost:5173", 
+    "http://frontend:5173",
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+  ],
   credentials: true,
 }));
 app.use("/*", logger());
