@@ -580,6 +580,11 @@ docker-compose up -d --force-recreate backend
 **Causa:** Estos errores provienen de extensiones de terceros instaladas en el navegador del usuario (bloqueadores de anuncios, gestores de contraseñas, extensiones de DevTools). El código fuente del proyecto no inyecta esos archivos.
 **Solución:** Se pueden ignorar de forma segura, o deshabilitar las extensiones en modo incógnito/desarrollo para tener una consola más limpia.
 
+### 6. Reserva se queda "Pendiente" tras pago exitoso con Stripe (Race Condition)
+**Síntoma:** El usuario completa el pago en Stripe, es redirigido a `/confirmation`, pero la página muestra el estado como "Pendiente" en lugar de "Pagado".
+**Causa:** Se produce una condición de carrera. Stripe redirige al usuario al *success_url* antes de que el *webhook* (`checkout.session.completed`) llegue al backend o sea procesado por este (especialmente crítico si se prueba en local sin hacer túnel de webhooks).
+**Solución:** Se añadió un endpoint de verificación síncrona `GET /api/stripe/verify-session`. Cuando `Confirmation.tsx` detecta un `session_id` en la URL, hace una llamada a este endpoint, el cual consulta directamente la API de Stripe y fuerza la actualización de la base de datos a `Pagado` antes de renderizar la página.
+
 ---
 
 ## Pendientes
