@@ -7,10 +7,23 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, RefreshCw } from "lucide-react";
 
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useErrorModal } from "@/components/ErrorModal";
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente", paid: "Pagado", confirmed: "Confirmado",
   delivered: "Entregado", returned: "Devuelto", late: "Atrasado",
   damaged: "Dañado", cancelled: "Cancelado",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  paid: "Marcar como Pagado",
+  confirmed: "Confirmar Reserva",
+  delivered: "Marcar como Entregado",
+  returned: "Recibir Devolución",
+  late: "Marcar Atrasado",
+  damaged: "Marcar Dañado",
+  cancelled: "Cancelar",
 };
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -29,6 +42,7 @@ const TRANSITIONS: Record<string, string[]> = {
 
 export default function AdminReservations() {
   const { token } = useAuth();
+  const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -48,11 +62,12 @@ export default function AdminReservations() {
     try {
       await adminApi.updateRentalStatus(id, status, token!);
       loadRentals();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { showError(err.message, "generic"); }
   };
 
   return (
     <div className="space-y-6">
+      {errorModal}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Reservas</h1>
@@ -93,12 +108,40 @@ export default function AdminReservations() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={STATUS_COLORS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
-                  {TRANSITIONS[r.status]?.map((s) => (
-                    <Button key={s} size="sm" variant={s === "cancelled" || s === "damaged" ? "destructive" : "outline"} onClick={() => handleStatusChange(r._id, s)}>
-                      {STATUS_LABELS[s]}
-                    </Button>
-                  ))}
+                  <Badge variant={STATUS_COLORS[r.status]} className="text-sm px-3 py-1">
+                    {STATUS_LABELS[r.status]}
+                  </Badge>
+                  
+                  {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block" />
+                      <div className="flex flex-wrap items-center gap-2">
+                        {TRANSITIONS[r.status].map((s) => {
+                          const isDestructive = s === "cancelled" || s === "damaged";
+                          const btn = (
+                            <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
+                              {ACTION_LABELS[s] || s}
+                            </Button>
+                          );
+
+                          if (isDestructive) {
+                            return (
+                              <ConfirmModal
+                                key={s}
+                                title={s === "cancelled" ? "Cancelar Reserva" : "Marcar como Dañado"}
+                                description={`¿Estás seguro de que deseas cambiar el estado a ${STATUS_LABELS[s]}?`}
+                                variant="destructive"
+                                onConfirm={() => handleStatusChange(r._id, s)}
+                              >
+                                {btn}
+                              </ConfirmModal>
+                            );
+                          }
+                          return btn;
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
