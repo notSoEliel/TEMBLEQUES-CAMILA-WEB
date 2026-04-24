@@ -66,6 +66,7 @@ graph TD
 | **Base de Datos** | MongoDB 7 via Mongoose |
 | **Autenticación** | Clerk (email, Google, Microsoft, OTP, password recovery) |
 | **Pagos** | Stripe Checkout Sessions |
+| **Imágenes** | Cloudinary (unsigned upload + WebP via `f_auto,q_auto`) |
 | **Contenedores** | Docker + Docker Compose |
 
 ---
@@ -422,6 +423,7 @@ frontend/src/
     api.ts                  # Capa de acceso a todos los endpoints del backend
   components/
     ui/                     # Componentes shadcn/ui adaptados al tema
+    ImageUpload.tsx         # Subida unsigned a Cloudinary con validación y preview WebP
         AvailabilityCalendar.tsx  # Mini-calendario con fechas bloqueadas y stock
     layouts/
       ClientLayout.tsx      # Navbar + Footer para el sitio publico
