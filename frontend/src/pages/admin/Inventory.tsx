@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import ImageUpload from "@/components/ImageUpload";
 import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -26,7 +27,7 @@ export default function AdminInventory() {
 
   const [form, setForm] = useState({
     name: "", category: "pollera", description: "", rental_price: 0,
-    stock: 1, condition_status: "disponible", size: "", images: "",
+    stock: 1, condition_status: "disponible", size: "", images: [] as string[],
   });
 
   useEffect(() => { loadProducts(); }, []);
@@ -41,7 +42,7 @@ export default function AdminInventory() {
   };
 
   const resetForm = () => {
-    setForm({ name: "", category: "pollera", description: "", rental_price: 0, stock: 1, condition_status: "disponible", size: "", images: "" });
+    setForm({ name: "", category: "pollera", description: "", rental_price: 0, stock: 1, condition_status: "disponible", size: "", images: [] });
     setEditingId(null);
     setShowForm(false);
   };
@@ -50,7 +51,7 @@ export default function AdminInventory() {
     setForm({
       name: product.name, category: product.category, description: product.description,
       rental_price: product.rental_price, stock: product.stock, condition_status: product.condition_status,
-      size: product.size || "", images: product.images?.join(", ") || "",
+      size: product.size || "", images: product.images || [],
     });
     setEditingId(product._id);
     setShowForm(true);
@@ -64,7 +65,6 @@ export default function AdminInventory() {
         ...form,
         rental_price: Number(form.rental_price),
         stock: Number(form.stock),
-        images: form.images.split(",").map((s) => s.trim()).filter(Boolean),
       };
 
       if (editingId) {
@@ -142,9 +142,31 @@ export default function AdminInventory() {
                   <option value="alquilado">Alquilado</option>
                 </select>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label>URLs de Imágenes (separadas por coma)</Label>
-                <Input value={form.images} onChange={(e) => setForm({ ...form, images: e.target.value })} placeholder="https://..." />
+              <div className="space-y-3 md:col-span-2">
+                <Label>Imágenes</Label>
+                {form.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {form.images.map((url: string, i: number) => (
+                      <div key={i} className="relative">
+                        <img
+                          src={url}
+                          alt=""
+                          className="w-20 h-20 object-cover rounded-lg border-2 border-border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, images: form.images.filter((_: string, j: number) => j !== i) })}
+                          className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <ImageUpload
+                  onUpload={(url: string) => setForm((prev: typeof form) => ({ ...prev, images: [...prev.images, url] }))}
+                />
               </div>
               <div className="md:col-span-2">
                 <Button type="submit" disabled={saving} className="w-full sm:w-auto">
