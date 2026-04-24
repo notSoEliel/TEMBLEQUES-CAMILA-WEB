@@ -1,3 +1,70 @@
-.DS_Store
-.env
+# =========================================================================
+# Dependencias
+# =========================================================================
 node_modules/
+.pnp
+.pnp.js
+
+# =========================================================================
+# Variables de Entorno
+# =========================================================================
+.env
+.env.local
+.env.*.local
+# (Mantenemos los .example para que los otros desarrolladores puedan verlos)
+!.env.example
+
+# =========================================================================
+# Vite & React (Frontend)
+# =========================================================================
+dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+.eslintcache
+
+# =========================================================================
+# Testing & Coverage
+# =========================================================================
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# =========================================================================
+# Logs
+# =========================================================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================================================================
+# Sistema Operativo y Editores
+# =========================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================================================================
+# Bun
+# =========================================================================
+# (El bun.lockb NO se debe ignorar ya que asegura instalaciones reproducibles)
+# Si en algun momento usas sqlite local con bun:
+*.sqlite
+*.sqlite3
