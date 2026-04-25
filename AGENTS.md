@@ -23,76 +23,67 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 ### [RULE] Gestión de Reglas (META-RULE)
 > [!IMPORTANT]
 > **Cada vez que se solicite añadir una nueva regla al proyecto:**
-> 1. Crear un nuevo archivo `.md` descriptivo en la carpeta `.agents/rules/` (ej. `17-nueva-regla.md`).
-> 2. Actualizar este archivo (`GEMINI.md`) y `AGENTS.md` para incluir la nueva regla en la sección correspondiente. **Nunca omitir este paso.**
+> 1. Crear un nuevo archivo `.md` descriptivo en la carpeta `.agents/rules/` (ej. `18-nueva-regla.md`).
+> 2. Actualizar este archivo (`AGENTS.md`) y `GEMINI.md` para incluir la nueva regla en la sección correspondiente. **Nunca omitir este paso.**
 
-### [RULE] Exclusividad de TypeScript
+### [RULE] Exclusividad de TypeScript (01)
 - Uso obligatorio de TypeScript en modo estricto.
-- **Prohibido el uso de `any`**.
-- Definir interfaces o tipos para todas las props, estados y respuestas de API.
+- **Prohibido el uso de `any`**. Definir interfaces o tipos para todas las props, estados y respuestas de API.
 
-### [RULE] Runtime y Comandos (Bun)
-- Utilizar **Bun** como runtime principal.
-- Comandos: `bun run [script]`, `bun install`, `bun test`.
+### [RULE] Runtime y Comandos Bun (02)
+- Utilizar **Bun** como runtime principal. Comandos: `bun run [script]`, `bun install`, `bun test`.
 - No usar `npm` o `yarn` a menos que sea estrictamente necesario.
 
-### [RULE] Estética y UI Neobrutalista
-- **Bordes**: Siempre `border-2 border-black` en contenedores principales.
-- **Sombras**: Evitar sombras y relieves sólidos. El diseño debe ser plano (flat) con bordes definidos.
-- **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
-- **Mobile First**: Priorizar la experiencia en dispositivos móviles.
-
-### [RULE] Accesibilidad Móvil y Hover
-- **No dependencia de Hover**: Prohibido ocultar acciones críticas detrás de un estado hover. En móviles, todo debe ser visible o accesible vía tap.
-- **Opacidad**: No usar opacidades bajas (< 0.5) para elementos interactivos, a menos que sea un estado deshabilitado.
-
-### [RULE] Idioma y Ortografía
-- **Español Perfecto**: UI, errores y mensajes deben estar en español con ortografía y acentuación impecable.
-- **Cero Spanglish**: Mantener consistencia total en el idioma de la interfaz.
-
-### [RULE] Comunicación y Código
+### [RULE] Comunicación y Código (03)
 - **Emojis**: Prohibido el uso de emojis en mensajes de commit, comentarios de código o logs de consola, a menos que sea para diferenciar estados visuales en la UI.
-- **Documentación**: Usar Mermaid para representar flujos complejos en archivos `.md`.
+- **Idioma**: Español impecable en UI, errores y mensajes. Cero Spanglish.
 
-### [RULE] Manejo de Errores (Backend)
-- **AppError**: Lanzar siempre `AppError` con mensaje, status code y código de error único.
+### [RULE] Estética y UI Neobrutalista Flat (12, 14)
+- **Bordes**: Siempre `border-2 border-black` en contenedores principales.
+- **Sombras**: **PROHIBIDO** el uso de sombras sólidas o relieves. El diseño debe ser plano (flat) con bordes definidos.
+- **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
+- **Radios**: El radio por defecto (`--radius`) es de `2rem` (estilo pill-shaped).
+
+### [RULE] Accesibilidad Móvil y Hover (17)
+- **No dependencia de Hover**: Prohibido ocultar acciones críticas detrás de un estado hover. En móviles, todo debe ser visible o accesible vía tap.
+- **Mobile First**: Priorizar la experiencia en dispositivos móviles antes que en desktop.
+
+### [RULE] Manejo de Errores (Backend) (15)
+- **AppError**: Lanzar siempre `AppError` (de `lib/errors.js`) con mensaje, status code y código de error único.
 - **No Try-Catch Genérico**: Dejar que el handler global de Hono gestione los errores a menos que se requiera lógica de recuperación específica.
 - **Seguridad**: Nunca exponer errores internos de MongoDB o stack traces al cliente.
 
-### [RULE] Manejo de Errores (Frontend)
-- **Visualización**: 
-  - Errores de ruta -> `<ErrorPage />`.
-  - Errores de API -> `useErrorModal`.
-  - Prohibido `window.alert()`.
-- **Formularios**: Errores inline permitidos para validación en tiempo real.
+### [RULE] Manejo de Errores (Frontend) (15)
+- **Visualización**: Errores de ruta -> `<ErrorPage />`. Errores de API -> `useErrorModal`.
+- **Prohibido window.alert()**: Usar modales o errores inline para validación en tiempo real.
 
-### [RULE] Paginación y Listados
+### [RULE] Paginación y Listados (16)
 - **Backend**: Parámetros `page` y `limit` obligatorios en queries. Respuesta debe incluir objeto `pagination`.
-- **Frontend**: Sincronización obligatoria con `URLSearchParams`.
-- **Catalog Grid**: Límites recomendados: 4, 8, 12, 20 para encajar en cuadrícula.
+- **Frontend**: Sincronización obligatoria con `URLSearchParams`. 
+- **UX**: Scroll suave al inicio al cambiar de página.
 
-### [RULE] Lógica de Reserva (Checkout)
-- **Validación de Fechas**: Impedir superposición de fechas. Validar disponibilidad real en el backend antes de proceder a Stripe.
-- **Términos**: Checkbox obligatorio. El backend debe validar que `termsAccepted` es true.
-- **Registro de Aceptación**: Guardar IP, User Agent y Timestamp al aceptar términos.
+### [RULE] Lógica de Reserva y Checkout (07, 08)
+- **Validación de Fechas**: Impedir superposición de fechas y validar disponibilidad en el backend antes de proceder a Stripe.
+- **Términos**: Checkbox obligatorio. El backend debe registrar IP, User Agent y Timestamp al aceptar términos.
 
-### [RULE] Pagos y Webhooks
-- **Stripe**: El cambio de estado a `paid` solo ocurre mediante confirmación de webhook.
-- **Seguridad**: Validar la firma del webhook usando Svix o la SDK oficial de Stripe.
+### [RULE] Pagos y Stripe (06)
+- **Confirmación**: El cambio de estado a `paid` solo ocurre mediante confirmación de webhook de Stripe.
+- **Seguridad**: Validar siempre la firma del webhook.
 
-### [RULE] Testing y Calidad
-- **Unitarios**: Vitest para lógica de negocio (cerca del archivo fuente).
+### [RULE] Testing y Calidad (10)
+- **Unitarios**: Vitest para lógica de negocio.
 - **E2E**: Playwright para flujos críticos (Reserva, Login, Admin).
 - **Clean Code**: Seguir principios DRY y SOLID.
 
 ---
 
-## 3. Arquitectura y Estructura
+## 3. Arquitectura y Estructura (04, 05, 09, 11)
 
 ### Organización del Repositorio
 - `frontend/`: UI, B2C y Dashboard Admin.
 - `backend/`: API, modelos (Mongoose), controladores y servicios.
 - `docs/`: Documentación del sistema.
+- `.agents/rules/`: Repositorio detallado de todas las reglas técnicas.
 
 ### Referencia de Códigos de Error Comunes
 | Código | HTTP | Situación |
@@ -110,3 +101,4 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 2. **Reutiliza UI**: Revisa `components/ui` antes de crear nuevos estilos.
 3. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
 4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E o Docker.
+5. **Rules**: Consulta siempre `.agents/rules/` para detalles técnicos profundos de cada módulo.

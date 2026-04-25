@@ -14,7 +14,7 @@ Para asegurar una interfaz coherente y premium, el uso de componentes de UI y es
 
 ## 3. Estética Neobrutalista Premium
 El tema definido en `index.css` tiene una inclinación Neobrutalista refinada que debe respetarse:
-- **Sombras (Shadows)**: No usar las sombras suaves por defecto de Tailwind. Usar las clases `shadow-sm`, `shadow-md`, `shadow-lg`, etc., que están mapeadas a sombras sólidas con color `hsl(0 0% 0% / 1.00)`.
+- **Diseño Plano (Flat)**: No usar sombras (suaves o sólidas) en contenedores. El diseño debe ser plano, confiando en los bordes negros (`border-2 border-black`) para definir la jerarquía visual.
 - **Bordes y Radios**:
   - El radio por defecto (`--radius`) es de `2rem`, lo que da un aspecto muy redondeado/pill-shaped.
   - Los bordes deben usar la variable `--border` (actualmente negro sólido).
