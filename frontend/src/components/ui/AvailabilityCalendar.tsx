@@ -20,7 +20,10 @@ interface AvailabilityCalendarProps {
 }
 
 function isoDate(d: Date): string {
-  return d.toISOString().split("T")[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function startOfMonth(d: Date): Date {
@@ -102,7 +105,15 @@ export default function AvailabilityCalendar({
   onEndDateChange,
   onConflict,
 }: AvailabilityCalendarProps) {
-  const today = useMemo(() => isoDate(new Date()), []);
+  const { minDate, isPast6pm } = useMemo(() => {
+    const d = new Date();
+    // Obtener la hora actual en Panamá
+    const panamaHour = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Panama" })).getHours();
+    const isPast6pm = panamaHour >= 18;
+    
+    d.setDate(d.getDate() + (isPast6pm ? 2 : 1));
+    return { minDate: isoDate(d), isPast6pm };
+  }, []);
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -147,7 +158,7 @@ export default function AvailabilityCalendar({
 
   function handleDayClick(day: Date) {
     const iso = isoDate(day);
-    if (iso < today || dayIsBooked(iso, bookedRanges)) return;
+    if (iso < minDate || dayIsBooked(iso, bookedRanges)) return;
 
     if (!waitingForEnd) {
       // First click → set start, enter "waiting for end" mode
@@ -180,7 +191,7 @@ export default function AvailabilityCalendar({
   type DayState = "past" | "booked" | "start" | "end" | "inRange" | "conflictEnd" | "available";
 
   function getDayState(iso: string): DayState {
-    if (iso < today) return "past";
+    if (iso < minDate) return "past";
     if (dayIsBooked(iso, bookedRanges)) return "booked";
     if (iso === startDate) return "start";
     if (iso === endDate) return "end";
@@ -210,6 +221,15 @@ export default function AvailabilityCalendar({
 
   return (
     <div className="space-y-4">
+      {/* 6 PM Warning Banner */}
+      <div className={`border-2 p-3 text-sm flex gap-3 items-start font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isPast6pm ? "bg-amber-100 border-amber-900 text-amber-900" : "bg-muted border-black text-foreground"}`}>
+        <span className="text-xl leading-none">⏰</span>
+        <p className="leading-snug">
+          Las reservas para el día siguiente solo están disponibles hasta las <strong>6:00 PM</strong>.
+          {isPast6pm && <span className="block mt-1 text-destructive font-bold">Como ya pasaron las 6:00 PM, la fecha más próxima para alquilar es pasado mañana.</span>}
+        </p>
+      </div>
+
       {/* Month nav */}
       <div className="flex items-center justify-between">
         <Button type="button" variant="outline" size="sm" onClick={prevMonth} aria-label="Mes anterior">

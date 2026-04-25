@@ -585,6 +585,14 @@ docker-compose up -d --force-recreate backend
 **Causa:** Se produce una condición de carrera. Stripe redirige al usuario al *success_url* antes de que el *webhook* (`checkout.session.completed`) llegue al backend o sea procesado por este (especialmente crítico si se prueba en local sin hacer túnel de webhooks).
 **Solución:** Se añadió un endpoint de verificación síncrona `GET /api/stripe/verify-session`. Cuando `Confirmation.tsx` detecta un `session_id` en la URL, hace una llamada a este endpoint, el cual consulta directamente la API de Stripe y fuerza la actualización de la base de datos a `Pagado` antes de renderizar la página.
 
+### 7. Fechas incorrectas y problemas por zona horaria (UTC)
+**Síntoma:** El frontend permitía seleccionar el día actual o se adelantaba de día por las noches, mientras que el backend rechazaba reservaciones válidas marcándolas erróneamente "en el pasado".
+**Causa:** Funciones como `toISOString()` en JavaScript convierten las fechas a UTC. A altas horas de la noche en Panamá (UTC-5), el sistema ya consideraba que era el día siguiente. Asimismo, el backend comparaba la medianoche exacta contra la hora actual del servidor.
+**Solución:** 
+- En el frontend, se reemplazó `toISOString()` por una extracción puramente local.
+- En el backend, se implementó un offset matemático de -5 horas para sincronizar todas las validaciones de fechas con el huso horario estricto de Panamá.
+- **Regla de Negocio (Corte a las 6 PM):** Se añadió además una regla en ambos extremos: pasadas las 18:00 horas (Panamá), el sistema automáticamente exige mínimo 2 días de anticipación (pasado mañana) en lugar de 1, mostrando un aviso y bloqueando el día siguiente en el calendario.
+
 ---
 
 ## Pendientes

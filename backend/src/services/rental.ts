@@ -45,11 +45,23 @@ export async function createRental(params: {
     );
   }
 
-  if (startDate < new Date()) {
+  // Validar usando la zona horaria de Panamá (UTC-5)
+  const now = new Date();
+  const panamaTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+  const panamaHour = panamaTime.getUTCHours();
+  const panamaToday = new Date(Date.UTC(panamaTime.getUTCFullYear(), panamaTime.getUTCMonth(), panamaTime.getUTCDate()));
+
+  const isPast6pm = panamaHour >= 18;
+  const minAllowedDate = new Date(panamaToday.getTime());
+  minAllowedDate.setUTCDate(minAllowedDate.getUTCDate() + (isPast6pm ? 2 : 1));
+
+  if (startDate.getTime() < minAllowedDate.getTime()) {
     throw new AppError(
-      "La fecha de inicio no puede ser en el pasado.",
+      isPast6pm 
+        ? "Pasadas las 6:00 PM, las reservas deben hacerse con al menos dos días de anticipación."
+        : "Las reservas deben hacerse con al menos un día de anticipación.",
       400,
-      "RENTAL_DATE_IN_PAST",
+      "RENTAL_DATE_TOO_SOON",
     );
   }
 

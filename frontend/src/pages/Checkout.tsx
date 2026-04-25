@@ -82,6 +82,8 @@ export default function Checkout() {
   const [showFullTerms, setShowFullTerms]   = useState(false);
   const [calendarConflict, setCalendarConflict] = useState(false);
 
+
+
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
     if (!productId) return;
@@ -158,6 +160,7 @@ export default function Checkout() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+
       {errorModal}
 
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate(-1)}>
