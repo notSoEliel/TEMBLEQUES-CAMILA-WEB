@@ -106,6 +106,11 @@ export default function Profile() {
                     )}
                     <div>
                       <h3 className="font-bold">{rental.product_id?.name || "Producto"}</h3>
+                      {rental.selected_size && (
+                        <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                          Talla: {rental.selected_size}
+                        </span>
+                      )}
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                         <Calendar className="h-3.5 w-3.5" />
                         {new Date(rental.start_date).toLocaleDateString("es-PA")} -{" "}

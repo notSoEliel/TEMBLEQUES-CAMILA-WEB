@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { ZodError } from "zod";
 import { connectDB } from "./db.js";
 import { seedDatabase } from "./seed.js";
+import { migrateToVariants } from "./migrate-variants.js";
 import { AppError } from "./lib/errors.js";
 import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
@@ -79,6 +80,7 @@ const PORT = Number(process.env.PORT) || 3000;
 async function start() {
   await connectDB();
   await seedDatabase();
+  await migrateToVariants();
 
   console.log(`[Server] Tembleques Camila API running on port ${PORT}`);
 }

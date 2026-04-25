@@ -12,6 +12,7 @@ rentals.use("/*", authMiddleware);
 
 const createRentalSchema = z.object({
   productId: z.string().min(1, "El ID del producto es requerido"),
+  selectedSize: z.string().min(1, "La talla es requerida"),
   startDate: z.string().min(1, "La fecha de inicio es requerida"),
   endDate: z.string().min(1, "La fecha de fin es requerida"),
   termsAccepted: z.boolean(),
@@ -26,6 +27,7 @@ rentals.post("/", async (c) => {
   const rental = await createRental({
     userId: user._id.toString(),
     productId: data.productId,
+    selectedSize: data.selectedSize,
     startDate: new Date(data.startDate),
     endDate: new Date(data.endDate),
     termsAccepted: data.termsAccepted,
@@ -40,7 +42,7 @@ rentals.post("/", async (c) => {
 rentals.get("/my", async (c) => {
   const user = c.get("user") as any;
   const myRentals = await Rental.find({ user_id: user._id })
-    .populate("product_id", "name category images rental_price")
+    .populate("product_id", "name category images rental_price variants")
     .sort({ createdAt: -1 });
   return c.json({ rentals: myRentals });
 });
@@ -86,4 +88,3 @@ rentals.delete("/:id", async (c) => {
 });
 
 export default rentals;
-
