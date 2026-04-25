@@ -38,7 +38,7 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 
 ### [RULE] Estética y UI Neobrutalista
 - **Bordes**: Siempre `border-2 border-black` en contenedores principales.
-- **Sombras**: Siempre `shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]` (sólidas, sin difuminado).
+- **Sombras**: Evitar sombras y relieves sólidos. El diseño debe ser plano (flat) con bordes definidos.
 - **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
 - **Mobile First**: Priorizar la experiencia en dispositivos móviles.
 

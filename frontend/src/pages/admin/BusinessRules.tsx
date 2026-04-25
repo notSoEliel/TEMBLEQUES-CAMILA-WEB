@@ -178,7 +178,7 @@ function TabsGuide({ onBack }: { onBack: () => void }) {
 
 function TabItem({ icon: Icon, title, children, color }: any) {
   return (
-    <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+    <Card className="border-2 border-black">
       <CardHeader className="flex flex-row items-center gap-4 space-y-0">
         <div className={`p-2 rounded-lg ${color} border-2 border-current/20`}>
           <Icon className="h-6 w-6" />

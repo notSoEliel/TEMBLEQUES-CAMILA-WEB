@@ -52,7 +52,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Onboarding Bar */}
-      <Card className="bg-primary text-primary-foreground border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <Card className="bg-primary text-primary-foreground border-2 border-black">
         <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-primary-foreground/80">Aprende qué hace cada pestaña y cómo funcionan los cobros automáticos.</p>
             </div>
           </div>
-          <Button asChild variant="secondary" className="font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all">
+          <Button asChild variant="secondary" className="font-bold border-2 border-black">
             <Link to="/admin/business-rules?section=tabs">
               Ver Guía Rápida
             </Link>

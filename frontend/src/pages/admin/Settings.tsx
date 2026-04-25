@@ -201,6 +201,20 @@ export default function AdminSettings() {
         </Button>
       </div>
 
+      {/* ID Management Global Alert */}
+      <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-500 p-4 rounded-lg flex gap-3 text-sm border-2 border-blue-200 dark:border-blue-900">
+        <Info className="h-5 w-5 shrink-0" />
+        <div>
+          <p className="font-bold">Gestión de IDs</p>
+          <p>
+            Los IDs vinculan productos a filtros. Ahora el sistema sincroniza los cambios automáticamente. {" "}
+            <Link to="/admin/business-rules?section=catalog" className="underline font-bold hover:text-blue-700 transition-colors">
+              Ver guía de mejores prácticas
+            </Link>
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Categorías */}
         <Card className="flex flex-col">
@@ -209,16 +223,6 @@ export default function AdminSettings() {
             <Button variant="outline" size="sm" onClick={addCategory}><Plus className="h-4 w-4 mr-2"/> Añadir</Button>
           </CardHeader>
           <CardContent className="space-y-4 flex-1">
-            <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-500 p-3 rounded-lg flex gap-3 text-sm border-2 border-blue-200 dark:border-blue-900 mb-4">
-              <Info className="h-5 w-5 shrink-0" />
-              <p>
-                <strong>Gestión de IDs:</strong> Los IDs vinculan productos a filtros. Ahora el sistema sincroniza los cambios automáticamente. {" "}
-                <Link to="/admin/business-rules?section=catalog" className="underline font-bold hover:text-blue-700 transition-colors">
-                  Ver guía de mejores prácticas
-                </Link>
-              </p>
-            </div>
-            
             <div className="space-y-3">
               {pagedCategories.map((cat) => {
                 const globalIndex = categories.indexOf(cat);
