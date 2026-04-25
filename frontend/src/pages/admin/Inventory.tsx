@@ -54,10 +54,20 @@ export default function AdminInventory() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
   useEffect(() => { 
     loadSettings();
     loadProducts(); 
-  }, [currentPage, currentLimit]);
+  }, [searchParams]);
 
   const loadSettings = async () => {
     try {
@@ -81,9 +91,16 @@ export default function AdminInventory() {
   }, [form.description, showForm]);
 
   const loadProducts = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
-      const response = await productsApi.list({ page: currentPage, limit: currentLimit });
+      const response = await productsApi.list({ page, limit });
       setProducts(response.data);
       setPagination(response.pagination);
     } catch (err) { console.error(err); }

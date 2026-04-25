@@ -30,6 +30,16 @@ export default function Catalog() {
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 12);
   
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "12");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -52,14 +62,21 @@ export default function Catalog() {
 
   useEffect(() => {
     loadProducts();
-  }, [selectedCategories, startDate, endDate, selectedSizes, currentPage, currentLimit]);
+  }, [selectedCategories, startDate, endDate, selectedSizes, searchParams]); // Depend on searchParams for real routes
 
   const loadProducts = async (searchTerm?: string) => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 12;
+    
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
       const params: Record<string, any> = {
-        page: currentPage,
-        limit: currentLimit
+        page,
+        limit
       };
       if (selectedCategories.length > 0) params.category = selectedCategories;
       if (searchTerm || search) params.search = searchTerm ?? search;
@@ -426,6 +443,7 @@ export default function Catalog() {
               limit={currentLimit}
               onLimitChange={handleLimitChange}
               totalResults={pagination.total}
+              limitOptions={[4, 8, 12, 20]}
             />
           )}
         </>

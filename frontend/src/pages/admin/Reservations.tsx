@@ -54,12 +54,31 @@ export default function AdminReservations() {
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
-  useEffect(() => { loadRentals(); }, [filter, currentPage, currentLimit]);
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => { loadRentals(); }, [searchParams]);
 
   const loadRentals = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+    const status = searchParams.get("status") || "";
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+    if (status !== filter) setFilter(status);
+
     setLoading(true);
     try {
-      const response = await adminApi.rentals(token!, { status: filter || undefined, page: currentPage, limit: currentLimit });
+      const response = await adminApi.rentals(token!, { status: status || undefined, page, limit });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err: any) {

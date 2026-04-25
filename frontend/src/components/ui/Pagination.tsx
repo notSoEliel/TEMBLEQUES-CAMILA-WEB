@@ -10,6 +10,7 @@ interface PaginationProps {
   limit: number;
   onLimitChange?: (limit: number) => void;
   totalResults?: number;
+  limitOptions?: number[];
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   limit,
   onLimitChange,
   totalResults,
+  limitOptions = [5, 10, 15, 20, 50],
   className,
 }) => {
   // Always show pagination if onLimitChange is provided, to allow changing the limit
@@ -68,7 +70,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               onChange={(e) => onLimitChange(Number(e.target.value))}
               className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              {[5, 10, 15, 20, 50].map((l) => (
+              {limitOptions.map((l) => (
                 <option key={l} value={l}>{l}</option>
               ))}
             </select>

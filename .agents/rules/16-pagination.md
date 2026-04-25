@@ -32,8 +32,8 @@ Se debe usar el componente `Pagination` en `frontend/src/components/ui/Paginatio
 
 ### Comportamiento y UX
 - **Estética Premium**: Evitar sombras y bordes excesivos en la paginación para mantener un look limpio y profesional.
-- **Selector de Cantidad**: Debe incluir un selector para cambiar el `limit` (ej. 10, 20, 50 por página).
-- **Sincronización con URL**: La página actual y el límite deben estar sincronizados con los parámetros de la URL (`URLSearchParams`).
+- **Sincronización con URL**: La página actual y el límite deben estar SIEMPRE presentes en los parámetros de la URL (`URLSearchParams`), incluso si son los valores por defecto. Esto asegura que el estado sea explícito y "rutas de verdad".
+- **Selector de Cantidad**: Debe incluir un selector para cambiar el `limit`. Los valores recomendados son 10, 20, 50, pero para el Catálogo se prefieren números pares que encajen en la cuadrícula (4, 8, 12, 20).
 - **Navegación**: Botones "Anterior", "Siguiente" y acceso directo a páginas.
 - **Scroll**: Al cambiar de página, realizar un scroll suave al inicio de la lista.
 

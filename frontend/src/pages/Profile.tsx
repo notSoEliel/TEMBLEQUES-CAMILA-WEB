@@ -46,15 +46,32 @@ export default function Profile() {
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
   useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => {
     if (token) {
       loadRentals();
     }
-  }, [token, currentPage, currentLimit]);
+  }, [token, searchParams]);
 
   const loadRentals = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
-      const response = await rentalsApi.my(token!, { page: currentPage, limit: currentLimit });
+      const response = await rentalsApi.my(token!, { page, limit });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err) {

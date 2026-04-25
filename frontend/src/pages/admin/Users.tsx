@@ -20,15 +20,32 @@ export default function AdminUsers() {
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 15);
 
   useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "15");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => {
     if (token) {
       loadUsers();
     }
-  }, [token, currentPage, currentLimit]);
+  }, [token, searchParams]);
   
   const loadUsers = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 15;
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
-      const response = await adminApi.users(token!, { page: currentPage, limit: currentLimit });
+      const response = await adminApi.users(token!, { page, limit });
       setUsers(response.data);
       setPagination(response.pagination);
     } catch (err) {
