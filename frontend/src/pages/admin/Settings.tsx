@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Loader2, GripVertical, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
 import { useErrorModal } from "@/components/ErrorModal";
 import { Pagination } from "@/components/ui/Pagination";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 
 interface Category {
   id: string;
@@ -119,6 +119,24 @@ export default function AdminSettings() {
     setSizeGroups(updated);
   };
 
+  const moveCategory = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const updated = [...categories];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setCategories(updated);
+  };
+
+  const moveSizeGroup = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= sizeGroups.length) return;
+    const updated = [...sizeGroups];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setSizeGroups(updated);
+  };
+
   // Pagination Handlers
   const handleCatPageChange = (page: number) => {
     setCatPage(page);
@@ -188,7 +206,10 @@ export default function AdminSettings() {
             <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-500 p-3 rounded-lg flex gap-3 text-sm border-2 border-amber-200 dark:border-amber-900 mb-4">
               <AlertTriangle className="h-5 w-5 shrink-0" />
               <p>
-                <strong>Precaución con el ID:</strong> Si cambias el ID, los productos existentes con el ID viejo no aparecerán en los filtros.
+                <strong>Precaución con el ID:</strong> Si cambias el ID, los productos existentes con el ID viejo no aparecerán en los filtros. {" "}
+                <Link to="/admin/business-rules#ids-config" className="underline font-bold hover:text-amber-700 transition-colors">
+                  Saber más de esto (Recomendado)
+                </Link>
               </p>
             </div>
             
@@ -196,8 +217,27 @@ export default function AdminSettings() {
               {pagedCategories.map((cat) => {
                 const globalIndex = categories.indexOf(cat);
                 return (
-                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg">
-                    <GripVertical className="h-5 w-5 mt-2.5 text-muted-foreground cursor-move opacity-50" />
+                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg group">
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveCategory(globalIndex, 'up')}
+                        disabled={globalIndex === 0}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveCategory(globalIndex, 'down')}
+                        disabled={globalIndex === categories.length - 1}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <div className="flex-1 space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -252,8 +292,27 @@ export default function AdminSettings() {
               {pagedSizeGroups.map((group) => {
                 const globalIndex = sizeGroups.indexOf(group);
                 return (
-                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg">
-                    <GripVertical className="h-5 w-5 mt-2.5 text-muted-foreground cursor-move opacity-50" />
+                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg group">
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveSizeGroup(globalIndex, 'up')}
+                        disabled={globalIndex === 0}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveSizeGroup(globalIndex, 'down')}
+                        disabled={globalIndex === sizeGroups.length - 1}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Nombre del Grupo</Label>

@@ -124,6 +124,74 @@ export default function AdminBusinessRules() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Gestión de Catálogo e IDs */}
+      <Card id="ids-config">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            Guía de IDs Internos y Categorías
+          </CardTitle>
+          <CardDescription>Cómo gestionar los identificadores sin romper la relación con los productos.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+            <h4 className="font-bold text-sm text-amber-800 mb-2">¿Qué es el ID Interno?</h4>
+            <p className="text-sm text-amber-800/80">
+              Es el código único que vincula un producto con su categoría. Por ejemplo, si una categoría tiene el ID <code>pollera</code>, todos los productos creados bajo esa categoría guardan ese texto internamente.
+            </p>
+          </div>
+          
+          <div className="space-y-3">
+            <h4 className="font-bold text-sm text-foreground">Escenarios Comunes:</h4>
+            
+            <div className="space-y-2">
+              <h5 className="text-sm font-bold flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-white">1</span>
+                Cambiar solo el Nombre Público
+              </h5>
+              <p className="text-sm text-muted-foreground pl-7">
+                Puedes cambiar "Polleras" por "Vestimenta Nacional" sin problemas siempre que el <strong>ID Interno</strong> se mantenga igual. Esto no afecta a ningún producto.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h5 className="text-sm font-bold flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] text-white">2</span>
+                Cambiar el ID Interno por Accidente
+              </h5>
+              <p className="text-sm text-muted-foreground pl-7">
+                Si cambias el ID de <code>pollera</code> a <code>vestido</code>, los productos viejos seguirán buscando <code>pollera</code> y <strong>desaparecerán de los filtros del catálogo</strong>.
+              </p>
+              <div className="bg-muted p-3 rounded border ml-7 text-xs">
+                <strong>Solución:</strong> Debes ir a la pestaña de <em>Inventario</em> y editar cada producto afectado para asignarle la "nueva" categoría.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h5 className="text-sm font-bold flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-[10px] text-white">3</span>
+                Añadir una Categoría Nueva
+              </h5>
+              <p className="text-sm text-muted-foreground pl-7">
+                Al añadir una nueva, el sistema genera un ID automático basado en el nombre. Una vez guardada, ya aparecerá disponible al crear o editar productos en el Inventario.
+              </p>
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-bold text-sm text-blue-800 mb-2 flex items-center gap-2">
+              <Badge variant="outline" className="bg-blue-100 border-blue-300 text-blue-800">Tip Profesional</Badge>
+              Orden de los Filtros
+            </h4>
+            <p className="text-sm text-blue-800/80">
+              El orden en el que coloques las categorías y grupos de tallas en el panel de configuración es <strong>exactamente el mismo orden</strong> en el que aparecerán para tus clientes en el catálogo móvil y de escritorio.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

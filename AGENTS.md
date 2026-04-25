@@ -42,6 +42,10 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
 - **Mobile First**: Priorizar la experiencia en dispositivos móviles.
 
+### [RULE] Accesibilidad Móvil y Hover
+- **No dependencia de Hover**: Prohibido ocultar acciones críticas detrás de un estado hover. En móviles, todo debe ser visible o accesible vía tap.
+- **Opacidad**: No usar opacidades bajas (< 0.5) para elementos interactivos, a menos que sea un estado deshabilitado.
+
 ### [RULE] Idioma y Ortografía
 - **Español Perfecto**: UI, errores y mensajes deben estar en español con ortografía y acentuación impecable.
 - **Cero Spanglish**: Mantener consistencia total en el idioma de la interfaz.
