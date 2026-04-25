@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { productsApi, rentalsApi, stripeApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ function Stepper({ current }: { current: number }) {
 export default function Checkout() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { user, token } = useAuth();
   const { errorModal, showError } = useErrorModal();
@@ -82,11 +83,19 @@ export default function Checkout() {
   const [showFullTerms, setShowFullTerms]   = useState(false);
   const [calendarConflict, setCalendarConflict] = useState(false);
 
-
+  // Get selectedSize from location state (passed from ProductDetail)
+  const [selectedSize] = useState<string>(
+    (location.state as any)?.selectedSize || ""
+  );
 
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
     if (!productId) return;
+    if (!selectedSize) {
+      // No size selected — redirect back to product detail
+      navigate(`/product/${productId}`);
+      return;
+    }
     productsApi.get(productId)
       .then((data) => { setProduct(data.product); setLoading(false); })
       .catch(() => setLoading(false));
@@ -98,8 +107,11 @@ export default function Checkout() {
     }
   }, []);
 
-  const days       = calculateDays(startDate, endDate);
-  const totalPrice = product && days > 0 ? days * product.rental_price : 0;
+  // Find the selected variant to get the correct price
+  const selectedVariant = product?.variants?.find((v: any) => v.size === selectedSize);
+  const pricePerDay = selectedVariant?.price_override ?? product?.rental_price ?? 0;
+  const days        = calculateDays(startDate, endDate);
+  const totalPrice  = days > 0 ? days * pricePerDay : 0;
 
   function goToStep(step: number) {
     if (step === 3 && (!startDate || !endDate || days <= 0)) {
@@ -129,7 +141,7 @@ export default function Checkout() {
     setSubmitting(true);
     try {
       const rentalData = await rentalsApi.create(
-        { productId: productId!, startDate, endDate, termsAccepted },
+        { productId: productId!, selectedSize, startDate, endDate, termsAccepted },
         token!,
       );
       const paymentResult = await stripeApi.createCheckoutSession(rentalData.rental._id, token!);
@@ -197,14 +209,12 @@ export default function Checkout() {
                 />
                 <div className="flex flex-col justify-center gap-1.5">
                   <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
-                  {product.size && (
-                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded w-fit">
-                      Talla: {product.size}
-                    </span>
-                  )}
+                  <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded w-fit">
+                    Talla: {selectedSize}
+                  </span>
                   <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
                   <p className="text-lg font-bold text-primary">
-                    {formatCurrency(product.rental_price)}
+                    {formatCurrency(pricePerDay)}
                     <span className="text-sm font-normal text-muted-foreground">/día</span>
                   </p>
                 </div>
@@ -232,7 +242,7 @@ export default function Checkout() {
               <CardContent className="space-y-4">
                 <AvailabilityCalendar
                   productId={productId!}
-                  stock={product.stock}
+                  stock={selectedVariant?.stock ?? 1}
                   startDate={startDate}
                   endDate={endDate}
                   onStartDateChange={(d) => { setStartDate(d); setEndDate(""); setCalendarConflict(false); }}
@@ -347,12 +357,10 @@ export default function Checkout() {
                     <span className="text-muted-foreground">Producto</span>
                     <span className="font-medium">{product.name}</span>
                   </div>
-                  {product.size && (
-                    <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Talla</span>
-                      <span className="font-medium">{product.size}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Talla</span>
+                    <span className="font-medium">{selectedSize}</span>
+                  </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Período</span>
                     <span className="font-medium">
@@ -365,7 +373,7 @@ export default function Checkout() {
                   </div>
                   <div className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground">Precio por día</span>
-                    <span className="font-medium">{formatCurrency(product.rental_price)}</span>
+                    <span className="font-medium">{formatCurrency(pricePerDay)}</span>
                   </div>
                 </div>
 
@@ -417,6 +425,10 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Producto</span>
                   <span className="font-medium text-right max-w-[55%] leading-tight">{product.name}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Talla</span>
+                  <span className="font-medium">{selectedSize}</span>
+                </div>
                 {days > 0 && (
                   <>
                     <div className="flex justify-between">
@@ -425,7 +437,7 @@ export default function Checkout() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Por día</span>
-                      <span className="font-medium">{formatCurrency(product.rental_price)}</span>
+                      <span className="font-medium">{formatCurrency(pricePerDay)}</span>
                     </div>
                   </>
                 )}

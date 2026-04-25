@@ -21,13 +21,14 @@ export function calculateTotal(pricePerDay: number, startDate: Date, endDate: Da
 export async function createRental(params: {
   userId: string;
   productId: string;
+  selectedSize: string;
   startDate: Date;
   endDate: Date;
   termsAccepted: boolean;
   ipAddress: string;
   userAgent: string;
 }) {
-  const { userId, productId, startDate, endDate, termsAccepted, ipAddress, userAgent } = params;
+  const { userId, productId, selectedSize, startDate, endDate, termsAccepted, ipAddress, userAgent } = params;
 
   if (!termsAccepted) {
     throw new AppError(
@@ -70,28 +71,49 @@ export async function createRental(params: {
     throw new AppError("Producto no encontrado.", 404, "PRODUCT_NOT_FOUND");
   }
 
-  if (product.condition_status !== "disponible") {
+  // Validate the selected size variant exists and is available
+  const variant = product.variants.find((v) => v.size === selectedSize);
+  if (!variant) {
     throw new AppError(
-      "Este producto no está disponible para alquiler en este momento.",
-      409,
-      "PRODUCT_NOT_AVAILABLE",
+      `La talla "${selectedSize}" no está disponible para este producto.`,
+      400,
+      "VARIANT_NOT_FOUND",
     );
   }
 
-  const isAvailable = await checkAvailability(productId, startDate, endDate);
+  if (variant.in_maintenance) {
+    throw new AppError(
+      `La talla "${selectedSize}" está en mantenimiento y no se puede alquilar.`,
+      409,
+      "VARIANT_IN_MAINTENANCE",
+    );
+  }
+
+  if (variant.stock <= 0) {
+    throw new AppError(
+      `La talla "${selectedSize}" no tiene stock disponible.`,
+      409,
+      "VARIANT_NO_STOCK",
+    );
+  }
+
+  const isAvailable = await checkAvailability(productId, startDate, endDate, selectedSize);
   if (!isAvailable) {
     throw new AppError(
-      "El producto no está disponible para las fechas seleccionadas.",
+      "El producto no está disponible para las fechas seleccionadas en la talla elegida.",
       409,
       "PRODUCT_DATES_UNAVAILABLE",
     );
   }
 
-  const total = calculateTotal(product.rental_price, startDate, endDate);
+  // Use variant price_override if set, otherwise fall back to product base price
+  const pricePerDay = variant.price_override ?? product.rental_price;
+  const total = calculateTotal(pricePerDay, startDate, endDate);
 
   const rental = await Rental.create({
     user_id: userId,
     product_id: productId,
+    selected_size: selectedSize,
     start_date: startDate,
     end_date: endDate,
     total,
@@ -163,5 +185,3 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
 
   return rental;
 }
-
-
