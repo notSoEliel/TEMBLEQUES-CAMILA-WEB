@@ -7,14 +7,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, WifiOff, ShieldX, Clock, X } from "lucide-react";
+import { AlertCircle, WifiOff, ShieldX, Clock, X, CheckCircle } from "lucide-react";
 
 export type ErrorModalVariant =
   | "generic"          // Error genérico de operación
   | "network"          // Sin conexión / servidor caído
   | "unauthorized"     // Token expirado durante la sesión
   | "forbidden"        // Acción no permitida al usuario
-  | "validation";      // Error de validación del formulario
+  | "validation"       // Error de validación del formulario
+  | "success";         // Operación exitosa
 
 interface ErrorModalProps {
   open: boolean;
@@ -57,6 +58,11 @@ const VARIANT_CONFIG: Record<
     icon: <AlertCircle className="h-6 w-6" />,
     title: "Datos inválidos",
     iconClass: "text-destructive",
+  },
+  success: {
+    icon: <CheckCircle className="h-6 w-6" />,
+    title: "¡Éxito!",
+    iconClass: "text-green-500",
   },
 };
 
