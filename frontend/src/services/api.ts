@@ -91,7 +91,7 @@ export const productsApi = {
 
 // Rentals
 export const rentalsApi = {
-  create: (data: { productId: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
+  create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
   my: (token: string) =>

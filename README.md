@@ -126,9 +126,18 @@ Cuatro colecciones en MongoDB:
 | Colección | Propósito |
 |---|---|
 | `users` | Clientes y administradores. Indice unico en `email`. |
-| `products` | Catálogo con stock, categoría, precio y imágenes. Indices en `category`, `stock`, `condition_status`. |
-| `rentals` | Reservas con estado, fechas y referencia al pago de Stripe. Indice compuesto en `product_id`, `start_date`, `end_date`. |
+| `products` | Catálogo avanzado. Cada producto contiene un arreglo de `variants` (tallas), donde cada variante maneja su propio stock, precio (override) y toggle de mantenimiento. Índices en `category`, `variants.size`, `variants.stock`. |
+| `rentals` | Reservas con estado, fechas y referencia al pago de Stripe. Incluye `selected_size` para descontar la disponibilidad de la talla correcta. Indice compuesto en `product_id`, `start_date`, `end_date`. |
 | `termsacceptances` | Registro de aceptación de términos por reserva (timestamp, IP, user agent). |
+
+### Arquitectura de Tallas y Variantes
+
+Para soportar productos que varían en tamaño (ej. camisillas, polleras infantiles), la plataforma implementa una arquitectura basada en variantes:
+- **Gestión por Variante:** El stock y el estado de mantenimiento se manejan individualmente por talla, no a nivel global del producto.
+- **Precios Dinámicos:** Una talla específica puede tener un sobreprecio (ej. Talla XL cuesta $20 más). El catálogo calculará y mostrará automáticamente rangos de precios (ej. `$150 - $170 / día`).
+- **Validación de Disponibilidad:** El motor de disponibilidad (`availability.ts`) evalúa los conflictos de calendario tomando en cuenta *únicamente* la capacidad de stock de la talla seleccionada.
+
+---
 
 ---
 

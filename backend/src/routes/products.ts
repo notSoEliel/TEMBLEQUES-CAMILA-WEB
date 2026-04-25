@@ -7,13 +7,12 @@ const products = new Hono();
 
 // GET /api/products - List with filters
 products.get("/", async (c) => {
-  const { category, size, minPrice, maxPrice, status, search } = c.req.query();
+  const { category, size, minPrice, maxPrice, search } = c.req.query();
 
   const filter: any = {};
 
   if (category) filter.category = category;
-  if (size) filter.size = size;
-  if (status) filter.condition_status = status;
+  if (size) filter["variants.size"] = size;
   if (minPrice || maxPrice) {
     filter.rental_price = {};
     if (minPrice) filter.rental_price.$gte = Number(minPrice);
@@ -49,4 +48,3 @@ products.get("/:id/availability", async (c) => {
 });
 
 export default products;
-

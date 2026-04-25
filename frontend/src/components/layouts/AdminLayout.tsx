@@ -35,7 +35,7 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex flex-col w-64 border-r-2 border-border bg-card min-h-screen">
+      <aside className="hidden lg:flex flex-col w-64 border-r-2 border-border bg-card h-[100dvh] sticky top-0 overflow-y-auto">
         <div className="p-6">
           <h1 className="text-xl font-bold text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>
             TC Admin

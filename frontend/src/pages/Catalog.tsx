@@ -17,6 +17,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   paquete_completo: "Paquetes Completos",
 };
 
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+}
+
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
@@ -57,6 +61,27 @@ export default function Catalog() {
       setSearchParams({});
     }
   };
+
+  function getProductPriceInfo(product: any) {
+    const variants = product.variants || [];
+    if (variants.length === 0) return { min: product.rental_price, max: product.rental_price, hasRange: false };
+    const prices = variants.map((v: any) => v.price_override ?? product.rental_price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return { min, max, hasRange: min !== max };
+  }
+
+  function getAvailableSizes(product: any): string[] {
+    const variants = product.variants || [];
+    return variants
+      .filter((v: any) => !v.in_maintenance && v.stock > 0)
+      .map((v: any) => v.size);
+  }
+
+  function isProductAvailable(product: any): boolean {
+    const variants = product.variants || [];
+    return variants.some((v: any) => !v.in_maintenance && v.stock > 0);
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
@@ -146,32 +171,63 @@ export default function Catalog() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <Link key={product._id} to={`/product/${product._id}`}>
-              <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-1">
-                <div className="aspect-[3/4] overflow-hidden bg-muted">
-                  <img
-                    src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <CardContent className="p-4 space-y-2">
-                  <Badge variant="outline" className="text-xs">
-                    {CATEGORY_LABELS[product.category] || product.category}
-                  </Badge>
-                  <h3 className="font-bold line-clamp-1">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-lg font-bold text-primary">${product.rental_price}/día</span>
-                    {product.size && (
-                      <span className="text-xs text-muted-foreground">Talla: {product.size}</span>
+          {products.map((product) => {
+            const { min, max, hasRange } = getProductPriceInfo(product);
+            const sizes = getAvailableSizes(product);
+            const available = isProductAvailable(product);
+
+            return (
+              <Link key={product._id} to={`/product/${product._id}`}>
+                <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-1">
+                  <div className="aspect-[3/4] overflow-hidden bg-muted relative">
+                    <img
+                      src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    {!available && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Badge variant="destructive" className="text-sm font-bold">Agotado</Badge>
+                      </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  <CardContent className="p-4 space-y-2">
+                    <Badge variant="outline" className="text-xs">
+                      {CATEGORY_LABELS[product.category] || product.category}
+                    </Badge>
+                    <h3 className="font-bold line-clamp-1">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-lg font-bold text-primary">
+                        {hasRange
+                          ? `${formatCurrency(min)} – ${formatCurrency(max)}`
+                          : `${formatCurrency(min)}/día`
+                        }
+                      </span>
+                    </div>
+                    {/* Size badges */}
+                    {sizes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {sizes.slice(0, 5).map((size) => (
+                          <span
+                            key={size}
+                            className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-medium"
+                          >
+                            {size}
+                          </span>
+                        ))}
+                        {sizes.length > 5 && (
+                          <span className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
+                            +{sizes.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
