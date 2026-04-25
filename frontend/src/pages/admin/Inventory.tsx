@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { productsApi, adminApi } from "@/services/api";
+import { productsApi, adminApi, settingsApi } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +12,7 @@ import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
 import { Plus, Pencil, Trash2, X, Loader2, Eye } from "lucide-react";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  pollera: "Polleras", vestuario_masculino: "Vestuario Masculino", infantil: "Infantil",
-  tembleques: "Tembleques", accesorios: "Accesorios", paquete_completo: "Paquetes Completos",
-};
 
-const CATEGORIES = ["pollera", "vestuario_masculino", "infantil", "tembleques", "accesorios", "paquete_completo"];
 
 interface ProductForm {
   name: string;
@@ -29,7 +24,7 @@ interface ProductForm {
 }
 
 const emptyForm: ProductForm = {
-  name: "", category: "pollera", description: "", rental_price: 0,
+  name: "", category: "", description: "", rental_price: 0,
   variants: [], images: [],
 };
 
@@ -44,10 +39,30 @@ export default function AdminInventory() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
 
+  const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
+  const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
+
   // Auto-resizing textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { loadProducts(); }, []);
+  useEffect(() => { 
+    loadSettings();
+    loadProducts(); 
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { settings } = await settingsApi.get();
+      setCategories(settings.categories || []);
+      setSizeGroups(settings.size_groups || []);
+      if (settings.categories?.length > 0) {
+        emptyForm.category = settings.categories[0].id;
+        setForm(f => f.category === "" ? { ...f, category: settings.categories[0].id } : f);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // Auto-resize textarea when description changes
   useEffect(() => {
@@ -185,7 +200,7 @@ export default function AdminInventory() {
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
                   >
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -224,6 +239,7 @@ export default function AdminInventory() {
               {/* Size Manager */}
               <SizeManager
                 category={form.category}
+                sizeGroups={sizeGroups}
                 basePrice={form.rental_price}
                 variants={form.variants}
                 onChange={(variants) => setForm({ ...form, variants })}
@@ -285,7 +301,7 @@ export default function AdminInventory() {
                     <div>
                       <h3 className="font-bold">{product.name}</h3>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[product.category]}</Badge>
+                        <Badge variant="outline" className="text-xs">{categories.find(c => c.id === product.category)?.label || product.category}</Badge>
                         <span className="text-sm text-primary font-bold">
                           {range.min === range.max
                             ? `$${range.min}/día`

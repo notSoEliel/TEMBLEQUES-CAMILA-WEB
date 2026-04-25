@@ -72,8 +72,18 @@ export const authApi = {
 
 // Products
 export const productsApi = {
-  list: (params?: Record<string, string>) => {
-    const query = params ? "?" + new URLSearchParams(params).toString() : "";
+  list: (params?: Record<string, string | string[]>) => {
+    const searchParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => searchParams.append(key, v));
+        } else if (value !== undefined) {
+          searchParams.append(key, value as string);
+        }
+      });
+    }
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return api<{ products: any[] }>(`/products${query}`);
   },
 
@@ -146,4 +156,11 @@ export const adminApi = {
 
   userRentals: (userId: string, token: string) =>
     api<{ rentals: any[] }>(`/admin/users/${userId}/rentals`, { token }),
+};
+
+// Settings
+export const settingsApi = {
+  get: () => api<{ settings: any }>("/settings"),
+  update: (data: any, token: string) =>
+    api<{ settings: any }>("/settings", { method: "PUT", body: data, token }),
 };

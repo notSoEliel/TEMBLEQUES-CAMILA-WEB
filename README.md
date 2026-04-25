@@ -21,6 +21,15 @@ El sistema funciona bajo un esquema de **alquiler por fechas**. El cliente selec
 - Accesorios (peinetas, cadenas, joyería)
 - Paquetes completos para eventos
 
+### Catálogo y Búsqueda Avanzada
+
+El catálogo cuenta con un sistema de búsqueda y filtrado avanzado para optimizar la conversión y la experiencia del usuario:
+- **Filtrado Acumulable**: Los clientes pueden seleccionar múltiples categorías (ej. *Polleras* + *Infantil*) y ver los resultados combinados de manera fluida.
+- **Selector Inteligente de Tallas**: Agrupación visual de tallas (ej. *Adultos*: S, M, L / *Infantil*: 2-4, 6-8) y selección múltiple, eliminando problemas de orden alfabético.
+- **Configuración Dinámica (Admin)**: Todas las categorías y agrupaciones de tallas son gestionables desde el panel de administrador (`/admin/settings`). El admin puede añadir nuevas categorías, agrupar tallas, reordenarlas o eliminarlas sin necesidad de realizar cambios en el código (`Settings` model).
+- **Filtro por Disponibilidad de Fechas**: El catálogo oculta automáticamente los productos que ya están reservados para el rango de fechas seleccionado por el cliente.
+- **UX Premium**: Animaciones suaves con `framer-motion` para expandir los filtros, sin problemas de recorte (`overflow-hidden`) que estropeen el diseño neobrutalista.
+
 ---
 
 ## Arquitectura
@@ -615,7 +624,8 @@ docker-compose up -d --force-recreate backend
 - [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.
 - [ ] **Penalidades por atraso** — Calculo y cobro automático cuando `status = late` supera la fecha de devolución.
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
-- [ ] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
+- [x] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
+- [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código. El catálogo y la creación de inventario consumen esta configuración en tiempo real (`Settings` model).
 
 ### Infraestructura y Calidad
 

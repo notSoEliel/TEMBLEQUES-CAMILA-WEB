@@ -12,6 +12,7 @@ import productRoutes from "./routes/products.js";
 import rentalRoutes from "./routes/rentals.js";
 import adminRoutes from "./routes/admin.js";
 import stripeRoutes from "./routes/stripe.js";
+import settingsRoutes from "./routes/settings.js";
 
 const app = new Hono();
 
@@ -73,6 +74,7 @@ app.route("/api/products", productRoutes);
 app.route("/api/rentals", rentalRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/stripe", stripeRoutes);
+app.route("/api/settings", settingsRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;

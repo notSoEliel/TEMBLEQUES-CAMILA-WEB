@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/inventory", label: "Inventario", icon: Package },
   { href: "/admin/reservations", label: "Reservas", icon: CalendarCheck },
   { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/settings", label: "Ajustes", icon: Settings },
 ];
 
 export default function AdminLayout() {
