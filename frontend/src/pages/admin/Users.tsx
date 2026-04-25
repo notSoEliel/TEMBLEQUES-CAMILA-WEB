@@ -5,26 +5,30 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users as UsersIcon, Calendar } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 export default function AdminUsers() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<any[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [userRentals, setUserRentals] = useState<any[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 15);
 
   useEffect(() => {
     if (token) {
       loadUsers();
     }
-  }, [token, currentPage]);
-
+  }, [token, currentPage, currentLimit]);
+  
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const response = await adminApi.users(token!, { page: currentPage, limit: 15 });
+      const response = await adminApi.users(token!, { page: currentPage, limit: currentLimit });
       setUsers(response.data);
       setPagination(response.pagination);
     } catch (err) {
@@ -44,7 +48,19 @@ export default function AdminUsers() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   return (
@@ -104,6 +120,9 @@ export default function AdminUsers() {
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
             />
           )}
         </>

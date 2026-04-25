@@ -25,48 +25,23 @@ La respuesta debe incluir los datos y un objeto de metadatos de paginación.
 }
 ```
 
-### Implementación en Mongoose
-Se debe usar `countDocuments` para el total y `.skip()`, `.limit()` para la consulta.
-
-```typescript
-const page = Number(c.req.query("page")) || 1;
-const limit = Number(c.req.query("limit")) || 10;
-const skip = (page - 1) * limit;
-
-const [data, total] = await Promise.all([
-  Model.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
-  Model.countDocuments(filter)
-]);
-
-return c.json({
-  data,
-  pagination: {
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit)
-  }
-});
-```
-
 ## 2. Estándar de Frontend (UI)
 
 ### Componente Reutilizable
-Se debe crear un componente `Pagination` en `frontend/src/components/ui/pagination.tsx` que siga la estética Neobrutalista del proyecto.
+Se debe usar el componente `Pagination` en `frontend/src/components/ui/Pagination.tsx`. 
 
-### Comportamiento
-- Debe mostrar el número de página actual.
-- Botones "Anterior" y "Siguiente".
-- Botones para páginas específicas si el número de páginas es manejable, o un selector si son muchas.
-- Sincronización con los parámetros de la URL (`URLSearchParams`) para permitir compartir links paginados.
+### Comportamiento y UX
+- **Estética Premium**: Evitar sombras y bordes excesivos en la paginación para mantener un look limpio y profesional.
+- **Selector de Cantidad**: Debe incluir un selector para cambiar el `limit` (ej. 10, 20, 50 por página).
+- **Sincronización con URL**: La página actual y el límite deben estar sincronizados con los parámetros de la URL (`URLSearchParams`).
+- **Navegación**: Botones "Anterior", "Siguiente" y acceso directo a páginas.
+- **Scroll**: Al cambiar de página, realizar un scroll suave al inicio de la lista.
 
 ## 3. Áreas de Aplicación Obligatoria
-- **Admin**: Inventario, Reservas, Usuarios, Configuraciones, Categorías, Grupos de tallas.
+- **Admin**: Inventario, Reservas, Usuarios.
 - **Cliente**: Catálogo de productos, Historial de alquileres.
-- **General**: Cualquier nueva lista que supere los 10 elementos.
 
-## 4. Estética Neobrutalista
-Los botones de paginación deben mantener:
-- `border-2 border-black`
-- `shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`
-- Estados hover/active con cambio de color sólido (ej. `hover:bg-yellow-400`).
+## 4. Diseño y Estilos
+- Usar el sistema de diseño de la aplicación pero de forma sutil.
+- El botón de página activa debe ser claramente distinguible.
+- Los botones deshabilitados (ej. "Anterior" en página 1) deben ser visualmente neutros.

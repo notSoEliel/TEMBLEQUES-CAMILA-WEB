@@ -12,6 +12,7 @@ import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
 import { Plus, Pencil, Trash2, X, Loader2, Eye } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 interface ProductForm {
   name: string;
@@ -34,6 +35,7 @@ const emptyForm: ProductForm = {
 
 export default function AdminInventory() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +45,9 @@ export default function AdminInventory() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
   const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
   const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
@@ -53,7 +57,7 @@ export default function AdminInventory() {
   useEffect(() => { 
     loadSettings();
     loadProducts(); 
-  }, [currentPage]);
+  }, [currentPage, currentLimit]);
 
   const loadSettings = async () => {
     try {
@@ -79,7 +83,7 @@ export default function AdminInventory() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const response = await productsApi.list({ page: currentPage, limit: 10 });
+      const response = await productsApi.list({ page: currentPage, limit: currentLimit });
       setProducts(response.data);
       setPagination(response.pagination);
     } catch (err) { console.error(err); }
@@ -136,7 +140,7 @@ export default function AdminInventory() {
         await adminApi.updateProduct(editingId, payload, token!);
       } else {
         await adminApi.createProduct(payload, token!);
-        setCurrentPage(1); // Go to first page to see the new product
+        handlePageChange(1); // Go to first page to see the new product
       }
       resetForm();
       loadProducts();
@@ -154,7 +158,19 @@ export default function AdminInventory() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const openPreviewFromForm = () => {
@@ -395,6 +411,9 @@ export default function AdminInventory() {
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
             />
           )}
         </>

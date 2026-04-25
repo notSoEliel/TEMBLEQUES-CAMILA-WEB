@@ -7,6 +7,9 @@ interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  limit: number;
+  onLimitChange?: (limit: number) => void;
+  totalResults?: number;
   className?: string;
 }
 
@@ -14,9 +17,13 @@ export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
+  limit,
+  onLimitChange,
+  totalResults,
   className,
 }) => {
-  if (totalPages <= 1) return null;
+  // Always show pagination if onLimitChange is provided, to allow changing the limit
+  if (totalPages <= 1 && !onLimitChange) return null;
 
   const renderPageButtons = () => {
     const buttons = [];
@@ -37,10 +44,10 @@ export const Pagination: React.FC<PaginationProps> = ({
           size="sm"
           onClick={() => onPageChange(i)}
           className={cn(
-            "w-10 h-10 border-2 font-bold",
+            "w-9 h-9 font-medium transition-all duration-200",
             currentPage === i 
-              ? "bg-black text-white shadow-none" 
-              : "bg-white text-black hover:bg-yellow-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none"
+              ? "bg-primary text-primary-foreground shadow-sm" 
+              : "hover:bg-muted"
           )}
         >
           {i}
@@ -51,30 +58,54 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   return (
-    <div className={cn("flex items-center justify-center gap-2 mt-8", className)}>
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage <= 1}
-        className="border-2 bg-white text-black hover:bg-yellow-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none disabled:shadow-none"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </Button>
-
-      <div className="flex items-center gap-2">
-        {renderPageButtons()}
+    <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-4 border-t", className)}>
+      <div className="flex items-center gap-4 order-2 sm:order-1">
+        {onLimitChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground whitespace-nowrap">Ver:</span>
+            <select
+              value={limit}
+              onChange={(e) => onLimitChange(Number(e.target.value))}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {[5, 10, 15, 20, 50].map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {totalResults !== undefined && (
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            Total: <span className="font-semibold text-foreground">{totalResults}</span>
+          </span>
+        )}
       </div>
 
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage >= totalPages}
-        className="border-2 bg-white text-black hover:bg-yellow-400 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none disabled:shadow-none"
-      >
-        <ChevronRight className="w-5 h-5" />
-      </Button>
+      <div className="flex items-center gap-2 order-1 sm:order-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          className="h-9 w-9"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {totalPages > 0 ? renderPageButtons() : <span className="text-sm px-2">1</span>}
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages || totalPages === 0}
+          className="h-9 w-9"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 };

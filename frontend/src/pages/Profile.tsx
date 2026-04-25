@@ -8,6 +8,7 @@ import { User, Calendar, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -35,22 +36,25 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function Profile() {
   const { user, token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
   useEffect(() => {
     if (token) {
       loadRentals();
     }
-  }, [token, currentPage]);
+  }, [token, currentPage, currentLimit]);
 
   const loadRentals = async () => {
     setLoading(true);
     try {
-      const response = await rentalsApi.my(token!, { page: currentPage, limit: 10 });
+      const response = await rentalsApi.my(token!, { page: currentPage, limit: currentLimit });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err) {
@@ -61,7 +65,19 @@ export default function Profile() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   return (
@@ -194,6 +210,9 @@ export default function Profile() {
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
             />
           )}
         </>

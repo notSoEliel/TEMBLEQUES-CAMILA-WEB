@@ -28,6 +28,7 @@ export default function Catalog() {
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [selectedSizes, setSelectedSizes] = useState<string[]>(searchParams.getAll("size") || []);
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 12);
   
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -51,14 +52,14 @@ export default function Catalog() {
 
   useEffect(() => {
     loadProducts();
-  }, [selectedCategories, startDate, endDate, selectedSizes, currentPage]);
+  }, [selectedCategories, startDate, endDate, selectedSizes, currentPage, currentLimit]);
 
   const loadProducts = async (searchTerm?: string) => {
     setLoading(true);
     try {
       const params: Record<string, any> = {
         page: currentPage,
-        limit: 12
+        limit: currentLimit
       };
       if (selectedCategories.length > 0) params.category = selectedCategories;
       if (searchTerm || search) params.search = searchTerm ?? search;
@@ -142,6 +143,15 @@ export default function Catalog() {
     newParams.set("page", String(page));
     setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   function getProductPriceInfo(product: any) {
@@ -413,6 +423,9 @@ export default function Catalog() {
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
             />
           )}
         </>

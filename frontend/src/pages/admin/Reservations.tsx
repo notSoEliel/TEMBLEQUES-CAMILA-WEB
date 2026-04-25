@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, RefreshCw } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -43,19 +44,22 @@ const TRANSITIONS: Record<string, string[]> = {
 
 export default function AdminReservations() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [filter, setFilter] = useState(searchParams.get("status") || "");
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
-  useEffect(() => { loadRentals(); }, [filter, currentPage]);
+  useEffect(() => { loadRentals(); }, [filter, currentPage, currentLimit]);
 
   const loadRentals = async () => {
     setLoading(true);
     try {
-      const response = await adminApi.rentals(token!, { status: filter || undefined, page: currentPage, limit: 10 });
+      const response = await adminApi.rentals(token!, { status: filter || undefined, page: currentPage, limit: currentLimit });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err: any) {
@@ -73,12 +77,29 @@ export default function AdminReservations() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const handleFilterChange = (f: string) => {
     setFilter(f);
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    if (f) newParams.set("status", f);
+    else newParams.delete("status");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   return (
@@ -192,6 +213,9 @@ export default function AdminReservations() {
               currentPage={pagination.page}
               totalPages={pagination.totalPages}
               onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
             />
           )}
         </>
