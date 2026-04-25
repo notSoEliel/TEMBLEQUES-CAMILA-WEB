@@ -1,12 +1,6 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
-export type ProductCategory =
-  | "pollera"
-  | "vestuario_masculino"
-  | "infantil"
-  | "tembleques"
-  | "accesorios"
-  | "paquete_completo";
+export type ProductCategory = string;
 
 export interface ISizeVariant {
   size: string;
@@ -42,7 +36,6 @@ const productSchema = new Schema<IProduct>(
     category: {
       type: String,
       required: true,
-      enum: ["pollera", "vestuario_masculino", "infantil", "tembleques", "accesorios", "paquete_completo"],
     },
     description: { type: String, required: true },
     rental_price: { type: Number, required: true, min: 0 },

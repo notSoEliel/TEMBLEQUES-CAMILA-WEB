@@ -6,15 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Check, ChevronDown, Plus, X, Wrench } from "lucide-react";
 
-// ─── Default sizes per category ──────────────────────────────────────────────
-const DEFAULT_SIZES: Record<string, string[]> = {
-  pollera: ["XS", "S", "M", "L", "XL", "XXL"],
-  vestuario_masculino: ["XS", "S", "M", "L", "XL", "XXL"],
-  infantil: ["2-4", "4-6", "6-8", "8-10", "10-12"],
-  tembleques: ["Único"],
-  accesorios: ["Único"],
-  paquete_completo: ["S", "M", "L", "XL"],
-};
+
 
 export interface SizeVariant {
   size: string;
@@ -25,17 +17,17 @@ export interface SizeVariant {
 
 interface SizeManagerProps {
   category: string;
+  sizeGroups?: {label: string, sizes: string[]}[];
   basePrice: number;
   variants: SizeVariant[];
   onChange: (variants: SizeVariant[]) => void;
 }
 
-export default function SizeManager({ category, basePrice, variants, onChange }: SizeManagerProps) {
+export default function SizeManager({ category, sizeGroups = [], basePrice, variants, onChange }: SizeManagerProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [customSize, setCustomSize] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const defaults = DEFAULT_SIZES[category] || ["S", "M", "L"];
   const selectedSizes = new Set(variants.map((v) => v.size));
 
   // Close dropdown on outside click
@@ -94,28 +86,36 @@ export default function SizeManager({ category, basePrice, variants, onChange }:
 
         {dropdownOpen && (
           <div className="absolute z-50 mt-1 w-full bg-card border-2 border-border rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
-            {/* Default sizes as checkboxes */}
-            <p className="text-xs font-medium text-muted-foreground px-1">Tallas predeterminadas</p>
-            <div className="flex flex-wrap gap-1.5">
-              {defaults.map((size) => {
-                const isSelected = selectedSizes.has(size);
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => toggleSize(size)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border-2 transition-all duration-150",
-                      isSelected
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted/50 text-foreground border-border hover:border-primary/50"
-                    )}
-                  >
-                    {isSelected && <Check className="h-3 w-3" />}
-                    {size}
-                  </button>
-                );
-              })}
+            <div className="max-h-60 overflow-y-auto pr-1 space-y-3">
+              {sizeGroups.length === 0 && (
+                <p className="text-xs text-muted-foreground p-2">No hay grupos configurados. Añade manual.</p>
+              )}
+              {sizeGroups.map(group => (
+                <div key={group.label} className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground px-1 uppercase tracking-wider">{group.label}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.sizes.map((size) => {
+                      const isSelected = selectedSizes.has(size);
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleSize(size)}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border-2 transition-all duration-150",
+                            isSelected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-muted/50 text-foreground border-border hover:border-primary/50"
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                          {size}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Custom size input */}

@@ -6,16 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { motion, AnimatePresence } from "framer-motion";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  pollera: "Polleras",
-  vestuario_masculino: "Vestuario Masculino",
-  infantil: "Infantil",
-  tembleques: "Tembleques",
-  accesorios: "Accesorios",
-  paquete_completo: "Paquetes Completos",
-};
+import { settingsApi } from "@/services/api";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
@@ -26,19 +21,43 @@ export default function Catalog() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(searchParams.getAll("category") || []);
+  const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
+  const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(searchParams.getAll("size") || []);
+  const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  
+  const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
+  const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { settings } = await settingsApi.get();
+      setCategories(settings.categories || []);
+      setSizeGroups(settings.size_groups || []);
+    } catch (err) {
+      console.error("Error loading settings:", err);
+    }
+  };
 
   useEffect(() => {
     loadProducts();
-  }, [selectedCategory]);
+  }, [selectedCategories, startDate, endDate, selectedSizes]);
 
   const loadProducts = async (searchTerm?: string) => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (selectedCategory) params.category = selectedCategory;
+      const params: Record<string, string | string[]> = {};
+      if (selectedCategories.length > 0) params.category = selectedCategories;
       if (searchTerm || search) params.search = searchTerm ?? search;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (selectedSizes.length > 0) params.size = selectedSizes;
       const data = await productsApi.list(params);
       setProducts(data.products);
     } catch (err) {
@@ -52,14 +71,43 @@ export default function Catalog() {
     loadProducts(search);
   };
 
-  const handleCategoryFilter = (cat: string) => {
-    const newCat = selectedCategory === cat ? "" : cat;
-    setSelectedCategory(newCat);
-    if (newCat) {
-      setSearchParams({ category: newCat });
-    } else {
-      setSearchParams({});
-    }
+  const toggleCategory = (cat: string) => {
+    const newCats = selectedCategories.includes(cat) 
+      ? selectedCategories.filter(x => x !== cat) 
+      : [...selectedCategories, cat];
+    setSelectedCategories(newCats);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("category");
+    newCats.forEach(c => newParams.append("category", c));
+    setSearchParams(newParams);
+  };
+
+  const handleDateChange = (type: 'start' | 'end', val: string) => {
+    if (type === 'start') setStartDate(val);
+    else setEndDate(val);
+    
+    const newParams = new URLSearchParams(searchParams);
+    if (val) newParams.set(type === 'start' ? 'startDate' : 'endDate', val);
+    else newParams.delete(type === 'start' ? 'startDate' : 'endDate');
+    setSearchParams(newParams);
+  };
+
+  const toggleSize = (s: string) => {
+    const newSizes = selectedSizes.includes(s) 
+      ? selectedSizes.filter(x => x !== s) 
+      : [...selectedSizes, s];
+    setSelectedSizes(newSizes);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("size");
+    newSizes.forEach(size => newParams.append("size", size));
+    setSearchParams(newParams);
+  };
+
+  const clearSizes = () => {
+    setSelectedSizes([]);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete("size");
+    setSearchParams(newParams);
   };
 
   function getProductPriceInfo(product: any) {
@@ -118,34 +166,129 @@ export default function Catalog() {
       </div>
 
       {/* Category Filters */}
-      {showFilters && (
-        <div className="mb-6 p-4 border-2 border-border rounded-lg bg-card">
-          <h3 className="font-bold mb-3">Categoría</h3>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-              <Button
-                key={key}
-                size="sm"
-                variant={selectedCategory === key ? "default" : "outline"}
-                onClick={() => handleCategoryFilter(key)}
-              >
-                {label}
-              </Button>
-            ))}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0, overflow: "hidden", marginBottom: 0 }}
+            animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: "visible" }, marginBottom: "1.5rem" }}
+            exit={{ height: 0, opacity: 0, overflow: "hidden", marginBottom: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+          >
+            <div className="p-4 border-2 border-border rounded-lg bg-card space-y-4">
+          <div>
+            <h3 className="font-bold mb-3">Categoría</h3>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  size="sm"
+                  variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
+                  onClick={() => toggleCategory(cat.id)}
+                >
+                  {cat.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+          
+          <Separator />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="font-bold mb-3">Fechas Disponibles</h3>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => handleDateChange('start', e.target.value)}
+                  className="w-full"
+                />
+                <span className="text-muted-foreground">a</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => handleDateChange('end', e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="font-bold mb-3">Talla</h3>
+              <div className="relative">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
+                  className="w-full justify-between font-normal text-left"
+                  type="button"
+                >
+                  <span className="truncate">
+                    {selectedSizes.length > 0 
+                      ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? 's' : ''} seleccionada${selectedSizes.length > 1 ? 's' : ''}`
+                      : "Seleccionar tallas"}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isSizeDropdownOpen ? "rotate-180" : ""}`} />
+                </Button>
+                
+                <div className={`absolute top-full left-0 right-0 z-10 mt-2 bg-card border-2 border-border rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden transition-all duration-300 ease-in-out origin-top ${isSizeDropdownOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 pointer-events-none"}`}>
+                  <div className="max-h-56 overflow-y-auto p-2 space-y-3">
+                     {sizeGroups.map((group) => (
+                       <div key={group.label}>
+                         <h4 className="text-[10px] font-bold text-muted-foreground mb-1 px-2 uppercase tracking-wider">{group.label}</h4>
+                         <div className="space-y-1">
+                           {group.sizes.map(s => (
+                             <label key={s} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded transition-colors">
+                               <Checkbox 
+                                 checked={selectedSizes.includes(s)} 
+                                 onCheckedChange={() => toggleSize(s)} 
+                               />
+                               <span className="text-sm font-medium">{s}</span>
+                             </label>
+                           ))}
+                         </div>
+                       </div>
+                     ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </motion.div>
+    )}
+  </AnimatePresence>
 
       {/* Active Filters */}
-      {selectedCategory && (
-        <div className="mb-6 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Filtro activo:</span>
-          <Badge variant="secondary" className="gap-1">
-            {CATEGORY_LABELS[selectedCategory]}
-            <button onClick={() => handleCategoryFilter("")}>
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
+      {(selectedCategories.length > 0 || startDate || endDate || selectedSizes.length > 0) && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Filtros activos:</span>
+          {selectedCategories.map(catId => {
+            const cat = categories.find(c => c.id === catId);
+            return (
+              <Badge key={catId} variant="secondary" className="gap-1">
+                {cat ? cat.label : catId}
+                <button onClick={() => toggleCategory(catId)}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          {(startDate || endDate) && (
+            <Badge variant="secondary" className="gap-1">
+              {startDate || "?"} - {endDate || "?"}
+              <button onClick={() => { handleDateChange('start', ''); handleDateChange('end', ''); }}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {selectedSizes.length > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              Tallas: {selectedSizes.join(", ")}
+              <button onClick={clearSizes}>
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
         </div>
       )}
 
@@ -193,7 +336,7 @@ export default function Catalog() {
                   </div>
                   <CardContent className="p-4 space-y-2">
                     <Badge variant="outline" className="text-xs">
-                      {CATEGORY_LABELS[product.category] || product.category}
+                      {categories.find(c => c.id === product.category)?.label || product.category}
                     </Badge>
                     <h3 className="font-bold line-clamp-1">{product.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
