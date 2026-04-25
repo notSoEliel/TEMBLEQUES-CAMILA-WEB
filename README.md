@@ -38,10 +38,20 @@ El sistema está dividido en tres servicios independientes, todos orquestados me
 
 ```
 parcial-dsix/
-  docker-compose.yml       # Orquestación de los 3 servicios
-  .env                     # Variables de entorno
-  backend/                 # API REST (Bun + Hono + MongoDB)
-  frontend/                # Interfaz web (React + Vite + shadcn/ui)
+  docker-compose.yml       # Orquestación de servicios
+  .env                     # Configuración y secretos
+  backend/
+    src/
+      models/              # Schemas de Mongoose (Product, Rental, User, Settings)
+      routes/              # Endpoints API (Auth, Admin, Stripe, Rentals)
+      services/            # Lógica de Negocio (Stripe, Rental, PaymentRules, Availability)
+      middleware/          # Auth & Role guards
+  frontend/
+    src/
+      components/          # UI Components & Layouts
+      pages/               # Páginas (Landing, Catalog, Checkout, Admin Panels)
+      hooks/               # Custom hooks (useAuth, etc)
+      services/            # API Client (Axios)
 ```
 
 ### Diagrama de Servicios
@@ -134,10 +144,11 @@ Cuatro colecciones en MongoDB:
 
 | Colección | Propósito |
 |---|---|
-| `users` | Clientes y administradores. Indice unico en `email`. |
-| `products` | Catálogo avanzado. Cada producto contiene un arreglo de `variants` (tallas), donde cada variante maneja su propio stock, precio (override) y toggle de mantenimiento. Índices en `category`, `variants.size`, `variants.stock`. |
-| `rentals` | Reservas con estado, fechas y referencia al pago de Stripe. Incluye `selected_size` para descontar la disponibilidad de la talla correcta. Indice compuesto en `product_id`, `start_date`, `end_date`. |
-| `termsacceptances` | Registro de aceptación de términos por reserva (timestamp, IP, user agent). |
+| `users` | Clientes y administradores. Sincronizados desde Clerk. |
+| `products` | Catálogo avanzado. Incluye `variants` (stock/precio por talla) y `deposit_settings` (depósitos forzados o dinámicos). |
+| `rentals` | El núcleo del negocio. Registra fechas, estados de pago/depósito, penalidades por atraso y referencias a Stripe. |
+| `termsacceptances` | Registro auditable de aceptación de términos (IP, Timestamp). |
+| `settings` | Configuración global dinámica de categorías y agrupaciones de tallas. |
 
 ### Arquitectura de Tallas y Variantes
 
@@ -145,6 +156,27 @@ Para soportar productos que varían en tamaño (ej. camisillas, polleras infanti
 - **Gestión por Variante:** El stock y el estado de mantenimiento se manejan individualmente por talla, no a nivel global del producto.
 - **Precios Dinámicos:** Una talla específica puede tener un sobreprecio (ej. Talla XL cuesta $20 más). El catálogo calculará y mostrará automáticamente rangos de precios (ej. `$150 - $170 / día`).
 - **Validación de Disponibilidad:** El motor de disponibilidad (`availability.ts`) evalúa los conflictos de calendario tomando en cuenta *únicamente* la capacidad de stock de la talla seleccionada.
+
+---
+
+## Lógica Operativa y Financiera
+
+La plataforma implementa reglas automáticas para proteger el inventario y garantizar el cumplimiento de los contratos de alquiler:
+
+### 1. Depósito de Garantía (Hold en Stripe)
+Para artículos de alto valor o configuraciones específicas, el sistema realiza una **autorización bancaria (hold)** en lugar de un cobro directo:
+- **Regla Global:** Por defecto, si el total de la reserva supera los **$350**, se exige un depósito del **35%** del total.
+- **Regla por Producto:** El administrador puede forzar un depósito para cualquier producto (ej. joyería delicada) y definir un monto fijo en dólares ($) desde el panel de inventario.
+- **Gestión:** El hold se crea automáticamente al pagar. Si el producto se marca como `returned`, el hold se libera; si se marca como `damaged`, se captura el monto total del depósito.
+
+### 2. Gestión de Atrasos y Penalidades
+El sistema calcula la mora de forma incremental basándose en la medianoche de Panamá (UTC-5):
+- **Identificación:** El dashboard muestra un widget de **"Posibles Atrasos"** con productos cuya fecha de devolución ya pasó.
+- **Cálculo:** La mora se calcula como: `(Total Reserva / Días Reserva) * Tasa Mora`. La tasa por defecto es **1x** (un día extra por cada día de retraso).
+- **Cobro:** Al marcar una reserva como `late`, el backend intenta cobrar automáticamente la penalidad acumulada a la tarjeta guardada del cliente en Stripe.
+
+### 3. Corte de Reservas (6:00 PM)
+Para garantizar la logística de entrega, el sistema bloquea reservas para el día siguiente si se realizan después de las **18:00 horas**. A partir de esa hora, la fecha mínima de inicio permitida es el día subsiguiente (48h).
 
 ---
 
@@ -275,6 +307,11 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
 | `CLERK_WEBHOOK_SECRET` | Firma del webhook de Clerk (`whsec_...`) | Requerida en producción |
 | `STRIPE_SECRET_KEY` | Clave secreta de Stripe (modo test) | Placeholder (activa modo demo) |
 | `STRIPE_WEBHOOK_SECRET` | Clave para validar webhooks de Stripe | Placeholder |
+| `STRIPE_DEPOSIT_THRESHOLD_USD` | Umbral para activar depósito de garantía | `350` |
+| `STRIPE_DEPOSIT_RATE` | Porcentaje del total usado para hold del depósito | `0.35` |
+| `STRIPE_LATE_FEE_DAILY_RATE` | Multiplicador diario para mora (sobre tarifa diaria base) | `1` |
+| `VITE_STRIPE_DEPOSIT_THRESHOLD_USD` | Umbral visual de depósito mostrado en Checkout | `350` |
+| `VITE_STRIPE_DEPOSIT_RATE` | Porcentaje visual de depósito mostrado en Checkout | `0.35` |
 | `VITE_API_URL` | URL de la API desde el frontend | `http://localhost:3000` |
 
 ---
@@ -403,6 +440,55 @@ Las siguientes funcionalidades de Stripe están documentadas en el PRD pero **no
 - **Depósito de garantía**: Usar `PaymentIntent` con `capture_method: manual` para hacer un hold en la tarjeta del cliente al momento de la reserva. El monto se captura si hay daños, o se libera al devolver el artículo en buenas condiciones.
 - **Penalidades por atraso**: Calcular automáticamente el costo extra cuando `rental.status = "late"` basado en los días de retraso respecto a `end_date`. Requiere un job cron o un mecanismo de revisión periódica.
 - **Cobro adicional por daños**: Desde el panel admin, generar un `PaymentIntent` adicional cuando `status = "damaged"` con el monto de reparación/reposición.
+
+### Rama de trabajo: depósito de garantía y penalidades por atraso
+
+Esta rama concentra la documentación funcional de los dos cobros diferidos que faltan por implementar en el flujo de alquiler. El objetivo es extender el modelo actual sin romper la experiencia de reserva, manteniendo la aceptación de términos como requisito obligatorio y conservando la validación de disponibilidad antes de iniciar cualquier cobro.
+
+#### Objetivo funcional
+
+- **Depósito de garantía**: bloquear temporalmente un monto en la tarjeta para artículos de alto valor, con liberación automática al devolver el producto sin incidencias.
+- **Penalidad por atraso**: calcular y aplicar un cobro automático cuando una reserva entra en `late` y supera la fecha comprometida de devolución.
+- **Cobro por daños**: habilitar el cobro del depósito retenido, o un cargo adicional, cuando el artículo regresa en estado `damaged`.
+
+#### Estado actual en esta rama (MVP funcional)
+
+- Se calcula automáticamente si una reserva requiere depósito al momento de crearla (`pending_hold` vs `not_required`).
+- Al completar el checkout de Stripe, el backend intenta crear un hold manual (`capture_method: manual`) usando el método de pago guardado para cobros off-session.
+- Al pasar una reserva a `late`, se calculan `late_days` y `late_fee_amount`; el sistema intenta cobrar automáticamente la mora.
+- Al pasar una reserva a `returned`, se libera el hold del depósito si estaba activo.
+- Al pasar una reserva a `damaged`, se captura el hold existente o se intenta un cargo directo del depósito.
+- En modo demo (Stripe placeholder), estos pasos se simulan y se actualizan estados para facilitar pruebas locales.
+
+#### Reglas de negocio esperadas
+
+- El depósito solo debe aplicarse a productos marcados como de alto valor o con una configuración equivalente en inventario.
+- El monto retenido debe ser visible antes de redirigir a Stripe, dentro del resumen de pago.
+- La penalidad por atraso debe calcularse a partir de la fecha real de devolución y el día/hora de corte definidos por el negocio.
+- Si la reserva cambia a `damaged`, el sistema debe registrar el motivo y abrir el flujo de cobro correspondiente desde el panel de administración.
+- Ninguna operación de pago debe avanzar si el usuario no aceptó los términos; la UI debe bloquear el paso y el backend debe volver a validar la condición.
+
+#### Flujo esperado
+
+1. El cliente elige producto, talla y rango de fechas.
+2. El backend valida disponibilidad real antes de generar la sesión de Stripe.
+3. Si el producto requiere depósito, el checkout debe mostrarlo como parte del total o del hold autorizado.
+4. Al finalizar el alquiler, el sistema libera el depósito si no hay incidencias.
+5. Si la devolución supera la fecha límite, la reserva entra en `late` y se calcula la penalidad correspondiente.
+6. Si hay daños, el panel admin puede ejecutar el cobro autorizado o el cargo adicional asociado.
+
+#### UX y manejo de errores
+
+- Los errores de operación en pantalla deben mostrarse con `ErrorModal`, nunca con `alert()` ni mensajes sueltos en el layout.
+- Las fallas de navegación o recursos inexistentes deben seguir usando `ErrorPage` con sus variantes ya definidas.
+- Para esta rama, los mensajes de error deben permanecer en español y mantener el mismo tono del resto de la aplicación.
+- Si falla la creación del hold, el cobro por atraso o el cargo por daños, la pantalla debe ofrecer una acción clara para volver al catálogo, al checkout o al panel, según el contexto.
+
+#### Puntos de integración sugeridos
+
+- **Backend**: `backend/src/services/stripe.ts`, `backend/src/services/rental.ts` y los endpoints de administración relacionados con cambios de estado.
+- **Frontend**: `frontend/src/pages/Checkout.tsx`, `frontend/src/pages/Confirmation.tsx`, `frontend/src/pages/admin/Reservations.tsx` y los componentes de error reutilizables.
+- **Persistencia**: extender `Rentals` para registrar depósito, penalidad aplicada, motivo del cargo y estado de cobro asociado.
 
 ---
 
@@ -611,6 +697,13 @@ docker-compose up -d --force-recreate backend
 - En el backend, se implementó un offset matemático de -5 horas para sincronizar todas las validaciones de fechas con el huso horario estricto de Panamá.
 - **Regla de Negocio (Corte a las 6 PM):** Se añadió además una regla en ambos extremos: pasadas las 18:00 horas (Panamá), el sistema automáticamente exige mínimo 2 días de anticipación (pasado mañana) en lugar de 1, mostrando un aviso y bloqueando el día siguiente en el calendario.
 
+### 8. Error 500 al listar Reservas (Virtuals vs Populate)
+**Síntoma:** El panel de administración devolvía un error 500 al intentar cargar la lista de reservas o el dashboard.
+**Causa:** Los "virtuals" del modelo `Product` (como `total_stock` o `price_range`) intentaban procesar el arreglo de `variants`. Al realizar búsquedas parciales con `populate("product_id", "name category")`, el campo `variants` no existía en el objeto, provocando un `TypeError` durante la serialización JSON.
+**Solución:** Se blindaron los getters de los virtuals en `Product.ts` para verificar la existencia de los campos requeridos (`this.variants`, `this.rental_price`) antes de operar sobre ellos.
+
+---
+
 ---
 
 ## Pendientes
@@ -621,8 +714,10 @@ docker-compose up -d --force-recreate backend
 - [x] **Recuperación de contraseña** — Gestionada por Clerk de forma nativa (email de código de reset). Sin necesidad de Resend ni servicio externo.
 - [x] **Carga de imágenes reales** — Integrar un servicio de almacenamiento (Cloudinary o S3) para subir fotos de productos desde el panel admin. Hoy se usan URLs de imágenes externas.
 - [x] **Calendario de disponibilidad visual** — Mostrar un calendario interactivo en el detalle del producto marcando las fechas ya ocupadas, en lugar del selector de fecha simple actual.
-- [ ] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños.
-- [ ] **Penalidades por atraso** — Calculo y cobro automático cuando `status = late` supera la fecha de devolución.
+- [x] **Depósito de garantía** — Implementar holds en tarjeta con Stripe para artículos de alto valor, con cobro automático por daños. (Configurable global y por producto).
+- [x] **Penalidades por atraso** — Cálculo y cobro automático manual cuando `status = late` supera la fecha de devolución; incluye UI en dashboard ("Posibles Atrasos") y lógica incremental diaria.
+- [ ] **Automatización de Atrasos (Cron)** — Implementar un cron job diario para ejecutar el cobro de mora a medianoche.
+- [ ] **Devoluciones B2C por QR** — Integrar un sistema de escaneo de códigos QR para facilitar la marcación instantánea a `returned` al recibir las prendas.
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
 - [x] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
 - [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código. El catálogo y la creación de inventario consumen esta configuración en tiempo real (`Settings` model).

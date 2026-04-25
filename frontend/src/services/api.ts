@@ -117,7 +117,13 @@ export const rentalsApi = {
 // Stripe
 export const stripeApi = {
   createCheckoutSession: (rentalId: string, token: string) =>
-    api<{ url?: string; mode?: string; message?: string; rental?: any }>("/stripe/create-checkout-session", {
+    api<{
+      url?: string;
+      mode?: string;
+      message?: string;
+      rental?: any;
+      deposit?: { required: boolean; amount: number; status: string };
+    }>("/stripe/create-checkout-session", {
       method: "POST",
       body: { rentalId },
       token,

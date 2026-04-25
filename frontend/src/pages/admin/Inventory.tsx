@@ -21,11 +21,16 @@ interface ProductForm {
   rental_price: number;
   variants: SizeVariant[];
   images: string[];
+  deposit_settings: {
+    required: boolean;
+    overrideAmount?: number | "";
+  };
 }
 
 const emptyForm: ProductForm = {
   name: "", category: "", description: "", rental_price: 0,
   variants: [], images: [],
+  deposit_settings: { required: false, overrideAmount: "" },
 };
 
 export default function AdminInventory() {
@@ -100,6 +105,10 @@ export default function AdminInventory() {
         in_maintenance: v.in_maintenance ?? false,
       })),
       images: product.images || [],
+      deposit_settings: {
+        required: product.deposit_settings?.required ?? false,
+        overrideAmount: product.deposit_settings?.overrideAmount ?? "",
+      },
     });
     setEditingId(product._id);
     setShowForm(true);
@@ -117,6 +126,10 @@ export default function AdminInventory() {
           stock: Number(v.stock),
           price_override: v.price_override ? Number(v.price_override) : undefined,
         })),
+        deposit_settings: {
+          required: form.deposit_settings.required,
+          overrideAmount: form.deposit_settings.overrideAmount ? Number(form.deposit_settings.overrideAmount) : undefined,
+        },
       };
 
       if (editingId) {
@@ -151,6 +164,10 @@ export default function AdminInventory() {
       rental_price: product.rental_price,
       variants: product.variants || [],
       images: product.images || [],
+      deposit_settings: {
+        required: product.deposit_settings?.required ?? false,
+        overrideAmount: product.deposit_settings?.overrideAmount ?? "",
+      },
     });
     setPreviewOpen(true);
   };
@@ -232,6 +249,49 @@ export default function AdminInventory() {
                 <p className="text-xs text-muted-foreground">
                   Precio por defecto. Puedes ajustarlo por talla abajo.
                 </p>
+              </div>
+
+              {/* Deposit Settings */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border p-4 rounded-lg bg-muted/20">
+                <div className="space-y-2">
+                  <Label>Depósito Fijo</Label>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id="deposit-required"
+                      checked={form.deposit_settings.required}
+                      onChange={(e) => setForm({
+                        ...form,
+                        deposit_settings: { ...form.deposit_settings, required: e.target.checked }
+                      })}
+                      className="w-4 h-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="deposit-required" className="text-sm font-normal cursor-pointer">
+                      Forzar cobro de depósito
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Si no está marcado, usará la regla global (&gt;$350).
+                  </p>
+                </div>
+                {form.deposit_settings.required && (
+                  <div className="space-y-2">
+                    <Label>Monto Override ($) (Opcional)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.deposit_settings.overrideAmount}
+                      onChange={(e) => setForm({
+                        ...form,
+                        deposit_settings: { ...form.deposit_settings, overrideAmount: e.target.value ? Number(e.target.value) : "" }
+                      })}
+                      placeholder="Ej. 50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Si lo dejas vacío usará el porcentaje global de depósito.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Separator />

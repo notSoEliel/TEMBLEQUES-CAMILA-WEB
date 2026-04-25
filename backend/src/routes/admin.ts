@@ -6,6 +6,7 @@ import { Rental } from "../models/Rental.js";
 import { User } from "../models/User.js";
 import { updateRentalStatus } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
+import { getPanamaTodayUTC } from "../services/payment-rules.js";
 
 const admin = new Hono<{ Variables: AuthVariables }>();
 
@@ -25,6 +26,7 @@ admin.get("/dashboard", async (c) => {
     totalUsers,
     totalProducts,
     damagedCount,
+    possibleLateReturns,
   ] = await Promise.all([
     Rental.countDocuments({ status: { $in: ["paid", "confirmed", "delivered"] } }),
     Rental.find({
@@ -63,6 +65,13 @@ admin.get("/dashboard", async (c) => {
     User.countDocuments({ role: "client" }),
     Product.countDocuments(),
     Rental.countDocuments({ status: "damaged" }),
+    Rental.find({
+      status: "delivered",
+      end_date: { $lt: getPanamaTodayUTC() }, // Compare directly to today midnight UTC
+    })
+      .populate("product_id", "name")
+      .populate("user_id", "name email")
+      .limit(10),
   ]);
 
   return c.json({
@@ -77,6 +86,7 @@ admin.get("/dashboard", async (c) => {
       totalUsers,
       totalProducts,
       damagedCount,
+      possibleLateReturns,
     },
   });
 });
@@ -100,6 +110,10 @@ const productSchema = z.object({
   rental_price: z.number().min(0, "El precio no puede ser negativo"),
   variants: z.array(sizeVariantSchema).min(1, "Debe haber al menos una talla/variante"),
   images: z.array(z.string()).optional(),
+  deposit_settings: z.object({
+    required: z.boolean().default(false),
+    overrideAmount: z.number().min(0).optional().nullable(),
+  }).optional(),
 });
 
 // POST /api/admin/products

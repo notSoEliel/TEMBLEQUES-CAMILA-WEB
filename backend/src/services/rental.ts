@@ -3,15 +3,24 @@ import { Rental, type RentalStatus } from "../models/Rental.js";
 import { TermsAcceptance } from "../models/TermsAcceptance.js";
 import { checkAvailability } from "./availability.js";
 import { AppError } from "../lib/errors.js";
+import {
+  calculateLateDays,
+  calculateLateFeeAmount,
+  calculateRentalDays,
+  evaluateDeposit,
+} from "./payment-rules.js";
+import {
+  captureDepositForDamage,
+  chargeLateFee,
+  isStripeConfigured,
+  releaseDepositHold,
+} from "./stripe.js";
 
 /**
  * Calculates the total rental cost based on price per day and the date range.
  */
 export function calculateTotal(pricePerDay: number, startDate: Date, endDate: Date): number {
-  const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  // Minimum 1 day
-  const days = Math.max(diffDays, 1);
+  const days = calculateRentalDays(startDate, endDate);
   return pricePerDay * days;
 }
 
@@ -109,6 +118,7 @@ export async function createRental(params: {
   // Use variant price_override if set, otherwise fall back to product base price
   const pricePerDay = variant.price_override ?? product.rental_price;
   const total = calculateTotal(pricePerDay, startDate, endDate);
+  const deposit = evaluateDeposit(total, product.deposit_settings);
 
   const rental = await Rental.create({
     user_id: userId,
@@ -120,6 +130,12 @@ export async function createRental(params: {
     status: "pending",
     payment_status: "pending",
     terms_accepted: true,
+    deposit_required: deposit.required,
+    deposit_amount: deposit.amount,
+    deposit_status: deposit.required ? "pending_hold" : "not_required",
+    late_days: 0,
+    late_fee_amount: 0,
+    late_fee_status: "not_applicable",
   });
 
   // Record terms acceptance for audit trail
@@ -178,10 +194,83 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
   }
 
   rental.status = newStatus;
+
   if (newStatus === "paid") {
     rental.payment_status = "completed";
   }
+
+  if (newStatus === "late") {
+    const lateDays = calculateLateDays(rental.end_date);
+    const lateFee = calculateLateFeeAmount({
+      total: rental.total,
+      startDate: rental.start_date,
+      endDate: rental.end_date,
+      lateDays,
+    });
+
+    rental.late_days = lateDays;
+    rental.late_fee_amount = lateFee;
+    rental.late_fee_status = lateFee > 0 ? "pending" : "not_applicable";
+    rental.late_fee_failure_reason = undefined;
+  }
+
   await rental.save();
+
+  if (newStatus === "late" && rental.late_fee_amount > 0) {
+    if (!isStripeConfigured()) {
+      rental.late_fee_status = "charged";
+      await rental.save();
+      return rental;
+    }
+
+    try {
+      await chargeLateFee(rental);
+      rental.late_fee_status = "charged";
+      rental.late_fee_failure_reason = undefined;
+    } catch (error: any) {
+      rental.late_fee_status = "failed";
+      rental.late_fee_failure_reason = error?.message || "No se pudo cobrar la penalidad por atraso.";
+    }
+    await rental.save();
+  }
+
+  if (newStatus === "returned" && rental.deposit_status === "held") {
+    if (!isStripeConfigured()) {
+      rental.deposit_status = "released";
+      rental.deposit_failure_reason = undefined;
+      await rental.save();
+      return rental;
+    }
+
+    try {
+      await releaseDepositHold(rental);
+      rental.deposit_status = "released";
+      rental.deposit_failure_reason = undefined;
+    } catch (error: any) {
+      rental.deposit_status = "failed";
+      rental.deposit_failure_reason = error?.message || "No se pudo liberar el depósito de garantía.";
+    }
+    await rental.save();
+  }
+
+  if (newStatus === "damaged" && rental.deposit_required && rental.deposit_amount > 0) {
+    if (!isStripeConfigured()) {
+      rental.deposit_status = "captured";
+      rental.deposit_failure_reason = undefined;
+      await rental.save();
+      return rental;
+    }
+
+    try {
+      await captureDepositForDamage(rental);
+      rental.deposit_status = "captured";
+      rental.deposit_failure_reason = undefined;
+    } catch (error: any) {
+      rental.deposit_status = "failed";
+      rental.deposit_failure_reason = error?.message || "No se pudo cobrar el depósito por daños.";
+    }
+    await rental.save();
+  }
 
   return rental;
 }

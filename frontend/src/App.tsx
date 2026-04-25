@@ -18,6 +18,7 @@ import AdminInventory from "@/pages/admin/Inventory";
 import AdminReservations from "@/pages/admin/Reservations";
 import AdminUsers from "@/pages/admin/Users";
 import AdminSettings from "@/pages/admin/Settings";
+import AdminBusinessRules from "@/pages/admin/BusinessRules";
 
 /**
  * Guards a route that requires the user to be logged in.
@@ -125,6 +126,7 @@ export default function App() {
             <Route path="/admin/reservations" element={<AdminReservations />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
           </Route>
         </Routes>
       </BrowserRouter>
