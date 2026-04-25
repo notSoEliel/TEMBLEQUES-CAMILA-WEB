@@ -111,8 +111,13 @@ export const rentalsApi = {
   create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
-  my: (token: string, page = 1, limit = 10) =>
-    api<PaginatedResponse<any>>(`/rentals/my?page=${page}&limit=${limit}`, { token }),
+  my: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<any>>(`/rentals/my${query}`, { token });
+  },
 
   get: (id: string, token: string) =>
     api<{ rental: any }>(`/rentals/${id}`, { token }),
@@ -168,11 +173,21 @@ export const adminApi = {
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
 
   // Users
-  users: (token: string, page = 1, limit = 10) =>
-    api<PaginatedResponse<any>>(`/admin/users?page=${page}&limit=${limit}`, { token }),
+  users: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<any>>(`/admin/users${query}`, { token });
+  },
 
-  userRentals: (userId: string, token: string, page = 1, limit = 10) =>
-    api<PaginatedResponse<any>>(`/admin/users/${userId}/rentals?page=${page}&limit=${limit}`, { token }),
+  userRentals: (userId: string, token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<any>>(`/admin/users/${userId}/rentals${query}`, { token });
+  },
 };
 
 // Settings
