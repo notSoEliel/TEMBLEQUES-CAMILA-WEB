@@ -72,6 +72,10 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     rental.status = "paid";
     rental.payment_status = "completed";
     rental.stripe_session_id = `demo_session_${Date.now()}`;
+    if (rental.deposit_required && rental.deposit_amount > 0) {
+      rental.deposit_status = "held";
+      rental.deposit_failure_reason = undefined;
+    }
     await rental.save();
 
     return c.json({
@@ -81,6 +85,9 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
         id: rental._id,
         status: rental.status,
         total: rental.total,
+        depositRequired: rental.deposit_required,
+        depositAmount: rental.deposit_amount,
+        depositStatus: rental.deposit_status,
       },
     });
   }
@@ -94,7 +101,15 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   rental.stripe_session_id = sessionId;
   await rental.save();
 
-  return c.json({ url, sessionId });
+  return c.json({
+    url,
+    sessionId,
+    deposit: {
+      required: rental.deposit_required,
+      amount: rental.deposit_amount,
+      status: rental.deposit_status,
+    },
+  });
 });
 
 // ─── GET /api/stripe/verify-session ───────────────────────────────────────────

@@ -30,6 +30,32 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
 }
 
+const DEPOSIT_THRESHOLD_USD = Number(import.meta.env.VITE_STRIPE_DEPOSIT_THRESHOLD_USD || 350);
+const DEPOSIT_RATE = Number(import.meta.env.VITE_STRIPE_DEPOSIT_RATE || 0.35);
+
+function estimateDeposit(total: number, productSettings?: any): { required: boolean; amount: number } {
+  if (productSettings) {
+    if (!productSettings.required) {
+      return { required: false, amount: 0 };
+    }
+    if (productSettings.overrideAmount !== undefined && productSettings.overrideAmount > 0) {
+      return { required: true, amount: Math.round(productSettings.overrideAmount * 100) / 100 };
+    }
+    return {
+      required: true,
+      amount: Math.round(total * DEPOSIT_RATE * 100) / 100,
+    };
+  }
+
+  if (total < DEPOSIT_THRESHOLD_USD) {
+    return { required: false, amount: 0 };
+  }
+  return {
+    required: true,
+    amount: Math.round(total * DEPOSIT_RATE * 100) / 100,
+  };
+}
+
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 function Stepper({ current }: { current: number }) {
   return (
@@ -112,6 +138,7 @@ export default function Checkout() {
   const pricePerDay = selectedVariant?.price_override ?? product?.rental_price ?? 0;
   const days        = calculateDays(startDate, endDate);
   const totalPrice  = days > 0 ? days * pricePerDay : 0;
+  const estimatedDeposit = estimateDeposit(totalPrice, product?.deposit_settings);
 
   function goToStep(step: number) {
     if (step === 3 && (!startDate || !endDate || days <= 0)) {
@@ -382,6 +409,19 @@ export default function Checkout() {
                   <span className="font-bold text-2xl text-primary">{formatCurrency(totalPrice)}</span>
                 </div>
 
+                {estimatedDeposit.required && (
+                  <div className="flex justify-between items-center py-1 text-sm border-t border-border pt-3">
+                    <span className="text-muted-foreground">Depósito en hold</span>
+                    <span className="font-semibold">{formatCurrency(estimatedDeposit.amount)}</span>
+                  </div>
+                )}
+
+                {estimatedDeposit.required && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Este monto se autoriza como garantía y se libera al devolver la prenda sin incidencias.
+                  </p>
+                )}
+
                 <p className="text-xs text-muted-foreground text-center">✓ Términos y condiciones aceptados</p>
 
                 <Button
@@ -450,6 +490,13 @@ export default function Checkout() {
                     {totalPrice > 0 ? formatCurrency(totalPrice) : "—"}
                   </span>
                 </div>
+
+                {estimatedDeposit.required && (
+                  <div className="flex justify-between items-center text-xs text-muted-foreground">
+                    <span>Depósito en hold</span>
+                    <span className="font-semibold text-foreground">{formatCurrency(estimatedDeposit.amount)}</span>
+                  </div>
+                )}
 
                 {/* Step shortcuts for completed steps */}
                 <div className="pt-2 space-y-1">

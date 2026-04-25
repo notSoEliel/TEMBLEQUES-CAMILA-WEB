@@ -3,8 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { adminApi } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, Package, CalendarCheck, Users, AlertTriangle, DollarSign } from "lucide-react";
+import { Link } from "react-router-dom";
+import { TrendingUp, Package, CalendarCheck, Users, AlertTriangle, DollarSign, Clock } from "lucide-react";
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -118,7 +120,7 @@ export default function AdminDashboard() {
             {dashboard?.upcomingReturns?.length > 0 ? (
               <div className="space-y-3">
                 {dashboard.upcomingReturns.map((r: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
+                  <div key={i} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0 last:pb-0">
                     <div>
                       <p className="font-medium">{r.product_id?.name}</p>
                       <p className="text-muted-foreground">{r.user_id?.name} - {r.user_id?.email}</p>
@@ -131,6 +133,40 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">No hay devoluciones próximas.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Possible Late Returns */}
+        <Card className="lg:col-span-2 border-orange-500/50">
+          <CardHeader className="bg-orange-500/5 pb-4">
+            <CardTitle className="flex items-center gap-2 text-orange-600">
+              <Clock className="h-5 w-5" />
+              Posibles Atrasos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            {dashboard?.possibleLateReturns?.length > 0 ? (
+              <div className="space-y-3">
+                {dashboard.possibleLateReturns.map((r: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between text-sm bg-muted/30 p-3 rounded-lg border border-border">
+                    <div>
+                      <p className="font-bold text-base">{r.product_id?.name}</p>
+                      <p className="text-muted-foreground">{r.user_id?.name} - {r.user_id?.email}</p>
+                      <p className="text-destructive font-medium mt-1">
+                        Debió entregarse el: {new Date(r.end_date).toLocaleDateString("es-PA")}
+                      </p>
+                    </div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`/admin/reservations?status=delivered`}>
+                        Ir a Reserva
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm text-center py-4">No hay atrasos detectados.</p>
             )}
           </CardContent>
         </Card>

@@ -54,7 +54,9 @@ export default function AdminReservations() {
     try {
       const data = await adminApi.rentals(token!, filter || undefined);
       setRentals(data.rentals);
-    } catch (err) { console.error(err); }
+    } catch (err: any) {
+      showError(err?.message || "No se pudieron cargar las reservas.", "generic");
+    }
     setLoading(false);
   };
 
@@ -112,6 +114,21 @@ export default function AdminReservations() {
                       {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
                       <span className="font-bold text-primary ml-2">${r.total}</span>
                     </div>
+
+                    {(r.deposit_status === "held" || r.deposit_status === "failed" || r.late_fee_status === "failed" || r.late_fee_status === "charged") && (
+                      <div className="mt-1 space-y-0.5 text-xs">
+                        {(r.deposit_status === "held" || r.deposit_status === "failed") && (
+                          <p className={r.deposit_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                            Depósito: {r.deposit_status === "held" ? "Hold activo" : "Fallido"}
+                          </p>
+                        )}
+                        {(r.late_fee_status === "charged" || r.late_fee_status === "failed") && (
+                          <p className={r.late_fee_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                            Mora: {r.late_fee_status === "charged" ? "Cobrada" : "Fallida"}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

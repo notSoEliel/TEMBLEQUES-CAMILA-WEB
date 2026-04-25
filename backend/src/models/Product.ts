@@ -16,6 +16,10 @@ export interface IProduct extends Document {
   rental_price: number;
   variants: ISizeVariant[];
   images: string[];
+  deposit_settings: {
+    required: boolean;
+    overrideAmount?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,24 +45,31 @@ const productSchema = new Schema<IProduct>(
     rental_price: { type: Number, required: true, min: 0 },
     variants: { type: [sizeVariantSchema], default: [] },
     images: [{ type: String }],
+    deposit_settings: {
+      required: { type: Boolean, default: false },
+      overrideAmount: { type: Number, min: 0 },
+    },
   },
   { timestamps: true }
 );
 
 // Virtual: total stock across all variants
 productSchema.virtual("total_stock").get(function (this: IProduct) {
+  if (!this.variants) return 0;
   return this.variants.reduce((sum, v) => sum + v.stock, 0);
 });
 
 // Virtual: is available (at least one variant has stock > 0 and is not in maintenance)
 productSchema.virtual("is_available").get(function (this: IProduct) {
+  if (!this.variants) return false;
   return this.variants.some((v) => v.stock > 0 && !v.in_maintenance);
 });
 
 // Virtual: price range [min, max]
 productSchema.virtual("price_range").get(function (this: IProduct) {
-  if (this.variants.length === 0) return { min: this.rental_price, max: this.rental_price };
-  const prices = this.variants.map((v) => v.price_override ?? this.rental_price);
+  const basePrice = this.rental_price ?? 0;
+  if (!this.variants || this.variants.length === 0) return { min: basePrice, max: basePrice };
+  const prices = this.variants.map((v) => v.price_override ?? basePrice);
   return { min: Math.min(...prices), max: Math.max(...prices) };
 });
 
