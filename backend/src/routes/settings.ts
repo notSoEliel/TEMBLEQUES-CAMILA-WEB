@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { Settings } from "../models/Settings.js";
+import { Product } from "../models/Product.js";
 import { authMiddleware, requireAdmin } from "../middleware/auth.js";
 import { z } from "zod";
 
@@ -38,6 +39,7 @@ settings.get("/", async (c) => {
 const settingsSchema = z.object({
   categories: z.array(
     z.object({
+      _id: z.string().optional(),
       id: z.string().min(1),
       label: z.string().min(1),
     })
@@ -55,9 +57,27 @@ settings.put("/", authMiddleware, requireAdmin, async (c) => {
   const body = settingsSchema.parse(rawBody);
   
   let config = await Settings.findOne();
+  
   if (!config) {
     config = new Settings(body);
   } else {
+    // Check for ID migrations before saving
+    const oldCategories = config.categories;
+    const newCategories = body.categories;
+
+    for (const newCat of newCategories) {
+      if (newCat._id) {
+        const oldCat = oldCategories.find(c => (c as any)._id.toString() === newCat._id);
+        if (oldCat && oldCat.id !== newCat.id) {
+          console.log(`Migrating products from category "${oldCat.id}" to "${newCat.id}"...`);
+          await Product.updateMany(
+            { category: oldCat.id },
+            { $set: { category: newCat.id } }
+          );
+        }
+      }
+    }
+
     config.categories = body.categories as any;
     config.size_groups = body.size_groups as any;
   }

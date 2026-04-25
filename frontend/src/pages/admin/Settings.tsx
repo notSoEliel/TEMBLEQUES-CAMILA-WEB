@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, Info, Lock, Unlock } from "lucide-react";
 import { useErrorModal } from "@/components/ErrorModal";
 import { Pagination } from "@/components/ui/Pagination";
 import { useSearchParams, Link } from "react-router-dom";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface Category {
   id: string;
@@ -29,6 +30,8 @@ export default function AdminSettings() {
   const [sizeGroups, setSizeGroups] = useState<SizeGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalCategories, setOriginalCategories] = useState<Category[]>([]);
+  const [unlockedIds, setUnlockedIds] = useState<Record<number, boolean>>({});
   const { errorModal, showError } = useErrorModal();
 
   // Categories Pagination
@@ -59,6 +62,7 @@ export default function AdminSettings() {
     try {
       const { settings } = await settingsApi.get();
       setCategories(settings.categories || []);
+      setOriginalCategories(JSON.parse(JSON.stringify(settings.categories || [])));
       setSizeGroups(settings.size_groups || []);
     } catch (err) {
       console.error(err);
@@ -71,6 +75,8 @@ export default function AdminSettings() {
     try {
       await settingsApi.update({ categories, size_groups: sizeGroups }, token!);
       showError("Configuración guardada exitosamente.", "success");
+      setOriginalCategories(JSON.parse(JSON.stringify(categories)));
+      setUnlockedIds({});
     } catch (err: any) {
       console.error(err);
       showError(err.message || "Error al guardar la configuración.", "generic");
@@ -203,12 +209,12 @@ export default function AdminSettings() {
             <Button variant="outline" size="sm" onClick={addCategory}><Plus className="h-4 w-4 mr-2"/> Añadir</Button>
           </CardHeader>
           <CardContent className="space-y-4 flex-1">
-            <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-500 p-3 rounded-lg flex gap-3 text-sm border-2 border-amber-200 dark:border-amber-900 mb-4">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-500 p-3 rounded-lg flex gap-3 text-sm border-2 border-blue-200 dark:border-blue-900 mb-4">
+              <Info className="h-5 w-5 shrink-0" />
               <p>
-                <strong>Precaución con el ID:</strong> Si cambias el ID, los productos existentes con el ID viejo no aparecerán en los filtros. {" "}
-                <Link to="/admin/business-rules#ids-config" className="underline font-bold hover:text-amber-700 transition-colors">
-                  Saber más de esto (Recomendado)
+                <strong>Gestión de IDs:</strong> Los IDs vinculan productos a filtros. Ahora el sistema sincroniza los cambios automáticamente. {" "}
+                <Link to="/admin/business-rules?section=catalog" className="underline font-bold hover:text-blue-700 transition-colors">
+                  Ver guía de mejores prácticas
                 </Link>
               </p>
             </div>
@@ -249,12 +255,36 @@ export default function AdminSettings() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">ID Interno</Label>
-                          <Input 
-                            value={cat.id} 
-                            onChange={e => updateCategory(globalIndex, "id", e.target.value)} 
-                            className="h-9 font-mono text-xs"
-                          />
+                          <Label className="text-xs flex items-center gap-1">
+                            ID Interno 
+                            {unlockedIds[globalIndex] ? <Unlock className="h-3 w-3 text-green-600" /> : <Lock className="h-3 w-3 text-muted-foreground" />}
+                          </Label>
+                          {unlockedIds[globalIndex] ? (
+                            <Input 
+                              value={cat.id} 
+                              onChange={e => updateCategory(globalIndex, "id", e.target.value)} 
+                              className="h-9 font-mono text-xs border-primary focus-visible:ring-primary"
+                              autoFocus
+                            />
+                          ) : (
+                            <ConfirmModal
+                              title="Editar Identificador"
+                              description="¿Quieres cambiar este ID? El sistema actualizará automáticamente todos los productos vinculados a este identificador al guardar."
+                              confirmText="Permitir editar"
+                              onConfirm={() => setUnlockedIds({ ...unlockedIds, [globalIndex]: true })}
+                            >
+                              <div className="relative group cursor-pointer">
+                                <Input 
+                                  value={cat.id} 
+                                  readOnly
+                                  className="h-9 font-mono text-xs bg-muted/50 cursor-pointer group-hover:border-primary transition-colors"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/20 backdrop-blur-[1px]">
+                                  <span className="text-[10px] font-bold bg-white px-2 py-1 border border-black">CLIC PARA EDITAR</span>
+                                </div>
+                              </div>
+                            </ConfirmModal>
+                          )}
                         </div>
                       </div>
                     </div>

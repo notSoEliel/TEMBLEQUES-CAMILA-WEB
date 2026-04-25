@@ -41,6 +41,13 @@ Para optimizar el rendimiento y la escalabilidad, la plataforma implementa un si
 - **Optimización de Grid**: En el Catálogo, los límites por página están optimizados para la cuadrícula visual (4, 8, 12, 20 productos) garantizando un diseño siempre equilibrado.
 - **UX Fluida**: El sistema realiza un scroll suave (`smooth scroll`) automático al inicio de la lista cada vez que cambia la página o el límite.
 
+### Arquitectura de Filtros y Sincronización Automática
+Para garantizar una gestión del catálogo sin fricciones, el sistema implementa una lógica de sincronización avanzada entre la configuración y el inventario:
+- **ID Interno Inteligente (Slug)**: Cada categoría posee un identificador único (ej: `joyas_oro`) que vincula los productos a los filtros del catálogo.
+- **Migración Automática**: Si un administrador decide renombrar un ID Interno desde los [Ajustes](file:///Users/eliel/Dev/parcial-dsix/frontend/src/pages/admin/Settings.tsx), el backend detecta automáticamente el cambio de "slug" y ejecuta una migración masiva de todos los productos vinculados. 
+- **Integridad del Catálogo**: Esta automatización elimina el riesgo de que los productos "desaparezcan" de los filtros tras una reestructuración de categorías, garantizando que el mantenimiento del catálogo sea 100% seguro y transparente.
+- **Onboarding Integrado**: El panel de administración incluye un centro de ayuda modular (Bento Style) que guía a los nuevos usuarios en el manejo de estos identificadores y las mejores prácticas de organización.
+
 ---
 
 ## Arquitectura
@@ -731,7 +738,8 @@ docker-compose up -d --force-recreate backend
 - [ ] **Devoluciones B2C por QR** — Integrar un sistema de escaneo de códigos QR para facilitar la marcación instantánea a `returned` al recibir las prendas.
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
 - [x] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
-- [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código. El catálogo y la creación de inventario consumen esta configuración en tiempo real (`Settings` model).
+- [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código.
+- [x] **Sincronización Automática de IDs** — Migración automática de productos en el backend cuando se renombra un identificador de categoría, evitando desajustes en el catálogo.
 - [x] **Paginación Global y Rutas de Verdad** — Implementado sistema de paginación sincronizado con la URL en Inventario, Catálogo, Reservas, Usuarios, Perfil y Ajustes de Configuración. Incluye selector de cantidad de elementos y diseño premium.
 
 ### Infraestructura y Calidad

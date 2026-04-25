@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
-import { TrendingUp, Package, CalendarCheck, Users, AlertTriangle, DollarSign, Clock } from "lucide-react";
+import { TrendingUp, Package, CalendarCheck, Users, AlertTriangle, DollarSign, Clock, Info } from "lucide-react";
 
 export default function AdminDashboard() {
   const { token } = useAuth();
@@ -50,6 +50,26 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Dashboard</h1>
         <p className="text-muted-foreground mt-1">Resumen general de la plataforma.</p>
       </div>
+
+      {/* Onboarding Bar */}
+      <Card className="bg-primary text-primary-foreground border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Info className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-bold">¿Eres nuevo en el panel?</p>
+              <p className="text-sm text-primary-foreground/80">Aprende qué hace cada pestaña y cómo funcionan los cobros automáticos.</p>
+            </div>
+          </div>
+          <Button asChild variant="secondary" className="font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-none transition-all">
+            <Link to="/admin/business-rules?section=tabs">
+              Ver Guía Rápida
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
