@@ -83,6 +83,13 @@ admin.get("/dashboard", async (c) => {
 
 // --- Product CRUD ---
 
+const sizeVariantSchema = z.object({
+  size: z.string().min(1, "El nombre de la talla es requerido"),
+  stock: z.number().min(0, "El stock no puede ser negativo"),
+  price_override: z.number().min(0).optional().nullable(),
+  in_maintenance: z.boolean().default(false),
+});
+
 const productSchema = z.object({
   name: z.string().min(1, "El nombre del producto es requerido"),
   category: z.enum(
@@ -91,9 +98,7 @@ const productSchema = z.object({
   ),
   description: z.string().min(1, "La descripción es requerida"),
   rental_price: z.number().min(0, "El precio no puede ser negativo"),
-  stock: z.number().min(0).optional(),
-  condition_status: z.enum(["disponible", "mantenimiento", "alquilado"]).optional(),
-  size: z.string().optional(),
+  variants: z.array(sizeVariantSchema).min(1, "Debe haber al menos una talla/variante"),
   images: z.array(z.string()).optional(),
 });
 
@@ -101,7 +106,14 @@ const productSchema = z.object({
 admin.post("/products", async (c) => {
   const body = await c.req.json();
   const data = productSchema.parse(body); // ZodError → global handler
-  const product = await Product.create(data);
+
+  // Clean up null price_override values
+  const cleanedVariants = data.variants.map((v) => ({
+    ...v,
+    price_override: v.price_override ?? undefined,
+  }));
+
+  const product = await Product.create({ ...data, variants: cleanedVariants });
   return c.json({ product }, 201);
 });
 
@@ -109,6 +121,15 @@ admin.post("/products", async (c) => {
 admin.put("/products/:id", async (c) => {
   const body = await c.req.json();
   const data = productSchema.partial().parse(body); // ZodError → global handler
+
+  // Clean up null price_override values if variants are being updated
+  if (data.variants) {
+    data.variants = data.variants.map((v) => ({
+      ...v,
+      price_override: v.price_override ?? undefined,
+    }));
+  }
+
   const product = await Product.findByIdAndUpdate(c.req.param("id"), data, { new: true });
   if (!product) {
     throw new AppError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
@@ -168,4 +189,3 @@ admin.get("/users/:id/rentals", async (c) => {
 });
 
 export default admin;
-

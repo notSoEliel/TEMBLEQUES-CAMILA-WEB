@@ -98,7 +98,14 @@ export default function AdminReservations() {
                 <div className="flex items-center gap-4 flex-1">
                   {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-12 object-cover rounded-lg border-2 border-border" />}
                   <div>
-                    <h3 className="font-bold">{r.product_id?.name || "Producto"}</h3>
+                    <h3 className="font-bold">
+                      {r.product_id?.name || "Producto"}
+                      {r.selected_size && (
+                        <span className="ml-2 text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                          Talla: {r.selected_size}
+                        </span>
+                      )}
+                    </h3>
                     <p className="text-sm text-muted-foreground">{r.user_id?.name} ({r.user_id?.email})</p>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <Calendar className="h-3 w-3" />

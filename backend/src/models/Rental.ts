@@ -13,6 +13,7 @@ export type RentalStatus =
 export interface IRental extends Document {
   user_id: Types.ObjectId;
   product_id: Types.ObjectId;
+  selected_size: string;
   start_date: Date;
   end_date: Date;
   total: number;
@@ -28,6 +29,7 @@ const rentalSchema = new Schema<IRental>(
   {
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     product_id: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    selected_size: { type: String, required: true },
     start_date: { type: Date, required: true },
     end_date: { type: Date, required: true },
     total: { type: Number, required: true, min: 0 },
