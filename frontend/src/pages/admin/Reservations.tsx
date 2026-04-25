@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { adminApi } from "@/services/api";
+import { adminApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, RefreshCw } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -42,18 +44,43 @@ const TRANSITIONS: Record<string, string[]> = {
 
 export default function AdminReservations() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("");
+  
+  const [filter, setFilter] = useState(searchParams.get("status") || "");
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
-  useEffect(() => { loadRentals(); }, [filter]);
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => { loadRentals(); }, [searchParams]);
 
   const loadRentals = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+    const status = searchParams.get("status") || "";
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+    if (status !== filter) setFilter(status);
+
     setLoading(true);
     try {
-      const data = await adminApi.rentals(token!, filter || undefined);
-      setRentals(data.rentals);
+      const response = await adminApi.rentals(token!, { status: status || undefined, page, limit });
+      setRentals(response.data);
+      setPagination(response.pagination);
     } catch (err: any) {
       showError(err?.message || "No se pudieron cargar las reservas.", "generic");
     }
@@ -65,6 +92,33 @@ export default function AdminReservations() {
       await adminApi.updateRentalStatus(id, status, token!);
       loadRentals();
     } catch (err: any) { showError(err.message, "generic"); }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
+  };
+
+  const handleFilterChange = (f: string) => {
+    setFilter(f);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    if (f) newParams.set("status", f);
+    else newParams.delete("status");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   return (
@@ -80,7 +134,7 @@ export default function AdminReservations() {
 
       <div className="flex flex-wrap gap-2">
         {["", "pending", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"].map((f) => (
-          <Button key={f || "all"} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => setFilter(f)}>
+          <Button key={f || "all"} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => handleFilterChange(f)}>
             {f ? STATUS_LABELS[f] : "Todos"}
           </Button>
         ))}
@@ -93,84 +147,97 @@ export default function AdminReservations() {
       ) : rentals.length === 0 ? (
         <Card><CardContent className="p-8 text-center"><Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="font-bold">Sin reservas</p></CardContent></Card>
       ) : (
-        <div className="space-y-3">
-          {rentals.map((r) => (
-            <Card key={r._id}>
-              <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                  {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-12 object-cover rounded-lg border-2 border-border" />}
-                  <div>
-                    <h3 className="font-bold">
-                      {r.product_id?.name || "Producto"}
-                      {r.selected_size && (
-                        <span className="ml-2 text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                          Talla: {r.selected_size}
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{r.user_id?.name} ({r.user_id?.email})</p>
-                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
-                      <span className="font-bold text-primary ml-2">${r.total}</span>
-                    </div>
-
-                    {(r.deposit_status === "held" || r.deposit_status === "failed" || r.late_fee_status === "failed" || r.late_fee_status === "charged") && (
-                      <div className="mt-1 space-y-0.5 text-xs">
-                        {(r.deposit_status === "held" || r.deposit_status === "failed") && (
-                          <p className={r.deposit_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
-                            Depósito: {r.deposit_status === "held" ? "Hold activo" : "Fallido"}
-                          </p>
+        <>
+          <div className="space-y-3">
+            {rentals.map((r) => (
+              <Card key={r._id}>
+                <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 flex-1">
+                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-12 object-cover rounded-lg border-2 border-border" />}
+                    <div>
+                      <h3 className="font-bold">
+                        {r.product_id?.name || "Producto"}
+                        {r.selected_size && (
+                          <span className="ml-2 text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                            Talla: {r.selected_size}
+                          </span>
                         )}
-                        {(r.late_fee_status === "charged" || r.late_fee_status === "failed") && (
-                          <p className={r.late_fee_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
-                            Mora: {r.late_fee_status === "charged" ? "Cobrada" : "Fallida"}
-                          </p>
-                        )}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{r.user_id?.name} ({r.user_id?.email})</p>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
+                        <span className="font-bold text-primary ml-2">${r.total}</span>
                       </div>
+
+                      {(r.deposit_status === "held" || r.deposit_status === "failed" || r.late_fee_status === "failed" || r.late_fee_status === "charged") && (
+                        <div className="mt-1 space-y-0.5 text-xs">
+                          {(r.deposit_status === "held" || r.deposit_status === "failed") && (
+                            <p className={r.deposit_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                              Depósito: {r.deposit_status === "held" ? "Hold activo" : "Fallido"}
+                            </p>
+                          )}
+                          {(r.late_fee_status === "charged" || r.late_fee_status === "failed") && (
+                            <p className={r.late_fee_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+                              Mora: {r.late_fee_status === "charged" ? "Cobrada" : "Fallida"}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={STATUS_COLORS[r.status]} className="text-sm px-3 py-1">
+                      {STATUS_LABELS[r.status]}
+                    </Badge>
+                    
+                    {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
+                      <>
+                        <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block" />
+                        <div className="flex flex-wrap items-center gap-2">
+                          {TRANSITIONS[r.status].map((s) => {
+                            const isDestructive = s === "cancelled" || s === "damaged";
+                            const btn = (
+                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
+                                {ACTION_LABELS[s] || s}
+                              </Button>
+                            );
+
+                            if (isDestructive) {
+                              return (
+                                <ConfirmModal
+                                  key={s}
+                                  title={s === "cancelled" ? "Cancelar Reserva" : "Marcar como Dañado"}
+                                  description={`¿Estás seguro de que deseas cambiar el estado a ${STATUS_LABELS[s]}?`}
+                                  variant="destructive"
+                                  onConfirm={() => handleStatusChange(r._id, s)}
+                                >
+                                  {btn}
+                                </ConfirmModal>
+                              );
+                            }
+                            return btn;
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant={STATUS_COLORS[r.status]} className="text-sm px-3 py-1">
-                    {STATUS_LABELS[r.status]}
-                  </Badge>
-                  
-                  {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
-                    <>
-                      <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block" />
-                      <div className="flex flex-wrap items-center gap-2">
-                        {TRANSITIONS[r.status].map((s) => {
-                          const isDestructive = s === "cancelled" || s === "damaged";
-                          const btn = (
-                            <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
-                              {ACTION_LABELS[s] || s}
-                            </Button>
-                          );
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-                          if (isDestructive) {
-                            return (
-                              <ConfirmModal
-                                key={s}
-                                title={s === "cancelled" ? "Cancelar Reserva" : "Marcar como Dañado"}
-                                description={`¿Estás seguro de que deseas cambiar el estado a ${STATUS_LABELS[s]}?`}
-                                variant="destructive"
-                                onConfirm={() => handleStatusChange(r._id, s)}
-                              >
-                                {btn}
-                              </ConfirmModal>
-                            );
-                          }
-                          return btn;
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+          {pagination && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
+            />
+          )}
+        </>
       )}
     </div>
   );

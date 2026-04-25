@@ -30,6 +30,17 @@ El catálogo cuenta con un sistema de búsqueda y filtrado avanzado para optimiz
 - **Filtro por Disponibilidad de Fechas**: El catálogo oculta automáticamente los productos que ya están reservados para el rango de fechas seleccionado por el cliente.
 - **UX Premium**: Animaciones suaves con `framer-motion` para expandir los filtros, sin problemas de recorte (`overflow-hidden`) que estropeen el diseño neobrutalista.
 
+### Paginación Inteligente y Rutas de Verdad
+Para optimizar el rendimiento y la escalabilidad, la plataforma implementa un sistema de paginación global y consistente:
+- **Rutas de Verdad (URL Sync)**: La página actual (`page`) y la cantidad de elementos (`limit`) están SIEMPRE presentes en la URL. Esto permite recargar la página, navegar hacia adelante/atrás con el navegador y compartir enlaces manteniendo la vista exacta de cualquier lista.
+- **Selector de Cantidad**: Todas las listas paginadas incluyen un selector para cambiar el límite de elementos por página (ej. 5, 10, 20, 50).
+- **Estética Premium**: Diseño limpio integrado con `shadcn/ui`, evitando sombras y bordes excesivos para una experiencia de usuario moderna y profesional.
+- **Paginación Híbrida**: 
+  - **Server-side**: En el Catálogo, Inventario, Reservas y Usuarios para máxima eficiencia.
+  - **Client-side**: En el Perfil y Ajustes de Filtros para una respuesta instantánea en listas de configuración.
+- **Optimización de Grid**: En el Catálogo, los límites por página están optimizados para la cuadrícula visual (4, 8, 12, 20 productos) garantizando un diseño siempre equilibrado.
+- **UX Fluida**: El sistema realiza un scroll suave (`smooth scroll`) automático al inicio de la lista cada vez que cambia la página o el límite.
+
 ---
 
 ## Arquitectura
@@ -721,6 +732,7 @@ docker-compose up -d --force-recreate backend
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
 - [x] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
 - [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código. El catálogo y la creación de inventario consumen esta configuración en tiempo real (`Settings` model).
+- [x] **Paginación Global y Rutas de Verdad** — Implementado sistema de paginación sincronizado con la URL en Inventario, Catálogo, Reservas, Usuarios, Perfil y Ajustes de Configuración. Incluye selector de cantidad de elementos y diseño premium.
 
 ### Infraestructura y Calidad
 

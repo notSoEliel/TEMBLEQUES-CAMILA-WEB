@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { productsApi } from "@/services/api";
+import { productsApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
+import { Pagination } from "@/components/ui/Pagination";
 
 import { settingsApi } from "@/services/api";
 
@@ -19,12 +20,26 @@ function formatCurrency(amount: number): string {
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(searchParams.getAll("category") || []);
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
   const [endDate, setEndDate] = useState(searchParams.get("endDate") || "");
   const [selectedSizes, setSelectedSizes] = useState<string[]>(searchParams.getAll("size") || []);
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 12);
+  
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "12");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
+
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -47,19 +62,31 @@ export default function Catalog() {
 
   useEffect(() => {
     loadProducts();
-  }, [selectedCategories, startDate, endDate, selectedSizes]);
+  }, [selectedCategories, startDate, endDate, selectedSizes, searchParams]); // Depend on searchParams for real routes
 
   const loadProducts = async (searchTerm?: string) => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 12;
+    
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
-      const params: Record<string, string | string[]> = {};
+      const params: Record<string, any> = {
+        page,
+        limit
+      };
       if (selectedCategories.length > 0) params.category = selectedCategories;
       if (searchTerm || search) params.search = searchTerm ?? search;
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       if (selectedSizes.length > 0) params.size = selectedSizes;
-      const data = await productsApi.list(params);
-      setProducts(data.products);
+      
+      const response = await productsApi.list(params);
+      setProducts(response.data);
+      setPagination(response.pagination);
     } catch (err) {
       console.error("Error loading products:", err);
     }
@@ -68,7 +95,15 @@ export default function Catalog() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    resetPage();
     loadProducts(search);
+  };
+
+  const resetPage = () => {
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const toggleCategory = (cat: string) => {
@@ -76,9 +111,12 @@ export default function Catalog() {
       ? selectedCategories.filter(x => x !== cat) 
       : [...selectedCategories, cat];
     setSelectedCategories(newCats);
+    
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("category");
     newCats.forEach(c => newParams.append("category", c));
+    newParams.set("page", "1"); // Reset page
+    setCurrentPage(1);
     setSearchParams(newParams);
   };
 
@@ -89,6 +127,8 @@ export default function Catalog() {
     const newParams = new URLSearchParams(searchParams);
     if (val) newParams.set(type === 'start' ? 'startDate' : 'endDate', val);
     else newParams.delete(type === 'start' ? 'startDate' : 'endDate');
+    newParams.set("page", "1"); // Reset page
+    setCurrentPage(1);
     setSearchParams(newParams);
   };
 
@@ -100,6 +140,8 @@ export default function Catalog() {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("size");
     newSizes.forEach(size => newParams.append("size", size));
+    newParams.set("page", "1"); // Reset page
+    setCurrentPage(1);
     setSearchParams(newParams);
   };
 
@@ -107,6 +149,25 @@ export default function Catalog() {
     setSelectedSizes([]);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("size");
+    newParams.set("page", "1"); // Reset page
+    setCurrentPage(1);
+    setSearchParams(newParams);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
     setSearchParams(newParams);
   };
 
@@ -234,18 +295,18 @@ export default function Catalog() {
                   <div className="max-h-56 overflow-y-auto p-2 space-y-3">
                      {sizeGroups.map((group) => (
                        <div key={group.label}>
-                         <h4 className="text-[10px] font-bold text-muted-foreground mb-1 px-2 uppercase tracking-wider">{group.label}</h4>
-                         <div className="space-y-1">
-                           {group.sizes.map(s => (
-                             <label key={s} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded transition-colors">
-                               <Checkbox 
-                                 checked={selectedSizes.includes(s)} 
-                                 onCheckedChange={() => toggleSize(s)} 
-                               />
-                               <span className="text-sm font-medium">{s}</span>
-                             </label>
-                           ))}
-                         </div>
+                          <h4 className="text-[10px] font-bold text-muted-foreground mb-1 px-2 uppercase tracking-wider">{group.label}</h4>
+                          <div className="space-y-1">
+                            {group.sizes.map(s => (
+                              <label key={s} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded transition-colors">
+                                <Checkbox 
+                                  checked={selectedSizes.includes(s)} 
+                                  onCheckedChange={() => toggleSize(s)} 
+                                />
+                                <span className="text-sm font-medium">{s}</span>
+                              </label>
+                            ))}
+                          </div>
                        </div>
                      ))}
                   </div>
@@ -313,65 +374,79 @@ export default function Catalog() {
           <p className="text-muted-foreground">Intenta con otros filtros o términos de búsqueda.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map((product) => {
-            const { min, max, hasRange } = getProductPriceInfo(product);
-            const sizes = getAvailableSizes(product);
-            const available = isProductAvailable(product);
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((product) => {
+              const { min, max, hasRange } = getProductPriceInfo(product);
+              const sizes = getAvailableSizes(product);
+              const available = isProductAvailable(product);
 
-            return (
-              <Link key={product._id} to={`/product/${product._id}`}>
-                <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-1">
-                  <div className="aspect-[3/4] overflow-hidden bg-muted relative">
-                    <img
-                      src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    {!available && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Badge variant="destructive" className="text-sm font-bold">Agotado</Badge>
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4 space-y-2">
-                    <Badge variant="outline" className="text-xs">
-                      {categories.find(c => c.id === product.category)?.label || product.category}
-                    </Badge>
-                    <h3 className="font-bold line-clamp-1">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-lg font-bold text-primary">
-                        {hasRange
-                          ? `${formatCurrency(min)} – ${formatCurrency(max)}`
-                          : `${formatCurrency(min)}/día`
-                        }
-                      </span>
+              return (
+                <Link key={product._id} to={`/product/${product._id}`}>
+                  <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-1">
+                    <div className="aspect-[3/4] overflow-hidden bg-muted relative">
+                      <img
+                        src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                      {!available && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <Badge variant="destructive" className="text-sm font-bold">Agotado</Badge>
+                        </div>
+                      )}
                     </div>
-                    {/* Size badges */}
-                    {sizes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {sizes.slice(0, 5).map((size) => (
-                          <span
-                            key={size}
-                            className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-medium"
-                          >
-                            {size}
-                          </span>
-                        ))}
-                        {sizes.length > 5 && (
-                          <span className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
-                            +{sizes.length - 5}
-                          </span>
-                        )}
+                    <CardContent className="p-4 space-y-2">
+                      <Badge variant="outline" className="text-xs">
+                        {categories.find(c => c.id === product.category)?.label || product.category}
+                      </Badge>
+                      <h3 className="font-bold line-clamp-1">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-lg font-bold text-primary">
+                          {hasRange
+                            ? `${formatCurrency(min)} – ${formatCurrency(max)}`
+                            : `${formatCurrency(min)}/día`
+                          }
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+                      {/* Size badges */}
+                      {sizes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {sizes.slice(0, 5).map((size) => (
+                            <span
+                              key={size}
+                              className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-medium"
+                            >
+                              {size}
+                            </span>
+                          ))}
+                          {sizes.length > 5 && (
+                            <span className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
+                              +{sizes.length - 5}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+          
+          {pagination && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
+              limitOptions={[4, 8, 12, 20]}
+            />
+          )}
+        </>
       )}
     </div>
   );

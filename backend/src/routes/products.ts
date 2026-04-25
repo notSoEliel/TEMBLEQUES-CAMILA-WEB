@@ -3,6 +3,7 @@ import { Product } from "../models/Product.js";
 import { Rental } from "../models/Rental.js";
 import { getBookedDates } from "../services/availability.js";
 import { AppError } from "../lib/errors.js";
+import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
 
 const products = new Hono();
 
@@ -11,6 +12,7 @@ products.get("/", async (c) => {
   const { minPrice, maxPrice, search, startDate, endDate } = c.req.query();
   const sizes = c.req.queries("size");
   const categories = c.req.queries("category");
+  const { page, limit, skip } = getPaginationParams(c);
 
   const filter: any = {};
 
@@ -25,41 +27,52 @@ products.get("/", async (c) => {
     filter.name = { $regex: search, $options: "i" };
   }
 
-  let productsList = await Product.find(filter).sort({ createdAt: -1 });
+  // If there's NO date filter, we can paginate directly in the DB
+  if (!startDate || !endDate) {
+    const [productsList, total] = await Promise.all([
+      Product.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Product.countDocuments(filter),
+    ]);
 
-  if (startDate && endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    const rentals = await Rental.find({
-      status: { $nin: ["cancelled", "returned", "damaged"] },
-      start_date: { $lte: end },
-      end_date: { $gte: start },
-    }).select("product_id selected_size");
-
-    const conflicts: Record<string, Record<string, number>> = {};
-    for (const r of rentals) {
-      const pid = r.product_id.toString();
-      const sz = r.selected_size || "Único";
-      if (!conflicts[pid]) conflicts[pid] = {};
-      conflicts[pid][sz] = (conflicts[pid][sz] || 0) + 1;
-    }
-
-    productsList = productsList.filter((product) => {
-      const pid = product._id.toString();
-      const pConflicts = conflicts[pid] || {};
-
-      return product.variants.some((v) => {
-        if (sizes && sizes.length > 0 && !sizes.includes(v.size)) return false;
-        if (v.in_maintenance || v.stock <= 0) return false;
-
-        const conflictingCount = pConflicts[v.size] || 0;
-        return conflictingCount < v.stock;
-      });
-    });
+    return c.json(createPaginatedResponse(productsList, total, page, limit));
   }
 
-  return c.json({ products: productsList });
+  // If there IS a date filter, we currently filter in memory
+  // Optimization: Still use initial DB filter
+  let allMatchingProducts = await Product.find(filter).sort({ createdAt: -1 });
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  const rentals = await Rental.find({
+    status: { $nin: ["cancelled", "returned", "damaged"] },
+    start_date: { $lte: end },
+    end_date: { $gte: start },
+  }).select("product_id selected_size");
+
+  const conflicts: Record<string, Record<string, number>> = {};
+  for (const r of rentals) {
+    const pid = r.product_id.toString();
+    const sz = r.selected_size || "Único";
+    if (!conflicts[pid]) conflicts[pid] = {};
+    conflicts[pid][sz] = (conflicts[pid][sz] || 0) + 1;
+  }
+
+  const filteredProducts = allMatchingProducts.filter((product) => {
+    const pid = product._id.toString();
+    const pConflicts = conflicts[pid] || {};
+
+    return product.variants.some((v) => {
+      if (sizes && sizes.length > 0 && !sizes.includes(v.size)) return false;
+      if (v.in_maintenance || v.stock <= 0) return false;
+
+      const conflictingCount = pConflicts[v.size] || 0;
+      return conflictingCount < v.stock;
+    });
+  });
+
+  const paginatedList = filteredProducts.slice(skip, skip + limit);
+  return c.json(createPaginatedResponse(paginatedList, filteredProducts.length, page, limit));
 });
 
 // GET /api/products/:id - Single product

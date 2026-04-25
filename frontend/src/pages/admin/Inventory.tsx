@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { productsApi, adminApi, settingsApi } from "@/services/api";
+import { productsApi, adminApi, settingsApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,8 @@ import SizeManager, { type SizeVariant } from "@/components/SizeManager";
 import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
 import { Plus, Pencil, Trash2, X, Loader2, Eye } from "lucide-react";
-
-
+import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 interface ProductForm {
   name: string;
@@ -35,7 +35,9 @@ const emptyForm: ProductForm = {
 
 export default function AdminInventory() {
   const { token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,17 +45,29 @@ export default function AdminInventory() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
+  
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
   const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
   const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
 
-  // Auto-resizing textarea ref
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
 
   useEffect(() => { 
     loadSettings();
     loadProducts(); 
-  }, []);
+  }, [searchParams]);
 
   const loadSettings = async () => {
     try {
@@ -69,7 +83,6 @@ export default function AdminInventory() {
     }
   };
 
-  // Auto-resize textarea when description changes
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -78,10 +91,18 @@ export default function AdminInventory() {
   }, [form.description, showForm]);
 
   const loadProducts = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
     setLoading(true);
     try {
-      const data = await productsApi.list();
-      setProducts(data.products);
+      const response = await productsApi.list({ page, limit });
+      setProducts(response.data);
+      setPagination(response.pagination);
     } catch (err) { console.error(err); }
     setLoading(false);
   };
@@ -136,6 +157,7 @@ export default function AdminInventory() {
         await adminApi.updateProduct(editingId, payload, token!);
       } else {
         await adminApi.createProduct(payload, token!);
+        handlePageChange(1); // Go to first page to see the new product
       }
       resetForm();
       loadProducts();
@@ -149,6 +171,23 @@ export default function AdminInventory() {
       await adminApi.deleteProduct(id, token!);
       loadProducts();
     } catch (err) { console.error(err); }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const openPreviewFromForm = () => {
@@ -204,7 +243,6 @@ export default function AdminInventory() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Row 1: Name + Category */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nombre</Label>
@@ -222,7 +260,6 @@ export default function AdminInventory() {
                 </div>
               </div>
 
-              {/* Description — auto-resizing textarea */}
               <div className="space-y-2">
                 <Label>Descripción</Label>
                 <textarea
@@ -236,7 +273,6 @@ export default function AdminInventory() {
                 />
               </div>
 
-              {/* Base price */}
               <div className="space-y-2 max-w-xs">
                 <Label>Precio base por día ($)</Label>
                 <Input
@@ -251,7 +287,6 @@ export default function AdminInventory() {
                 </p>
               </div>
 
-              {/* Deposit Settings */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border p-4 rounded-lg bg-muted/20">
                 <div className="space-y-2">
                   <Label>Depósito Fijo</Label>
@@ -296,7 +331,6 @@ export default function AdminInventory() {
 
               <Separator />
 
-              {/* Size Manager */}
               <SizeManager
                 category={form.category}
                 sizeGroups={sizeGroups}
@@ -307,13 +341,11 @@ export default function AdminInventory() {
 
               <Separator />
 
-              {/* Image Gallery Manager */}
               <ImageGalleryManager
                 images={form.images}
                 onChange={(images) => setForm({ ...form, images })}
               />
 
-              {/* Actions */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button type="submit" disabled={saving} className="flex-1 sm:flex-none">
                   {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
@@ -344,51 +376,64 @@ export default function AdminInventory() {
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
-          {products.map((product) => {
-            const stock = totalStock(product);
-            const range = priceRange(product);
-            const sizeCount = (product.variants || []).length;
-            return (
-              <Card key={product._id}>
-                <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={product.images?.[0] || "https://picsum.photos/seed/default/100/100"}
-                      alt=""
-                      className="w-14 h-14 object-cover rounded-lg border-2 border-border"
-                    />
-                    <div>
-                      <h3 className="font-bold">{product.name}</h3>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{categories.find(c => c.id === product.category)?.label || product.category}</Badge>
-                        <span className="text-sm text-primary font-bold">
-                          {range.min === range.max
-                            ? `$${range.min}/día`
-                            : `$${range.min} – $${range.max}/día`}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          Stock: {stock} · {sizeCount} talla{sizeCount !== 1 ? "s" : ""}
-                        </span>
+        <>
+          <div className="space-y-3">
+            {products.map((product) => {
+              const stock = totalStock(product);
+              const range = priceRange(product);
+              const sizeCount = (product.variants || []).length;
+              return (
+                <Card key={product._id}>
+                  <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={product.images?.[0] || "https://picsum.photos/seed/default/100/100"}
+                        alt=""
+                        className="w-14 h-14 object-cover rounded-lg border-2 border-border"
+                      />
+                      <div>
+                        <h3 className="font-bold">{product.name}</h3>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <Badge variant="outline" className="text-xs">{categories.find(c => c.id === product.category)?.label || product.category}</Badge>
+                          <span className="text-sm text-primary font-bold">
+                            {range.min === range.max
+                              ? `$${range.min}/día`
+                              : `$${range.min} – $${range.max}/día`}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Stock: {stock} · {sizeCount} talla{sizeCount !== 1 ? "s" : ""}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openPreviewFromProduct(product)}>
-                      <Eye className="h-3.5 w-3.5 mr-1" />Vista Previa
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />Editar
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(product._id)}>
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />Eliminar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openPreviewFromProduct(product)}>
+                        <Eye className="h-3.5 w-3.5 mr-1" />Vista Previa
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />Editar
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(product._id)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />Eliminar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {pagination && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
+            />
+          )}
+        </>
       )}
 
       {/* Preview Modal */}

@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { rentalsApi } from "@/services/api";
+import { rentalsApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { User, Calendar, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -34,18 +36,66 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function Profile() {
   const { user, token } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
+
+  useEffect(() => {
+    // Ensure page and limit are always in the URL
+    if (!searchParams.get("page") || !searchParams.get("limit")) {
+      const newParams = new URLSearchParams(searchParams);
+      if (!searchParams.get("page")) newParams.set("page", "1");
+      if (!searchParams.get("limit")) newParams.set("limit", "10");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
 
   useEffect(() => {
     if (token) {
-      rentalsApi.my(token).then((data) => {
-        setRentals(data.rentals);
-        setLoading(false);
-      }).catch(() => setLoading(false));
+      loadRentals();
     }
-  }, [token]);
+  }, [token, searchParams]);
+
+  const loadRentals = async () => {
+    const page = Number(searchParams.get("page")) || 1;
+    const limit = Number(searchParams.get("limit")) || 10;
+
+    // Update local state to match URL
+    if (page !== currentPage) setCurrentPage(page);
+    if (limit !== currentLimit) setCurrentLimit(limit);
+
+    setLoading(true);
+    try {
+      const response = await rentalsApi.my(token!, { page, limit });
+      setRentals(response.data);
+      setPagination(response.pagination);
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("page", String(page));
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLimitChange = (limit: number) => {
+    setCurrentLimit(limit);
+    setCurrentPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("limit", String(limit));
+    newParams.set("page", "1");
+    setSearchParams(newParams);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
@@ -91,85 +141,98 @@ export default function Profile() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {rentals.map((rental) => (
-            <Card key={rental._id}>
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    {rental.product_id?.images?.[0] && (
-                      <img
-                        src={rental.product_id.images[0]}
-                        alt=""
-                        className="w-16 h-16 object-cover rounded-lg border-2 border-border"
-                      />
-                    )}
-                    <div>
-                      <h3 className="font-bold">{rental.product_id?.name || "Producto"}</h3>
-                      {rental.selected_size && (
-                        <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                          Talla: {rental.selected_size}
-                        </span>
+        <>
+          <div className="space-y-4">
+            {rentals.map((rental) => (
+              <Card key={rental._id}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      {rental.product_id?.images?.[0] && (
+                        <img
+                          src={rental.product_id.images[0]}
+                          alt=""
+                          className="w-16 h-16 object-cover rounded-lg border-2 border-border"
+                        />
                       )}
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {new Date(rental.start_date).toLocaleDateString("es-PA")} -{" "}
-                        {new Date(rental.end_date).toLocaleDateString("es-PA")}
+                      <div>
+                        <h3 className="font-bold">{rental.product_id?.name || "Producto"}</h3>
+                        {rental.selected_size && (
+                          <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                            Talla: {rental.selected_size}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {new Date(rental.start_date).toLocaleDateString("es-PA")} -{" "}
+                          {new Date(rental.end_date).toLocaleDateString("es-PA")}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold text-primary">${rental.total}</span>
+                      <Badge variant={STATUS_COLORS[rental.status] || "outline"}>
+                        {STATUS_LABELS[rental.status] || rental.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-primary">${rental.total}</span>
-                    <Badge variant={STATUS_COLORS[rental.status] || "outline"}>
-                      {STATUS_LABELS[rental.status] || rental.status}
-                    </Badge>
-                  </div>
-                </div>
 
-                {/* Actions for pending rentals */}
-                {(rental.status === "pending" || rental.status === "paid") && (
-                  <div className="mt-4 pt-4 border-t border-border flex justify-end gap-3">
-                    <ConfirmModal
-                      title="Cancelar Reserva"
-                      description="¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer."
-                      confirmText="Sí, cancelar"
-                      variant="destructive"
-                      onConfirm={() => {
-                        rentalsApi.cancel(rental._id, token!)
-                          .then(() => {
-                            // Optimistically update UI
-                            setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
-                          })
-                          .catch(err => showError(err.message, "generic"));
-                      }}
-                    >
-                      <Button variant="outline" size="sm">
-                        Cancelar
-                      </Button>
-                    </ConfirmModal>
-                    {rental.status === "pending" && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          import("@/services/api").then(({ stripeApi }) => {
-                            stripeApi.createCheckoutSession(rental._id, token!)
-                              .then((res) => {
-                                if (res.url) window.location.href = res.url;
-                                else window.location.href = `/confirmation?rental=${rental._id}`;
-                              })
-                              .catch(err => showError(err.message, "generic"));
-                          });
+                  {/* Actions for pending rentals */}
+                  {(rental.status === "pending" || rental.status === "paid") && (
+                    <div className="mt-4 pt-4 border-t border-border flex justify-end gap-3">
+                      <ConfirmModal
+                        title="Cancelar Reserva"
+                        description="¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer."
+                        confirmText="Sí, cancelar"
+                        variant="destructive"
+                        onConfirm={() => {
+                          rentalsApi.cancel(rental._id, token!)
+                            .then(() => {
+                              // Optimistically update UI
+                              setRentals(r => r.map(x => x._id === rental._id ? { ...x, status: "cancelled" } : x));
+                            })
+                            .catch(err => showError(err.message, "generic"));
                         }}
                       >
-                        Pagar ahora
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                        <Button variant="outline" size="sm">
+                          Cancelar
+                        </Button>
+                      </ConfirmModal>
+                      {rental.status === "pending" && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            import("@/services/api").then(({ stripeApi }) => {
+                              stripeApi.createCheckoutSession(rental._id, token!)
+                                .then((res) => {
+                                  if (res.url) window.location.href = res.url;
+                                  else window.location.href = `/confirmation?rental=${rental._id}`;
+                                })
+                                .catch(err => showError(err.message, "generic"));
+                            });
+                          }}
+                        >
+                          Pagar ahora
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {pagination && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={handlePageChange}
+              limit={currentLimit}
+              onLimitChange={handleLimitChange}
+              totalResults={pagination.total}
+            />
+          )}
+        </>
       )}
     </div>
   );
