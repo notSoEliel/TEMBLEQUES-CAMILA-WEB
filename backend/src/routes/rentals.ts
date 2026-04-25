@@ -4,6 +4,7 @@ import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { createRental } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
+import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
 
 const rentals = new Hono<{ Variables: AuthVariables }>();
 
@@ -41,10 +42,19 @@ rentals.post("/", async (c) => {
 // GET /api/rentals/my - My reservations
 rentals.get("/my", async (c) => {
   const user = c.get("user") as any;
-  const myRentals = await Rental.find({ user_id: user._id })
-    .populate("product_id", "name category images rental_price variants")
-    .sort({ createdAt: -1 });
-  return c.json({ rentals: myRentals });
+  const { page, limit, skip } = getPaginationParams(c);
+  const filter = { user_id: user._id };
+
+  const [myRentals, total] = await Promise.all([
+    Rental.find(filter)
+      .populate("product_id", "name category images rental_price variants")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Rental.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(myRentals, total, page, limit));
 });
 
 // GET /api/rentals/:id - Single rental

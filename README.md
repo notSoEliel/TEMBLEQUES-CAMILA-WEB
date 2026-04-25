@@ -30,6 +30,14 @@ El catálogo cuenta con un sistema de búsqueda y filtrado avanzado para optimiz
 - **Filtro por Disponibilidad de Fechas**: El catálogo oculta automáticamente los productos que ya están reservados para el rango de fechas seleccionado por el cliente.
 - **UX Premium**: Animaciones suaves con `framer-motion` para expandir los filtros, sin problemas de recorte (`overflow-hidden`) que estropeen el diseño neobrutalista.
 
+### Paginación Inteligente
+Para optimizar el rendimiento y la escalabilidad, la plataforma implementa un sistema de paginación global y consistente:
+- **Navegación Fluida**: Componente visual Neobrutalista que permite saltar entre páginas, ver el total de resultados y navegar secuencialmente.
+- **Sincronización con URL**: La página actual se guarda en los `URLSearchParams` (`?page=2`), permitiendo recargar la página o compartir enlaces manteniendo la vista exacta.
+- **Optimización de Base de Datos**: El backend utiliza los operadores `skip` y `limit` de MongoDB para traer solo los datos necesarios, reduciendo drásticamente el consumo de memoria y ancho de banda.
+- **Reseteo Inteligente**: Al cambiar filtros o términos de búsqueda, el sistema detecta el cambio y reinicia automáticamente la vista a la primera página para garantizar la relevancia de los resultados.
+- **Preservación de Estado**: Al cambiar de página, el sistema realiza un scroll suave (`smooth scroll`) hacia la parte superior de la lista, mejorando la usabilidad.
+
 ---
 
 ## Arquitectura
@@ -721,6 +729,7 @@ docker-compose up -d --force-recreate backend
 - [ ] **Notificaciones** — Emails de confirmación de reserva, recordatorios de devolución y alertas al admin de nuevas reservas.
 - [x] **Filtro por fecha en catálogo** — Permitir al usuario filtrar el catálogo por fechas disponibles para ver solo los productos que puede reservar en ese rango.
 - [x] **Configuración dinámica de Filtros (Categorías y Tallas)** — Panel de administrador avanzado (`/admin/settings`) que permite a los admins crear, reordenar y configurar dinámicamente las categorías disponibles y los grupos de tallas sin tocar código. El catálogo y la creación de inventario consumen esta configuración en tiempo real (`Settings` model).
+- [x] **Paginación Global** — Implementar sistema de paginación en inventario, catálogo, reservas, usuarios y configuraciones para manejar grandes volúmenes de datos.
 
 ### Infraestructura y Calidad
 

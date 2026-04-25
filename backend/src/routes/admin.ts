@@ -7,6 +7,7 @@ import { User } from "../models/User.js";
 import { updateRentalStatus } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
 import { getPanamaTodayUTC } from "../services/payment-rules.js";
+import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
 
 const admin = new Hono<{ Variables: AuthVariables }>();
 
@@ -165,14 +166,21 @@ admin.delete("/products/:id", async (c) => {
 // GET /api/admin/rentals
 admin.get("/rentals", async (c) => {
   const { status } = c.req.query();
+  const { page, limit, skip } = getPaginationParams(c);
   const filter: any = {};
   if (status) filter.status = status;
 
-  const allRentals = await Rental.find(filter)
-    .populate("user_id", "name email phone")
-    .populate("product_id", "name category images")
-    .sort({ createdAt: -1 });
-  return c.json({ rentals: allRentals });
+  const [allRentals, total] = await Promise.all([
+    Rental.find(filter)
+      .populate("user_id", "name email phone")
+      .populate("product_id", "name category images")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Rental.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(allRentals, total, page, limit));
 });
 
 // PATCH /api/admin/rentals/:id/status
@@ -190,16 +198,32 @@ admin.patch("/rentals/:id/status", async (c) => {
 
 // GET /api/admin/users
 admin.get("/users", async (c) => {
-  const users = await User.find({ role: "client" }).sort({ createdAt: -1 });
-  return c.json({ users });
+  const { page, limit, skip } = getPaginationParams(c);
+  const filter = { role: "client" };
+
+  const [users, total] = await Promise.all([
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    User.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(users, total, page, limit));
 });
 
 // GET /api/admin/users/:id/rentals
 admin.get("/users/:id/rentals", async (c) => {
-  const userRentals = await Rental.find({ user_id: c.req.param("id") })
-    .populate("product_id", "name category images")
-    .sort({ createdAt: -1 });
-  return c.json({ rentals: userRentals });
+  const { page, limit, skip } = getPaginationParams(c);
+  const filter = { user_id: c.req.param("id") };
+
+  const [userRentals, total] = await Promise.all([
+    Rental.find(filter)
+      .populate("product_id", "name category images")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Rental.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(userRentals, total, page, limit));
 });
 
 export default admin;

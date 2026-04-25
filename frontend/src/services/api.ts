@@ -1,5 +1,17 @@
 const API_URL = "/api";
 
+export interface PaginationMetadata {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationMetadata;
+}
+
 interface ApiOptions {
   method?: string;
   body?: any;
@@ -15,8 +27,6 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 
   let currentToken = token;
   
-  // Clerk tokens expire quickly. If the user stays on the page, the token in useAuth state becomes stale.
-  // We intercept the request here to always fetch a fresh token directly from the Clerk instance.
   if (typeof window !== "undefined" && (window as any).Clerk?.session) {
     try {
       const freshToken = await (window as any).Clerk.session.getToken();
@@ -38,11 +48,9 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    // Network error (servidor caído, sin conexión)
     throw new Error("No se pudo conectar con el servidor. Verifica tu conexión a internet.");
   }
 
-  // Try to parse JSON — some error responses (503, nginx pages) are plain HTML
   let data: any;
   try {
     data = await response.json();
@@ -63,8 +71,7 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 }
 
 
-// Auth — login, register y gestión de sesión los maneja Clerk.
-// Solo mantenemos un helper para obtener el perfil de MongoDB si se necesita fuera del hook.
+// Auth
 export const authApi = {
   me: (token: string) =>
     api<{ user: any }>("/auth/me", { token }),
@@ -72,19 +79,19 @@ export const authApi = {
 
 // Products
 export const productsApi = {
-  list: (params?: Record<string, string | string[]>) => {
+  list: (params?: Record<string, any>) => {
     const searchParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (Array.isArray(value)) {
           value.forEach(v => searchParams.append(key, v));
-        } else if (value !== undefined) {
-          searchParams.append(key, value as string);
+        } else if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
         }
       });
     }
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    return api<{ products: any[] }>(`/products${query}`);
+    return api<PaginatedResponse<any>>(`/products${query}`);
   },
 
   get: (id: string) =>
@@ -104,8 +111,8 @@ export const rentalsApi = {
   create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
-  my: (token: string) =>
-    api<{ rentals: any[] }>("/rentals/my", { token }),
+  my: (token: string, page = 1, limit = 10) =>
+    api<PaginatedResponse<any>>(`/rentals/my?page=${page}&limit=${limit}`, { token }),
 
   get: (id: string, token: string) =>
     api<{ rental: any }>(`/rentals/${id}`, { token }),
@@ -148,20 +155,24 @@ export const adminApi = {
     api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
 
   // Rentals
-  rentals: (token: string, status?: string) => {
-    const query = status ? `?status=${status}` : "";
-    return api<{ rentals: any[] }>(`/admin/rentals${query}`, { token });
+  rentals: (token: string, params: { status?: string; page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.set("status", params.status);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<any>>(`/admin/rentals${query}`, { token });
   },
 
   updateRentalStatus: (id: string, status: string, token: string) =>
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
 
   // Users
-  users: (token: string) =>
-    api<{ users: any[] }>("/admin/users", { token }),
+  users: (token: string, page = 1, limit = 10) =>
+    api<PaginatedResponse<any>>(`/admin/users?page=${page}&limit=${limit}`, { token }),
 
-  userRentals: (userId: string, token: string) =>
-    api<{ rentals: any[] }>(`/admin/users/${userId}/rentals`, { token }),
+  userRentals: (userId: string, token: string, page = 1, limit = 10) =>
+    api<PaginatedResponse<any>>(`/admin/users/${userId}/rentals?page=${page}&limit=${limit}`, { token }),
 };
 
 // Settings
