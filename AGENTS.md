@@ -1,60 +1,112 @@
 # Tembleques Camila - Project Context for AI Agents (AGENTS.md)
 
-Este archivo sirve como el documento de contexto principal (System Prompt/Project Context) para cualquier agente de IA (Gemini, Claude, etc.) que trabaje en el proyecto. Debes leer y entender este archivo para mantener la consistencia en el código, el diseño y la arquitectura.
+Este archivo sirve como el documento de contexto principal (System Prompt/Project Context) para cualquier agente de IA. Este documento define la identidad, arquitectura y reglas estrictas del proyecto.
 
-## 1. Resumen del Proyecto
-**Tembleques Camila** es una plataforma web B2C enfocada en el alquiler de vestimenta típica panameña (polleras, vestuario masculino, infantil) y accesorios folclóricos (tembleques, joyería). 
-- **Objetivo**: Digitalizar el proceso de alquiler, reducir gestiones manuales y ofrecer una experiencia de usuario (UX) premium, intuitiva y moderna.
-- **Flujo Principal**: Landing -> Catálogo (Filtros) -> Detalle de Producto -> Selección de Fechas -> Aceptación de Términos (Obligatorio) -> Pago con Stripe -> Confirmación.
+---
 
-## 2. Tech Stack
+## 1. Contexto del Proyecto
 
-### Frontend (Directorio `/frontend`)
-- **Core**: React 19, Vite, TypeScript.
-- **Enrutamiento**: React Router v7.
-- **Estilos**: Tailwind CSS v4, Lucide React (Iconos).
-- **Componentes UI**: Radix UI (sin cabeza), diseño propio Neobrutalista (bordes marcados, alto contraste).
-- **Autenticación**: Clerk (`@clerk/clerk-react`) totalmente localizado en español.
-- **Gestión de Estado**: Principalmente estado local de React, contextos y hooks personalizados.
+### Identidad
+**Tembleques Camila** es una plataforma e-commerce B2C premium para el alquiler de vestimenta folclórica panameña. El objetivo es digitalizar un proceso tradicional con una experiencia de usuario moderna y fluida.
 
-### Backend (Directorio `/backend`)
-- **Core**: Bun (Runtime), Hono (Web Framework), TypeScript.
-- **Base de Datos**: MongoDB (usando Mongoose).
-- **Validación**: Zod.
-- **Pagos**: Stripe API.
-- **Autenticación/Webhooks**: Clerk Backend SDK y Svix (para verificar webhooks).
-- **Ejecución Local**: `bun run dev`, `bun run start`, `bun run tunnel` (para exponer webhooks de Stripe/Clerk localmente).
+### Stack Tecnológico Principal
+- **Frontend**: React 19 + Vite + TypeScript + React Router v7.
+- **Backend**: Bun + Hono + TypeScript + MongoDB (Mongoose).
+- **Estilos**: Tailwind CSS v4 + Lucide React.
+- **Componentes**: Radix UI (Headless) + Diseño Neobrutalista propio.
+- **Servicios**: Clerk (Auth) + Stripe (Pagos) + Svix (Webhooks).
 
-### Infraestructura y Testing
-- **Contenedores**: Docker Compose (Frontend, Backend, MongoDB).
-- **Testing**: Playwright (E2E Testing), Bun test (Unit Testing).
+---
 
-## 3. Arquitectura de Base de Datos (MongoDB)
-La base de datos se centra en las siguientes colecciones principales:
-- **Users**: Información sincronizada desde Clerk mediante webhooks (`role`, `email`, etc.).
-- **Products**: Inventario con control de stock, tallas, estado y calendario de disponibilidad (`availability_calendar`).
-- **Rentals**: El núcleo del negocio. Rastrea fechas, totales, estados de reserva (`pending`, `paid`, `confirmed`, `delivered`, `returned`, etc.) y estado de pago.
-- **TermsAcceptance**: Registro auditable de que el usuario aceptó los términos de responsabilidad por daños/retrasos (IP, User Agent, Timestamp) vinculado a un `rental_id`.
+## 2. Reglas Estrictas de Desarrollo [RULES]
 
-## 4. Reglas de Diseño y UI (CRÍTICO)
-- **Estilo Visual**: El proyecto utiliza una estética Neobrutalista / Minimalista-Premium. Los bordes deben ser definidos (ej. `border-2 border-black`), sombras sólidas (`shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]` o equivalentes definidos en Tailwind).
-- **No usar placeholders**: Usa iconos o colores de fondo elegantes en lugar de imágenes rotas.
-- **Idioma**: Toda la interfaz de usuario, mensajes de error, notificaciones y correos deben estar estrictamente en **Español** con ortografía y acentuación perfectas.
-- **UX**: Priorizar "Mobile First". El proceso de reserva debe ser extremadamente fluido y realizable en menos de 3 minutos.
+### [RULE] Gestión de Reglas (META-RULE)
+> [!IMPORTANT]
+> **Cada vez que se solicite añadir una nueva regla al proyecto:**
+> 1. Crear un nuevo archivo `.md` descriptivo en la carpeta `.agents/rules/` (ej. `17-nueva-regla.md`).
+> 2. Actualizar este archivo (`GEMINI.md`) y `AGENTS.md` para incluir la nueva regla en la sección correspondiente. **Nunca omitir este paso.**
 
-## 5. Integraciones Críticas
-- **Stripe**: Es obligatorio que el estado de la renta cambie de `pending` a `paid`/`confirmed` únicamente tras la confirmación del pago mediante webhooks de Stripe.
-- **Clerk**: La gestión de usuarios y roles (admin vs cliente) está delegada a Clerk. El backend debe sincronizar a los usuarios escuchando los eventos vía webhook (con Svix).
-- **Términos y Condiciones**: Es estrictamente obligatorio en la lógica de negocio y en la UI que un usuario no pueda proceder a pagar (checkout) sin haber marcado explícitamente la aceptación de términos.
+### [RULE] Exclusividad de TypeScript
+- Uso obligatorio de TypeScript en modo estricto.
+- **Prohibido el uso de `any`**.
+- Definir interfaces o tipos para todas las props, estados y respuestas de API.
 
-## 6. Comandos Comunes
-- Levantar todo (Docker): `docker-compose up --build`
-- Backend Dev: `cd backend && bun run dev`
-- Frontend Dev: `cd frontend && npm run dev`
-- Local Tunnel (Webhooks): `cd backend && bun run tunnel`
+### [RULE] Runtime y Comandos (Bun)
+- Utilizar **Bun** como runtime principal.
+- Comandos: `bun run [script]`, `bun install`, `bun test`.
+- No usar `npm` o `yarn` a menos que sea estrictamente necesario.
 
-## 7. Instrucciones para la IA (Tú)
-1. **Analiza el contexto**: Siempre revisa en qué carpeta estás (`frontend` vs `backend`) antes de modificar código.
-2. **Reutiliza UI**: Si necesitas un botón, input o modal en el frontend, revisa los componentes existentes basados en Radix UI. No reinventes estilos.
-3. **Manejo de Errores**: Usa la clase `AppError` en el backend para retornar errores estructurados e interceptarlos adecuadamente en el frontend.
-4. **Skills / Reglas Específicas**: Si la tarea involucra integraciones específicas (ej. E2E, Docker, Stripe), revisa la carpeta `.agents/skills/` para leer las instrucciones profundas de esa área.
+### [RULE] Estética y UI Neobrutalista
+- **Bordes**: Siempre `border-2 border-black` en contenedores principales.
+- **Sombras**: Evitar sombras y relieves sólidos. El diseño debe ser plano (flat) con bordes definidos.
+- **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
+- **Mobile First**: Priorizar la experiencia en dispositivos móviles.
+
+### [RULE] Accesibilidad Móvil y Hover
+- **No dependencia de Hover**: Prohibido ocultar acciones críticas detrás de un estado hover. En móviles, todo debe ser visible o accesible vía tap.
+- **Opacidad**: No usar opacidades bajas (< 0.5) para elementos interactivos, a menos que sea un estado deshabilitado.
+
+### [RULE] Idioma y Ortografía
+- **Español Perfecto**: UI, errores y mensajes deben estar en español con ortografía y acentuación impecable.
+- **Cero Spanglish**: Mantener consistencia total en el idioma de la interfaz.
+
+### [RULE] Comunicación y Código
+- **Emojis**: Prohibido el uso de emojis en mensajes de commit, comentarios de código o logs de consola, a menos que sea para diferenciar estados visuales en la UI.
+- **Documentación**: Usar Mermaid para representar flujos complejos en archivos `.md`.
+
+### [RULE] Manejo de Errores (Backend)
+- **AppError**: Lanzar siempre `AppError` con mensaje, status code y código de error único.
+- **No Try-Catch Genérico**: Dejar que el handler global de Hono gestione los errores a menos que se requiera lógica de recuperación específica.
+- **Seguridad**: Nunca exponer errores internos de MongoDB o stack traces al cliente.
+
+### [RULE] Manejo de Errores (Frontend)
+- **Visualización**: 
+  - Errores de ruta -> `<ErrorPage />`.
+  - Errores de API -> `useErrorModal`.
+  - Prohibido `window.alert()`.
+- **Formularios**: Errores inline permitidos para validación en tiempo real.
+
+### [RULE] Paginación y Listados
+- **Backend**: Parámetros `page` y `limit` obligatorios en queries. Respuesta debe incluir objeto `pagination`.
+- **Frontend**: Sincronización obligatoria con `URLSearchParams`.
+- **Catalog Grid**: Límites recomendados: 4, 8, 12, 20 para encajar en cuadrícula.
+
+### [RULE] Lógica de Reserva (Checkout)
+- **Validación de Fechas**: Impedir superposición de fechas. Validar disponibilidad real en el backend antes de proceder a Stripe.
+- **Términos**: Checkbox obligatorio. El backend debe validar que `termsAccepted` es true.
+- **Registro de Aceptación**: Guardar IP, User Agent y Timestamp al aceptar términos.
+
+### [RULE] Pagos y Webhooks
+- **Stripe**: El cambio de estado a `paid` solo ocurre mediante confirmación de webhook.
+- **Seguridad**: Validar la firma del webhook usando Svix o la SDK oficial de Stripe.
+
+### [RULE] Testing y Calidad
+- **Unitarios**: Vitest para lógica de negocio (cerca del archivo fuente).
+- **E2E**: Playwright para flujos críticos (Reserva, Login, Admin).
+- **Clean Code**: Seguir principios DRY y SOLID.
+
+---
+
+## 3. Arquitectura y Estructura
+
+### Organización del Repositorio
+- `frontend/`: UI, B2C y Dashboard Admin.
+- `backend/`: API, modelos (Mongoose), controladores y servicios.
+- `docs/`: Documentación del sistema.
+
+### Referencia de Códigos de Error Comunes
+| Código | HTTP | Situación |
+|---|---|---|
+| `AUTH_TOKEN_REQUIRED` | 401 | Falta token de autenticación |
+| `PRODUCT_DATES_UNAVAILABLE` | 409 | Fechas seleccionadas ya ocupadas |
+| `RENTAL_TERMS_NOT_ACCEPTED` | 400 | No se marcaron los términos |
+| `VALIDATION_ERROR` | 400 | Fallo en esquema Zod |
+
+---
+
+## 4. Instrucciones para la IA (Operativa)
+
+1. **Check Folder**: Verifica si estás en `/frontend` o `/backend`.
+2. **Reutiliza UI**: Revisa `components/ui` antes de crear nuevos estilos.
+3. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
+4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E o Docker.

@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Loader2, GripVertical, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, Info, Lock, Unlock } from "lucide-react";
 import { useErrorModal } from "@/components/ErrorModal";
 import { Pagination } from "@/components/ui/Pagination";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface Category {
   id: string;
@@ -29,6 +30,8 @@ export default function AdminSettings() {
   const [sizeGroups, setSizeGroups] = useState<SizeGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [originalCategories, setOriginalCategories] = useState<Category[]>([]);
+  const [unlockedIds, setUnlockedIds] = useState<Record<number, boolean>>({});
   const { errorModal, showError } = useErrorModal();
 
   // Categories Pagination
@@ -59,6 +62,7 @@ export default function AdminSettings() {
     try {
       const { settings } = await settingsApi.get();
       setCategories(settings.categories || []);
+      setOriginalCategories(JSON.parse(JSON.stringify(settings.categories || [])));
       setSizeGroups(settings.size_groups || []);
     } catch (err) {
       console.error(err);
@@ -71,6 +75,8 @@ export default function AdminSettings() {
     try {
       await settingsApi.update({ categories, size_groups: sizeGroups }, token!);
       showError("Configuración guardada exitosamente.", "success");
+      setOriginalCategories(JSON.parse(JSON.stringify(categories)));
+      setUnlockedIds({});
     } catch (err: any) {
       console.error(err);
       showError(err.message || "Error al guardar la configuración.", "generic");
@@ -116,6 +122,24 @@ export default function AdminSettings() {
   const updateSizeGroupSizes = (indexInGroups: number, sizesString: string) => {
     const updated = [...sizeGroups];
     updated[indexInGroups].sizes = sizesString.split(",").map(s => s.trim()).filter(Boolean);
+    setSizeGroups(updated);
+  };
+
+  const moveCategory = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const updated = [...categories];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
+    setCategories(updated);
+  };
+
+  const moveSizeGroup = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= sizeGroups.length) return;
+    const updated = [...sizeGroups];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(newIndex, 0, moved);
     setSizeGroups(updated);
   };
 
@@ -177,6 +201,20 @@ export default function AdminSettings() {
         </Button>
       </div>
 
+      {/* ID Management Global Alert */}
+      <div className="bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-500 p-4 rounded-lg flex gap-3 text-sm border-2 border-blue-200 dark:border-blue-900">
+        <Info className="h-5 w-5 shrink-0" />
+        <div>
+          <p className="font-bold">Gestión de IDs</p>
+          <p>
+            Los IDs vinculan productos a filtros. Ahora el sistema sincroniza los cambios automáticamente. {" "}
+            <Link to="/admin/business-rules?section=catalog" className="underline font-bold hover:text-blue-700 transition-colors">
+              Ver guía de mejores prácticas
+            </Link>
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Categorías */}
         <Card className="flex flex-col">
@@ -185,19 +223,31 @@ export default function AdminSettings() {
             <Button variant="outline" size="sm" onClick={addCategory}><Plus className="h-4 w-4 mr-2"/> Añadir</Button>
           </CardHeader>
           <CardContent className="space-y-4 flex-1">
-            <div className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-500 p-3 rounded-lg flex gap-3 text-sm border-2 border-amber-200 dark:border-amber-900 mb-4">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p>
-                <strong>Precaución con el ID:</strong> Si cambias el ID, los productos existentes con el ID viejo no aparecerán en los filtros.
-              </p>
-            </div>
-            
             <div className="space-y-3">
               {pagedCategories.map((cat) => {
                 const globalIndex = categories.indexOf(cat);
                 return (
-                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg">
-                    <GripVertical className="h-5 w-5 mt-2.5 text-muted-foreground cursor-move opacity-50" />
+                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg group">
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveCategory(globalIndex, 'up')}
+                        disabled={globalIndex === 0}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveCategory(globalIndex, 'down')}
+                        disabled={globalIndex === categories.length - 1}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <div className="flex-1 space-y-3">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
@@ -209,12 +259,36 @@ export default function AdminSettings() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">ID Interno</Label>
-                          <Input 
-                            value={cat.id} 
-                            onChange={e => updateCategory(globalIndex, "id", e.target.value)} 
-                            className="h-9 font-mono text-xs"
-                          />
+                          <Label className="text-xs flex items-center gap-1">
+                            ID Interno 
+                            {unlockedIds[globalIndex] ? <Unlock className="h-3 w-3 text-green-600" /> : <Lock className="h-3 w-3 text-muted-foreground" />}
+                          </Label>
+                          {unlockedIds[globalIndex] ? (
+                            <Input 
+                              value={cat.id} 
+                              onChange={e => updateCategory(globalIndex, "id", e.target.value)} 
+                              className="h-9 font-mono text-xs border-primary focus-visible:ring-primary"
+                              autoFocus
+                            />
+                          ) : (
+                            <ConfirmModal
+                              title="Editar Identificador"
+                              description="¿Quieres cambiar este ID? El sistema actualizará automáticamente todos los productos vinculados a este identificador al guardar."
+                              confirmText="Permitir editar"
+                              onConfirm={() => setUnlockedIds({ ...unlockedIds, [globalIndex]: true })}
+                            >
+                              <div className="relative group cursor-pointer">
+                                <Input 
+                                  value={cat.id} 
+                                  readOnly
+                                  className="h-9 font-mono text-xs bg-muted/50 cursor-pointer group-hover:border-primary transition-colors"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/20 backdrop-blur-[1px]">
+                                  <span className="text-[10px] font-bold bg-white px-2 py-1 border border-black">CLIC PARA EDITAR</span>
+                                </div>
+                              </div>
+                            </ConfirmModal>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -252,8 +326,27 @@ export default function AdminSettings() {
               {pagedSizeGroups.map((group) => {
                 const globalIndex = sizeGroups.indexOf(group);
                 return (
-                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg">
-                    <GripVertical className="h-5 w-5 mt-2.5 text-muted-foreground cursor-move opacity-50" />
+                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg group">
+                    <div className="flex flex-col gap-1 mt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveSizeGroup(globalIndex, 'up')}
+                        disabled={globalIndex === 0}
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 p-0 hover:bg-background"
+                        onClick={() => moveSizeGroup(globalIndex, 'down')}
+                        disabled={globalIndex === sizeGroups.length - 1}
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <div className="flex-1 space-y-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Nombre del Grupo</Label>
