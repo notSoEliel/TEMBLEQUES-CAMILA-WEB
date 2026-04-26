@@ -24,6 +24,7 @@ El sistema funciona bajo un esquema de **alquiler por fechas**. El cliente selec
 ### Catálogo y Búsqueda Avanzada
 
 El catálogo cuenta con un sistema de búsqueda y filtrado avanzado para optimizar la conversión y la experiencia del usuario:
+
 - **Filtrado Acumulable**: Los clientes pueden seleccionar múltiples categorías (ej. *Polleras* + *Infantil*) y ver los resultados combinados de manera fluida.
 - **Selector Inteligente de Tallas**: Agrupación visual de tallas (ej. *Adultos*: S, M, L / *Infantil*: 2-4, 6-8) y selección múltiple, eliminando problemas de orden alfabético.
 - **Configuración Dinámica (Admin)**: Todas las categorías y agrupaciones de tallas son gestionables desde el panel de administrador (`/admin/settings`). El admin puede añadir nuevas categorías, agrupar tallas, reordenarlas o eliminarlas sin necesidad de realizar cambios en el código (`Settings` model).
@@ -31,20 +32,24 @@ El catálogo cuenta con un sistema de búsqueda y filtrado avanzado para optimiz
 - **UX Premium**: Animaciones suaves con `framer-motion` para expandir los filtros, sin problemas de recorte (`overflow-hidden`) que estropeen el diseño neobrutalista.
 
 ### Paginación Inteligente y Rutas de Verdad
+
 Para optimizar el rendimiento y la escalabilidad, la plataforma implementa un sistema de paginación global y consistente:
+
 - **Rutas de Verdad (URL Sync)**: La página actual (`page`) y la cantidad de elementos (`limit`) están SIEMPRE presentes en la URL. Esto permite recargar la página, navegar hacia adelante/atrás con el navegador y compartir enlaces manteniendo la vista exacta de cualquier lista.
 - **Selector de Cantidad**: Todas las listas paginadas incluyen un selector para cambiar el límite de elementos por página (ej. 5, 10, 20, 50).
 - **Estética Premium**: Diseño limpio integrado con `shadcn/ui`, evitando sombras y bordes excesivos para una experiencia de usuario moderna y profesional.
-- **Paginación Híbrida**: 
+- **Paginación Híbrida**:
   - **Server-side**: En el Catálogo, Inventario, Reservas y Usuarios para máxima eficiencia.
   - **Client-side**: En el Perfil y Ajustes de Filtros para una respuesta instantánea en listas de configuración.
 - **Optimización de Grid**: En el Catálogo, los límites por página están optimizados para la cuadrícula visual (4, 8, 12, 20 productos) garantizando un diseño siempre equilibrado.
 - **UX Fluida**: El sistema realiza un scroll suave (`smooth scroll`) automático al inicio de la lista cada vez que cambia la página o el límite.
 
 ### Arquitectura de Filtros y Sincronización Automática
+
 Para garantizar una gestión del catálogo sin fricciones, el sistema implementa una lógica de sincronización avanzada entre la configuración y el inventario:
+
 - **ID Interno Inteligente (Slug)**: Cada categoría posee un identificador único (ej: `joyas_oro`) que vincula los productos a los filtros del catálogo.
-- **Migración Automática**: Si un administrador decide renombrar un ID Interno desde los [Ajustes](file:///Users/eliel/Dev/parcial-dsix/frontend/src/pages/admin/Settings.tsx), el backend detecta automáticamente el cambio de "slug" y ejecuta una migración masiva de todos los productos vinculados. 
+- **Migración Automática**: Si un administrador decide renombrar un ID Interno desde los [Ajustes](file:///Users/eliel/Dev/parcial-dsix/frontend/src/pages/admin/Settings.tsx), el backend detecta automáticamente el cambio de "slug" y ejecuta una migración masiva de todos los productos vinculados.
 - **Integridad del Catálogo**: Esta automatización elimina el riesgo de que los productos "desaparezcan" de los filtros tras una reestructuración de categorías, garantizando que el mantenimiento del catálogo sea 100% seguro y transparente.
 - **Onboarding Integrado**: El panel de administración incluye un centro de ayuda modular (Bento Style) que guía a los nuevos usuarios en el manejo de estos identificadores y las mejores prácticas de organización.
 
@@ -171,6 +176,7 @@ Cuatro colecciones en MongoDB:
 ### Arquitectura de Tallas y Variantes
 
 Para soportar productos que varían en tamaño (ej. camisillas, polleras infantiles), la plataforma implementa una arquitectura basada en variantes:
+
 - **Gestión por Variante:** El stock y el estado de mantenimiento se manejan individualmente por talla, no a nivel global del producto.
 - **Precios Dinámicos:** Una talla específica puede tener un sobreprecio (ej. Talla XL cuesta $20 más). El catálogo calculará y mostrará automáticamente rangos de precios (ej. `$150 - $170 / día`).
 - **Validación de Disponibilidad:** El motor de disponibilidad (`availability.ts`) evalúa los conflictos de calendario tomando en cuenta *únicamente* la capacidad de stock de la talla seleccionada.
@@ -182,18 +188,23 @@ Para soportar productos que varían en tamaño (ej. camisillas, polleras infanti
 La plataforma implementa reglas automáticas para proteger el inventario y garantizar el cumplimiento de los contratos de alquiler:
 
 ### 1. Depósito de Garantía (Hold en Stripe)
+
 Para artículos de alto valor o configuraciones específicas, el sistema realiza una **autorización bancaria (hold)** en lugar de un cobro directo:
+
 - **Regla Global:** Por defecto, si el total de la reserva supera los **$350**, se exige un depósito del **35%** del total.
 - **Regla por Producto:** El administrador puede forzar un depósito para cualquier producto (ej. joyería delicada) y definir un monto fijo en dólares ($) desde el panel de inventario.
 - **Gestión:** El hold se crea automáticamente al pagar. Si el producto se marca como `returned`, el hold se libera; si se marca como `damaged`, se captura el monto total del depósito.
 
 ### 2. Gestión de Atrasos y Penalidades
+
 El sistema calcula la mora de forma incremental basándose en la medianoche de Panamá (UTC-5):
+
 - **Identificación:** El dashboard muestra un widget de **"Posibles Atrasos"** con productos cuya fecha de devolución ya pasó.
 - **Cálculo:** La mora se calcula como: `(Total Reserva / Días Reserva) * Tasa Mora`. La tasa por defecto es **1x** (un día extra por cada día de retraso).
 - **Cobro:** Al marcar una reserva como `late`, el backend intenta cobrar automáticamente la penalidad acumulada a la tarjeta guardada del cliente en Stripe.
 
 ### 3. Corte de Reservas (6:00 PM)
+
 Para garantizar la logística de entrega, el sistema bloquea reservas para el día siguiente si se realizan después de las **18:00 horas**. A partir de esa hora, la fecha mínima de inicio permitida es el día subsiguiente (48h).
 
 ---
@@ -229,11 +240,9 @@ Este comando construye las imágenes de frontend y backend, espera a que MongoDB
 
 | Servicio | URL |
 |---|---|
-| Sitio web (cliente) | http://localhost:5173 |
-| Panel administrador | http://localhost:5173/admin |
-| API REST | http://localhost:3000 |
-
-
+| Sitio web (cliente) | <http://localhost:5173> |
+| Panel administrador | <http://localhost:5173/admin> |
+| API REST | <http://localhost:3000> |
 
 ### Comandos Útiles
 
@@ -269,12 +278,14 @@ bun run tunnel
 Esto generará la URL constante: `https://tembleques-camila.loca.lt`
 
 Deberás configurar esta URL en los respectivos dashboards:
+
 - **Clerk:** `https://tembleques-camila.loca.lt/api/auth/webhook`
 - **Stripe:** `https://tembleques-camila.loca.lt/api/stripe/webhook`
 
-#### Trabajando con otros desarrolladores:
+#### Trabajando con otros desarrolladores
 
 Se recomienda usar **entornos separados** para no sobrescribir datos locales mutuamente:
+
 1. Cada desarrollador se crea una cuenta gratuita en Clerk y levanta su propia aplicación en el dashboard de Clerk.
 2. Cada desarrollador coloca *sus propias* API Keys (`VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, etc.) en su archivo `.env` local.
 3. Así, las bases de usuarios de prueba en Clerk estarán aisladas, permitiendo probar sin interrumpir el trabajo del otro. *(Si ambos usan el túnel al mismo tiempo y chocan, simplemente cambien el flag `--subdomain` en su `backend/package.json` temporalmente)*.
@@ -286,7 +297,9 @@ Se recomienda usar **entornos separados** para no sobrescribir datos locales mut
 El sistema delega la autenticación, seguridad y flujos de cuenta a **Clerk**, pero mantiene una copia en **MongoDB** para poder relacionar las Reservas (`Rentals`) con un usuario específico de forma rápida en el backend.
 
 ### 1. Hacer el Nombre y Apellido Obligatorios
+
 Dado que los formularios de Login/Registro son controlados por Clerk, estos ajustes se hacen desde tu Dashboard de Clerk (no en el código):
+
 1. Ve a tu Dashboard de Clerk: **User & Authentication** > **Email, Phone, Web**.
 2. En la sección **Personal Information**, busca **Name**.
 3. Haz clic en el ícono de la tuerca (Ajustes) al lado de Name.
@@ -294,20 +307,25 @@ Dado que los formularios de Login/Registro son controlados por Clerk, estos ajus
 5. Guarda los cambios. El formulario de tu frontend se actualizará automáticamente.
 
 ### 2. Sincronización Automática (Webhooks)
-Cuando un usuario se registra o elimina su cuenta en el componente de Clerk de tu frontend, Clerk envía un **Webhook** hacia tu ruta `/api/auth/webhook`. 
+
+Cuando un usuario se registra o elimina su cuenta en el componente de Clerk de tu frontend, Clerk envía un **Webhook** hacia tu ruta `/api/auth/webhook`.
+
 - Si es `user.created` o `user.updated`: El backend toma los datos y hace un *upsert* en la colección `users` de MongoDB usando su `clerkId`.
 - Si es `user.deleted`: El backend lo borra de tu colección en MongoDB.
 
 ### 3. Asignación del Rol de Administrador
+
 Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una ruta para registrar admins desde la UI**. El rol se asigna directamente como un metadato en Clerk:
 
 1. Entra a [dashboard.clerk.com](https://dashboard.clerk.com) → **Users**.
 2. Selecciona el usuario que quieres convertir en Administrador.
 3. Baja hasta la sección **Public Metadata**.
 4. Haz clic en editar y escribe el siguiente JSON:
+
    ```json
    { "role": "admin" }
    ```
+
 5. Guarda los cambios. La próxima vez que este usuario inicie sesión, o cuando su sesión refresque su token en unos minutos, la plataforma le habilitará el acceso a todas las rutas protegidas bajo `/admin`.
 
 > [!TIP]
@@ -354,6 +372,7 @@ No se requiere dinero real en ninguno de los dos modos si usas claves de test.
 1. Ve a [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → API Keys**.
 2. Copia la **Secret key** (empieza con `sk_test_...`).
 3. Pégala en `.env`:
+
    ```env
    STRIPE_SECRET_KEY=sk_test_TU_CLAVE_AQUI
    ```
@@ -376,11 +395,13 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
 La CLI imprimirá tu webhook secret:
+
 ```
 > Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxxxxxxxxx
 ```
 
 Copia ese valor y pégalo en `.env`:
+
 ```env
 STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
 ```
@@ -397,6 +418,7 @@ cd backend && bun run tunnel
 ```
 
 Luego en [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers → Webhooks → Add endpoint**:
+
 - URL: `https://tembleques-camila.loca.lt/api/stripe/webhook`
 - Eventos a escuchar:
   - `checkout.session.completed`
@@ -509,8 +531,6 @@ Esta rama concentra la documentación funcional de los dos cobros diferidos que 
 - **Persistencia**: extender `Rentals` para registrar depósito, penalidad aplicada, motivo del cargo y estado de cobro asociado.
 
 ---
-
-
 
 ```
 backend/src/
@@ -648,6 +668,7 @@ Todas las páginas de error incluyen un **botón de volver atrás** y un **botó
 Para errores que ocurren durante operaciones en página (envío de formularios, llamadas API), se usa el componente `ErrorModal` con el hook `useErrorModal`. Nunca se usan `alert()` ni banners inline para errores post-submit.
 
 Este modal está implementado actualmente en:
+
 - **Login**: Errores de credenciales y fallos de red.
 - **Registro**: Errores de validación y correos duplicados.
 - **Checkout**: Validaciones de fechas, aceptación de términos y fallos en el procesamiento del pago/reserva.
@@ -675,47 +696,57 @@ Este modal está implementado actualmente en:
 Durante el desarrollo, pueden surgir ciertos errores conocidos. Aquí se documentan sus causas y cómo se resolvieron para mantener un registro histórico y facilitar el mantenimiento.
 
 ### 1. Error 500 en Stripe Checkout (`url_invalid`)
+
 **Síntoma:** Al intentar pagar, el backend devuelve un error 500 y en los logs aparece `code: "url_invalid"` y `param: "cancel_url"`.
 **Causa:** La URL de cancelación (`cancel_url`) enviada a Stripe contenía un objeto de Mongoose poblado en lugar de un ID de texto. Al concatenarse en un template string, se convertía en `http://.../checkout/[object Object]?cancelled=1`, lo cual es una URL inválida por contener espacios y corchetes.
 **Solución:** Extraer y forzar explícitamente el `_id` (`(product as any)._id`) al armar la URL en `backend/src/services/stripe.ts`.
 
 ### 2. Error 401 (Unauthorized) al pagar o cancelar desde el Perfil
+
 **Síntoma:** El usuario intenta cancelar una reserva pendiente o reintentar el pago tras dejar la pestaña inactiva unos minutos, y recibe un error *"Token inválido o expirado"*.
 **Causa:** Los tokens JWT de Clerk tienen una caducidad muy corta por seguridad (~1 minuto). Si el frontend guarda el token en el estado de React (`useAuth`), este se vuelve obsoleto rápidamente.
 **Solución:** Se implementó un interceptor en `frontend/src/services/api.ts` que ignora el token en caché y siempre solicita uno fresco antes de la petición usando `window.Clerk.session.getToken()`.
 
 ### 3. Calendario atascado al seleccionar fechas conflictivas
+
 **Síntoma:** Si el usuario escoge una fecha de inicio (ej. Lunes) y existen reservas en días intermedios (Martes/Miércoles), los días posteriores (Jueves/Viernes) se pintan de rojo y quedan bloqueados (`disabled`), impidiendo seleccionarlos siquiera como un *nuevo* inicio.
-**Causa:** El atributo HTML `disabled` cancela el evento `onClick`. 
+**Causa:** El atributo HTML `disabled` cancela el evento `onClick`.
 **Solución:** Se retiró el `disabled` de los estados `conflictEnd`. Ahora, si el usuario hace clic en una fecha que generaría solapamiento, el calendario asume inteligentemente que se desea iniciar un nuevo rango y reinicia la fecha de inicio (`onStartDateChange`) a ese día. La fórmula de validación de rangos usada es `A.start <= B.end && A.end >= B.start`.
 
 ### 4. Variables del archivo `.env` ignoradas por Docker
+
 **Síntoma:** Tras cambiar la variable `STRIPE_SECRET_KEY` de "demo" a una clave real en `.env`, el backend sigue funcionando en modo demo incluso ejecutando `docker restart backend`.
 **Causa:** Docker Compose "cachea" las variables de entorno en la creación inicial del contenedor. Un reinicio simple (`restart`) solo reinicia el proceso interno con las variables cacheadas en memoria.
 **Solución:** Para que Docker lea nuevamente el `.env`, es obligatorio forzar la recreación del contenedor:
+
 ```bash
 docker-compose up -d --force-recreate backend
 ```
 
 ### 5. Errores de "content.js" o "addListener" en consola
+
 **Síntoma:** Errores en la consola del navegador como `Uncaught TypeError: Cannot read properties of undefined (reading 'addListener')` indicando archivos como `content.js` o `ff-content.js`.
 **Causa:** Estos errores provienen de extensiones de terceros instaladas en el navegador del usuario (bloqueadores de anuncios, gestores de contraseñas, extensiones de DevTools). El código fuente del proyecto no inyecta esos archivos.
 **Solución:** Se pueden ignorar de forma segura, o deshabilitar las extensiones en modo incógnito/desarrollo para tener una consola más limpia.
 
 ### 6. Reserva se queda "Pendiente" tras pago exitoso con Stripe (Race Condition)
+
 **Síntoma:** El usuario completa el pago en Stripe, es redirigido a `/confirmation`, pero la página muestra el estado como "Pendiente" en lugar de "Pagado".
 **Causa:** Se produce una condición de carrera. Stripe redirige al usuario al *success_url* antes de que el *webhook* (`checkout.session.completed`) llegue al backend o sea procesado por este (especialmente crítico si se prueba en local sin hacer túnel de webhooks).
 **Solución:** Se añadió un endpoint de verificación síncrona `GET /api/stripe/verify-session`. Cuando `Confirmation.tsx` detecta un `session_id` en la URL, hace una llamada a este endpoint, el cual consulta directamente la API de Stripe y fuerza la actualización de la base de datos a `Pagado` antes de renderizar la página.
 
 ### 7. Fechas incorrectas y problemas por zona horaria (UTC)
+
 **Síntoma:** El frontend permitía seleccionar el día actual o se adelantaba de día por las noches, mientras que el backend rechazaba reservaciones válidas marcándolas erróneamente "en el pasado".
 **Causa:** Funciones como `toISOString()` en JavaScript convierten las fechas a UTC. A altas horas de la noche en Panamá (UTC-5), el sistema ya consideraba que era el día siguiente. Asimismo, el backend comparaba la medianoche exacta contra la hora actual del servidor.
-**Solución:** 
+**Solución:**
+
 - En el frontend, se reemplazó `toISOString()` por una extracción puramente local.
 - En el backend, se implementó un offset matemático de -5 horas para sincronizar todas las validaciones de fechas con el huso horario estricto de Panamá.
 - **Regla de Negocio (Corte a las 6 PM):** Se añadió además una regla en ambos extremos: pasadas las 18:00 horas (Panamá), el sistema automáticamente exige mínimo 2 días de anticipación (pasado mañana) en lugar de 1, mostrando un aviso y bloqueando el día siguiente en el calendario.
 
 ### 8. Error 500 al listar Reservas (Virtuals vs Populate)
+
 **Síntoma:** El panel de administración devolvía un error 500 al intentar cargar la lista de reservas o el dashboard.
 **Causa:** Los "virtuals" del modelo `Product` (como `total_stock` o `price_range`) intentaban procesar el arreglo de `variants`. Al realizar búsquedas parciales con `populate("product_id", "name category")`, el campo `variants` no existía en el objeto, provocando un `TypeError` durante la serialización JSON.
 **Solución:** Se blindaron los getters de los virtuals en `Product.ts` para verificar la existencia de los campos requeridos (`this.variants`, `this.rental_price`) antes de operar sobre ellos.

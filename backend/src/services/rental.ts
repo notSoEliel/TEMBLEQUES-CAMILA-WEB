@@ -19,7 +19,11 @@ import {
 /**
  * Calculates the total rental cost based on price per day and the date range.
  */
-export function calculateTotal(pricePerDay: number, startDate: Date, endDate: Date): number {
+export function calculateTotal(
+  pricePerDay: number,
+  startDate: Date,
+  endDate: Date,
+): number {
   const days = calculateRentalDays(startDate, endDate);
   return pricePerDay * days;
 }
@@ -37,7 +41,16 @@ export async function createRental(params: {
   ipAddress: string;
   userAgent: string;
 }) {
-  const { userId, productId, selectedSize, startDate, endDate, termsAccepted, ipAddress, userAgent } = params;
+  const {
+    userId,
+    productId,
+    selectedSize,
+    startDate,
+    endDate,
+    termsAccepted,
+    ipAddress,
+    userAgent,
+  } = params;
 
   if (!termsAccepted) {
     throw new AppError(
@@ -59,7 +72,13 @@ export async function createRental(params: {
   const now = new Date();
   const panamaTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
   const panamaHour = panamaTime.getUTCHours();
-  const panamaToday = new Date(Date.UTC(panamaTime.getUTCFullYear(), panamaTime.getUTCMonth(), panamaTime.getUTCDate()));
+  const panamaToday = new Date(
+    Date.UTC(
+      panamaTime.getUTCFullYear(),
+      panamaTime.getUTCMonth(),
+      panamaTime.getUTCDate(),
+    ),
+  );
 
   const isPast6pm = panamaHour >= 18;
   const minAllowedDate = new Date(panamaToday.getTime());
@@ -67,7 +86,7 @@ export async function createRental(params: {
 
   if (startDate.getTime() < minAllowedDate.getTime()) {
     throw new AppError(
-      isPast6pm 
+      isPast6pm
         ? "Pasadas las 6:00 PM, las reservas deben hacerse con al menos dos días de anticipación."
         : "Las reservas deben hacerse con al menos un día de anticipación.",
       400,
@@ -106,7 +125,12 @@ export async function createRental(params: {
     );
   }
 
-  const isAvailable = await checkAvailability(productId, startDate, endDate, selectedSize);
+  const isAvailable = await checkAvailability(
+    productId,
+    startDate,
+    endDate,
+    selectedSize,
+  );
   if (!isAvailable) {
     throw new AppError(
       "El producto no está disponible para las fechas seleccionadas en la talla elegida.",
@@ -165,7 +189,10 @@ const STATUS_LABELS: Record<string, string> = {
 /**
  * Updates the status of a rental (admin action).
  */
-export async function updateRentalStatus(rentalId: string, newStatus: RentalStatus) {
+export async function updateRentalStatus(
+  rentalId: string,
+  newStatus: RentalStatus,
+) {
   const validTransitions: Record<string, string[]> = {
     pending: ["paid", "cancelled"],
     paid: ["confirmed", "cancelled"],
@@ -229,7 +256,8 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
       rental.late_fee_failure_reason = undefined;
     } catch (error: any) {
       rental.late_fee_status = "failed";
-      rental.late_fee_failure_reason = error?.message || "No se pudo cobrar la penalidad por atraso.";
+      rental.late_fee_failure_reason =
+        error?.message || "No se pudo cobrar la penalidad por atraso.";
     }
     await rental.save();
   }
@@ -248,12 +276,17 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
       rental.deposit_failure_reason = undefined;
     } catch (error: any) {
       rental.deposit_status = "failed";
-      rental.deposit_failure_reason = error?.message || "No se pudo liberar el depósito de garantía.";
+      rental.deposit_failure_reason =
+        error?.message || "No se pudo liberar el depósito de garantía.";
     }
     await rental.save();
   }
 
-  if (newStatus === "damaged" && rental.deposit_required && rental.deposit_amount > 0) {
+  if (
+    newStatus === "damaged" &&
+    rental.deposit_required &&
+    rental.deposit_amount > 0
+  ) {
     if (!isStripeConfigured()) {
       rental.deposit_status = "captured";
       rental.deposit_failure_reason = undefined;
@@ -267,7 +300,8 @@ export async function updateRentalStatus(rentalId: string, newStatus: RentalStat
       rental.deposit_failure_reason = undefined;
     } catch (error: any) {
       rental.deposit_status = "failed";
-      rental.deposit_failure_reason = error?.message || "No se pudo cobrar el depósito por daños.";
+      rental.deposit_failure_reason =
+        error?.message || "No se pudo cobrar el depósito por daños.";
     }
     await rental.save();
   }
