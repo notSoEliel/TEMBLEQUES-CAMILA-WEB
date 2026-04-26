@@ -59,7 +59,7 @@ Para garantizar una gestión del catálogo sin fricciones, el sistema implementa
 
 El sistema está dividido en tres servicios independientes, todos orquestados mediante Docker Compose:
 
-```
+```text
 parcial-dsix/
   docker-compose.yml       # Orquestación de servicios
   .env                     # Configuración y secretos
@@ -99,7 +99,7 @@ graph TD
 ### Stack Tecnológico
 
 | Capa | Tecnología |
-|---|---|
+| --- | --- |
 | **Frontend** | React 19, React Router 7, Vite 6 |
 | **UI** | TailwindCSS v4, shadcn/ui, Lucide Icons |
 | **Tema** | OKLCH Neobrutalista (variables CSS en `index.css`) |
@@ -166,7 +166,7 @@ El backend valida disponibilidad en el momento de crear la sesión de Stripe, no
 Cuatro colecciones en MongoDB:
 
 | Colección | Propósito |
-|---|---|
+| --- | --- |
 | `users` | Clientes y administradores. Sincronizados desde Clerk. |
 | `products` | Catálogo avanzado. Incluye `variants` (stock/precio por talla) y `deposit_settings` (depósitos forzados o dinámicos). |
 | `rentals` | El núcleo del negocio. Registra fechas, estados de pago/depósito, penalidades por atraso y referencias a Stripe. |
@@ -239,7 +239,7 @@ Este comando construye las imágenes de frontend y backend, espera a que MongoDB
 ### 3. Acceder
 
 | Servicio | URL |
-|---|---|
+| --- | --- |
 | Sitio web (cliente) | <http://localhost:5173> |
 | Panel administrador | <http://localhost:5173/admin> |
 | API REST | <http://localhost:3000> |
@@ -336,7 +336,7 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
 ## Variables de Entorno
 
 | Variable | Descripción | Default |
-|---|---|---|
+| --- | --- | --- |
 | `MONGO_URI` | URI de conexión a MongoDB | `mongodb://mongodb:27017/tembleques_camila` |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clave pública de Clerk (`pk_test_...`) | Requerida |
 | `CLERK_SECRET_KEY` | Clave secreta de Clerk (`sk_test_...`) | Requerida |
@@ -359,7 +359,7 @@ Dado que el modelo `User` en Mongoose ya no acepta contraseñas, **no existe una
 El sistema detecta automáticamente si Stripe está configurado:
 
 | Estado de `STRIPE_SECRET_KEY` | Comportamiento |
-|---|---|
+| --- | --- |
 | `sk_test_placeholder` (por defecto) | **Modo demo**: simula el pago sin contactar Stripe, redirige directamente a `/confirmation`. |
 | Clave real (`sk_test_...`) | **Modo real**: redirige al hosted checkout de Stripe con tarjetas de prueba. |
 
@@ -381,7 +381,7 @@ No se requiere dinero real en ninguno de los dos modos si usas claves de test.
 
 Stripe necesita enviar eventos al endpoint `POST /api/stripe/webhook` cuando un pago se completa o falla.
 
-**Opción A — Stripe CLI (recomendada para desarrollo local)**
+#### Opción A — Stripe CLI (recomendada para desarrollo local)
 
 ```bash
 # 1. Instalar Stripe CLI
@@ -396,7 +396,7 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 
 La CLI imprimirá tu webhook secret:
 
-```
+```text
 > Ready! Your webhook signing secret is whsec_xxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -409,7 +409,7 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxx
 > [!NOTE]
 > Con Stripe CLI **no necesitas localtunnel** — actúa como proxy directo entre los servidores de Stripe y tu `localhost:3000`. Es la forma más rápida y confiable.
 
-**Opción B — Localtunnel (para compartir webhook con equipo)**
+#### Opción B — Localtunnel (para compartir webhook con equipo)
 
 ```bash
 # En una terminal aparte desde el directorio backend/
@@ -429,7 +429,7 @@ Luego en [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers �
 #### Paso 3: Tarjetas de prueba (sin cobro real)
 
 | Resultado esperado | Número de tarjeta | Fecha | CVV |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | ✅ Pago exitoso | `4242 4242 4242 4242` | Cualquier fecha futura | Cualquier 3 dígitos |
 | ❌ Pago rechazado | `4000 0000 0000 0002` | Cualquier fecha futura | Cualquier 3 dígitos |
 | 🔐 Requiere 3DS | `4000 0025 0000 3155` | Cualquier fecha futura | Cualquier 3 dígitos |
@@ -440,7 +440,7 @@ Luego en [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers �
 ### Eventos de Webhook manejados
 
 | Evento Stripe | Acción en el sistema |
-|---|---|
+| --- | --- |
 | `checkout.session.completed` | Actualiza reserva a `status: "paid"`, `payment_status: "completed"` |
 | `checkout.session.expired` | Actualiza reserva a `status: "cancelled"`, `payment_status: "failed"` |
 | `payment_intent.payment_failed` | Actualiza `payment_status: "failed"` |
@@ -532,7 +532,7 @@ Esta rama concentra la documentación funcional de los dos cobros diferidos que 
 
 ---
 
-```
+```text
 backend/src/
   index.ts                  # Servidor Hono, rutas montadas, arranque
   db.ts                     # Conexión MongoDB con reintentos
@@ -591,7 +591,7 @@ frontend/src/
 ## API Endpoints
 
 | Método | Ruta | Auth | Descripción |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `GET` | `/api/auth/me` | Clerk JWT | Usuario autenticado (perfil MongoDB) |
 | `POST` | `/api/auth/webhook` | Svix signature | Sincronización usuarios Clerk → MongoDB |
 | `GET` | `/api/products` | No | Catálogo con filtros |
@@ -619,7 +619,7 @@ El sistema usa un patrón de errores centralizado. Todos los errores siguen el m
 
 ### Flujo en el Backend
 
-```
+```text
 Servicio/Ruta  →  throw new AppError(mensaje, statusCode, code)
                          ↓
               Manejador global en index.ts
@@ -632,7 +632,7 @@ Los errores inesperados (caídas de MongoDB, bugs no anticipados) son capturados
 ### Códigos de Error del Backend
 
 | Código | HTTP | Cuándo ocurre |
-|---|---|---|
+| --- | --- | --- |
 | `AUTH_TOKEN_REQUIRED` | 401 | No se envió el header `Authorization` |
 | `AUTH_TOKEN_INVALID` | 401 | Token JWT malformado o expirado |
 | `AUTH_USER_NOT_FOUND` | 401 | Token válido pero el usuario fue eliminado |
@@ -653,7 +653,7 @@ Los errores inesperados (caídas de MongoDB, bugs no anticipados) son capturados
 ### Páginas de Error en el Frontend
 
 | Variante | Cuándo se muestra |
-|---|---|
+| --- | --- |
 | `not-found` | URL que no coincide con ninguna ruta |
 | `product-not-found` | Producto no encontrado en `/product/:id` o checkout |
 | `unauthorized` | Ruta protegida sin sesión activa |
@@ -676,7 +676,7 @@ Este modal está implementado actualmente en:
 ### Mensajes Esperados por Endpoint
 
 | Escenario | Endpoint | HTTP | Mensaje |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Contraseña incorrecta | `POST /api/auth/login` | 401 | "Credenciales inválidas" |
 | Email no registrado | `POST /api/auth/login` | 401 | "Credenciales inválidas" |
 | Email duplicado en registro | `POST /api/auth/register` | 400 | "Ya existe una cuenta con ese correo electrónico" |

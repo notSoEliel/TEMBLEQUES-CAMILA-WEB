@@ -7,10 +7,12 @@ Esta regla define el estándar para la implementación de paginación en toda la
 Todas las rutas que devuelvan listas de elementos deben soportar los parámetros `page` y `limit`.
 
 ### Parámetros de Query
+
 - `page`: Número de página (empezando en 1). Valor por defecto: `1`.
 - `limit`: Cantidad de elementos por página. Valor por defecto: `10`.
 
 ### Estructura de Respuesta
+
 La respuesta debe incluir los datos y un objeto de metadatos de paginación.
 
 ```json
@@ -28,9 +30,11 @@ La respuesta debe incluir los datos y un objeto de metadatos de paginación.
 ## 2. Estándar de Frontend (UI)
 
 ### Componente Reutilizable
-Se debe usar el componente `Pagination` en `frontend/src/components/ui/Pagination.tsx`. 
+
+Se debe usar el componente `Pagination` en `frontend/src/components/ui/Pagination.tsx`.
 
 ### Comportamiento y UX
+
 - **Estética Premium**: Evitar sombras y bordes excesivos en la paginación para mantener un look limpio y profesional.
 - **Sincronización con URL**: La página actual y el límite deben estar SIEMPRE presentes en los parámetros de la URL (`URLSearchParams`), incluso si son los valores por defecto. Esto asegura que el estado sea explícito y "rutas de verdad".
 - **Selector de Cantidad**: Debe incluir un selector para cambiar el `limit`. Los valores recomendados son 10, 20, 50, pero para el Catálogo se prefieren números pares que encajen en la cuadrícula (4, 8, 12, 20).
@@ -38,10 +42,12 @@ Se debe usar el componente `Pagination` en `frontend/src/components/ui/Paginatio
 - **Scroll**: Al cambiar de página, realizar un scroll suave al inicio de la lista.
 
 ## 3. Áreas de Aplicación Obligatoria
+
 - **Admin**: Inventario, Reservas, Usuarios.
 - **Cliente**: Catálogo de productos, Historial de alquileres.
 
 ## 4. Diseño y Estilos
+
 - Usar el sistema de diseño de la aplicación pero de forma sutil.
 - El botón de página activa debe ser claramente distinguible.
 - Los botones deshabilitados (ej. "Anterior" en página 1) deben ser visualmente neutros.
