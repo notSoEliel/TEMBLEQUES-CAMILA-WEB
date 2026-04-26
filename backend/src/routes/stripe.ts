@@ -53,6 +53,7 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     rental.product_id._id.toString(),
     rental.start_date,
     rental.end_date,
+    rental.selected_size,
     rental._id.toString(),
   );
 
