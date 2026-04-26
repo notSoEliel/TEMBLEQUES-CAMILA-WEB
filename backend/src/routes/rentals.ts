@@ -14,6 +14,7 @@ const createRentalSchema = z.object({
   productId: z.string().min(1, "El ID del producto es requerido"),
   startDate: z.string().min(1, "La fecha de inicio es requerida"),
   endDate: z.string().min(1, "La fecha de fin es requerida"),
+  selectedSize: z.string().min(1, "La talla es requerida"),
   termsAccepted: z.boolean(),
 });
 
@@ -28,6 +29,7 @@ rentals.post("/", async (c) => {
     productId: data.productId,
     startDate: new Date(data.startDate),
     endDate: new Date(data.endDate),
+    selectedSize: data.selectedSize,
     termsAccepted: data.termsAccepted,
     ipAddress: c.req.header("x-forwarded-for") || c.req.header("x-real-ip") || "unknown",
     userAgent: c.req.header("user-agent") || "unknown",

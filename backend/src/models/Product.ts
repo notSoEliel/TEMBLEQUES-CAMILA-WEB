@@ -19,6 +19,15 @@ export interface IProduct extends Document {
   condition_status: ConditionStatus;
   size?: string;
   images: string[];
+  variants?: Array<{
+    size: string;
+    stock: number;
+    price_override?: number;
+  }>;
+  deposit_settings?: {
+    required: boolean;
+    overrideAmount?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +50,17 @@ const productSchema = new Schema<IProduct>(
     },
     size: { type: String, trim: true },
     images: [{ type: String }],
+    variants: [
+      {
+        size: { type: String, required: true },
+        stock: { type: Number, required: true, min: 0 },
+        price_override: { type: Number },
+      },
+    ],
+    deposit_settings: {
+      required: { type: Boolean, default: false },
+      overrideAmount: { type: Number },
+    },
   },
   { timestamps: true }
 );

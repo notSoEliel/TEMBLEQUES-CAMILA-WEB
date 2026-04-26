@@ -19,7 +19,26 @@ export interface IRental extends Document {
   status: RentalStatus;
   payment_status: "pending" | "completed" | "failed" | "refunded";
   terms_accepted: boolean;
+  selected_size?: string;
+
+  // Stripe & Payment Flow
   stripe_session_id?: string;
+  stripe_payment_intent_id?: string;
+  stripe_customer_id?: string;
+  stripe_payment_method_id?: string;
+
+  // Deposit Info
+  deposit_required: boolean;
+  deposit_amount: number;
+  deposit_status: "none" | "held" | "captured" | "released" | "failed";
+  stripe_deposit_intent_id?: string;
+  deposit_failure_reason?: string;
+
+  // Late Fees & Damage
+  late_days?: number;
+  late_fee_amount: number;
+  stripe_late_fee_intent_id?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,7 +61,29 @@ const rentalSchema = new Schema<IRental>(
       default: "pending",
     },
     terms_accepted: { type: Boolean, required: true, default: false },
+    selected_size: { type: String },
+
+    // Stripe
     stripe_session_id: { type: String },
+    stripe_payment_intent_id: { type: String },
+    stripe_customer_id: { type: String },
+    stripe_payment_method_id: { type: String },
+
+    // Deposit
+    deposit_required: { type: Boolean, default: false },
+    deposit_amount: { type: Number, default: 0 },
+    deposit_status: {
+      type: String,
+      enum: ["none", "held", "captured", "released", "failed"],
+      default: "none",
+    },
+    stripe_deposit_intent_id: { type: String },
+    deposit_failure_reason: { type: String },
+
+    // Late Fees
+    late_days: { type: Number, default: 0 },
+    late_fee_amount: { type: Number, default: 0 },
+    stripe_late_fee_intent_id: { type: String },
   },
   { timestamps: true }
 );

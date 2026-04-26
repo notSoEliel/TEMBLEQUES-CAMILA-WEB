@@ -15,6 +15,9 @@ export function calculateTotal(pricePerDay: number, startDate: Date, endDate: Da
   return pricePerDay * days;
 }
 
+const DEPOSIT_THRESHOLD_USD = 350;
+const DEPOSIT_RATE = 0.35;
+
 /**
  * Creates a rental after validating availability and terms.
  */
@@ -23,11 +26,12 @@ export async function createRental(params: {
   productId: string;
   startDate: Date;
   endDate: Date;
+  selectedSize: string;
   termsAccepted: boolean;
   ipAddress: string;
   userAgent: string;
 }) {
-  const { userId, productId, startDate, endDate, termsAccepted, ipAddress, userAgent } = params;
+  const { userId, productId, startDate, endDate, selectedSize, termsAccepted, ipAddress, userAgent } = params;
 
   if (!termsAccepted) {
     throw new AppError(
@@ -75,7 +79,25 @@ export async function createRental(params: {
     );
   }
 
-  const total = calculateTotal(product.rental_price, startDate, endDate);
+  // Determine price based on variant or default
+  const variant = product.variants?.find((v: any) => v.size === selectedSize);
+  const pricePerDay = variant?.price_override ?? product.rental_price;
+
+  const total = calculateTotal(pricePerDay, startDate, endDate);
+
+  // Calculate deposit
+  let depositRequired = false;
+  let depositAmount = 0;
+
+  if (product.deposit_settings) {
+    if (product.deposit_settings.required) {
+      depositRequired = true;
+      depositAmount = product.deposit_settings.overrideAmount ?? Math.round(total * DEPOSIT_RATE * 100) / 100;
+    }
+  } else if (total >= DEPOSIT_THRESHOLD_USD) {
+    depositRequired = true;
+    depositAmount = Math.round(total * DEPOSIT_RATE * 100) / 100;
+  }
 
   const rental = await Rental.create({
     user_id: userId,
@@ -83,6 +105,10 @@ export async function createRental(params: {
     start_date: startDate,
     end_date: endDate,
     total,
+    selected_size: selectedSize,
+    deposit_required: depositRequired,
+    deposit_amount: depositAmount,
+    deposit_status: depositRequired ? "none" : "none",
     status: "pending",
     payment_status: "pending",
     terms_accepted: true,
