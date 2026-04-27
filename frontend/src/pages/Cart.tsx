@@ -85,13 +85,19 @@ export default function Cart() {
                         <span className="w-10 text-center font-bold text-sm">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-1.5 hover:bg-muted transition-colors border-l-2 border-black"
+                          disabled={item.quantity >= item.stock}
+                          className={`p-1.5 transition-colors border-l-2 border-black ${
+                            item.quantity >= item.stock ? "bg-muted text-muted-foreground cursor-not-allowed" : "hover:bg-muted"
+                          }`}
                         >
                           <Plus className="h-4 w-4" />
                         </button>
                       </div>
                       
                       <div className="text-right">
+                        {item.quantity >= item.stock && (
+                           <p className="text-[10px] text-destructive font-bold uppercase mb-1">Stock máximo alcanzado</p>
+                        )}
                         <p className="text-sm text-muted-foreground">Alquiler x {item.quantity}</p>
                         <p className="text-xl font-bold text-primary">{formatCurrency(item.price * item.quantity)}</p>
                       </div>
@@ -120,21 +126,21 @@ export default function Cart() {
                   <span className="font-bold">{formatCurrency(total)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Depósito de Garantía</span>
+                  <span className="text-muted-foreground">Reserva de Garantía</span>
                   <span className="font-bold">{formatCurrency(totalDeposit)}</span>
                 </div>
                 
                 <div className="bg-amber-50 border-2 border-black rounded-xl p-3 text-xs flex gap-2">
                   <Info className="h-4 w-4 text-amber-600 shrink-0" />
                   <p className="text-amber-800">
-                    El depósito de {formatCurrency(totalDeposit)} se retendrá temporalmente como garantía.
+                    La reserva de {formatCurrency(totalDeposit)} se retendrá temporalmente como garantía.
                   </p>
                 </div>
 
                 <Separator className="bg-black/20 h-0.5" />
 
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-lg">Total a Pagar</span>
+                  <span className="font-bold text-lg">Subtotal a Pagar</span>
                   <span className="font-black text-2xl text-primary">{formatCurrency(total)}</span>
                 </div>
 

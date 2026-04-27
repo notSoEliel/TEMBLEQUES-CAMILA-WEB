@@ -13,12 +13,14 @@ import {
   Calendar,
   Mail,
   Phone,
-  User as UserIcon
+  User as UserIcon,
+  CalendarCheck
 } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
+  reserved: "Reservado",
   paid: "Pagado",
   confirmed: "Confirmado",
   delivered: "Entregado",
@@ -27,6 +29,13 @@ const STATUS_LABELS: Record<string, string> = {
   damaged: "Dañado",
   cancelled: "Cancelado",
 };
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("es-PA", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
 
 export default function AdminUserDetail() {
   const { id } = useParams();
@@ -39,18 +48,19 @@ export default function AdminUserDetail() {
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [filterStatus, setFilterStatus] = useState<string>("");
 
   useEffect(() => {
     if (token && id) {
       loadData();
     }
-  }, [token, id, currentPage]);
+  }, [token, id, currentPage, filterStatus]);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [rentalsRes, statsRes, userRes] = await Promise.all([
-        adminApi.userRentals(id!, token!, { page: currentPage, limit: 10 }),
+        adminApi.userRentals(id!, token!, { page: currentPage, limit: 10, status: filterStatus || undefined }),
         adminApi.userStats(id!, token!),
         adminApi.getUser(id!, token!)
       ]);
@@ -81,6 +91,7 @@ export default function AdminUserDetail() {
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
               <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email || "Cargando..."}</span>
               {user.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {user.phone}</span>}
+              <span className="flex items-center gap-1 font-bold text-primary"><ShoppingBag className="h-3 w-3" /> Total Gastado: {formatCurrency(stats?.totalSpent || 0)}</span>
               <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> Miembro desde {user.createdAt ? new Date(user.createdAt).toLocaleDateString("es-PA") : "..."}</span>
             </div>
           </div>
@@ -91,39 +102,63 @@ export default function AdminUserDetail() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+        <Card 
+          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "" ? "bg-primary/5 ring-2 ring-primary" : ""}`}
+          onClick={() => { setFilterStatus(""); setCurrentPage(1); }}
+        >
           <CardContent className="p-6 flex items-center gap-4">
-            <div className="bg-primary/10 p-3 rounded-2xl border-2 border-primary/20">
+            <div className="bg-primary/10 p-3 rounded-2xl border-2 border-primary/20 shrink-0">
               <ShoppingBag className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Pedidos Realizados</p>
-              <p className="text-3xl font-black">{stats?.total || 0}</p>
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Total Pedidos</p>
+              <p className="text-2xl font-black leading-none">{stats?.total || 0}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+        <Card 
+          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "cancelled" ? "bg-destructive/5 ring-2 ring-destructive" : ""}`}
+          onClick={() => { setFilterStatus("cancelled"); setCurrentPage(1); }}
+        >
           <CardContent className="p-6 flex items-center gap-4">
-            <div className="bg-destructive/10 p-3 rounded-2xl border-2 border-destructive/20">
+            <div className="bg-destructive/10 p-3 rounded-2xl border-2 border-destructive/20 shrink-0">
               <XCircle className="h-8 w-8 text-destructive" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Pedidos Cancelados</p>
-              <p className="text-3xl font-black">{stats?.cancelled || 0}</p>
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Cancelados</p>
+              <p className="text-2xl font-black leading-none">{stats?.cancelled || 0}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+        <Card 
+          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "pending" ? "bg-amber-50 ring-2 ring-amber-500" : ""}`}
+          onClick={() => { setFilterStatus("pending"); setCurrentPage(1); }}
+        >
           <CardContent className="p-6 flex items-center gap-4">
-            <div className="bg-amber-100 p-3 rounded-2xl border-2 border-amber-200">
+            <div className="bg-amber-100 p-3 rounded-2xl border-2 border-amber-200 shrink-0">
               <Clock className="h-8 w-8 text-amber-600" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Pendientes de Pago</p>
-              <p className="text-3xl font-black">{stats?.pending || 0}</p>
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Pendientes</p>
+              <p className="text-2xl font-black leading-none">{stats?.pending || 0}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "reserved" ? "bg-cyan-50 ring-2 ring-cyan-500" : ""}`}
+          onClick={() => { setFilterStatus("reserved"); setCurrentPage(1); }}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="bg-cyan-100 p-3 rounded-2xl border-2 border-cyan-200 shrink-0">
+              <CalendarCheck className="h-8 w-8 text-cyan-600" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Reservados</p>
+              <p className="text-2xl font-black leading-none">{stats?.reserved || 0}</p>
             </div>
           </CardContent>
         </Card>
@@ -139,11 +174,12 @@ export default function AdminUserDetail() {
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/50 text-[10px] uppercase tracking-wider font-black text-muted-foreground">
                 <tr>
-                  <th className="px-6 py-4">Producto</th>
-                  <th className="px-6 py-4">Período</th>
-                  <th className="px-6 py-4">Total</th>
-                  <th className="px-6 py-4">Estado</th>
-                  <th className="px-6 py-4">Acciones</th>
+                  <th className="px-4 py-3">ID Pedido</th>
+                  <th className="px-4 py-3">Producto</th>
+                  <th className="px-4 py-3">Período</th>
+                  <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/10">
@@ -160,37 +196,63 @@ export default function AdminUserDetail() {
                     </td>
                   </tr>
                 ) : (
-                  rentals.map((r) => (
-                    <tr key={r._id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={r.product_id?.images?.[0]} className="h-10 w-8 object-cover rounded border border-black/10" />
-                          <span className="font-bold">{r.product_id?.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span>
-                            {new Date(r.start_date + "T12:00:00").toLocaleDateString("es-PA")} - {new Date(r.end_date + "T12:00:00").toLocaleDateString("es-PA")}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-black text-primary">
-                        ${r.total}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className="capitalize font-bold border-2 border-black">
-                          {STATUS_LABELS[r.status] || r.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button variant="ghost" size="sm" className="font-bold hover:bg-primary/10" onClick={() => navigate(`/admin/reservations?id=${r._id}`)}>
-                          Ver Detalle
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
+                  rentals.map((r, index) => {
+                    const prev = rentals[index - 1];
+                    const next = rentals[index + 1];
+                    const orderId = r.order_group_id || r._id;
+                    const prevOrderId = prev ? (prev.order_group_id || prev._id) : null;
+                    const nextOrderId = next ? (next.order_group_id || next._id) : null;
+                    
+                    const isFirstInGroup = orderId !== prevOrderId;
+                    const isLastInGroup = orderId !== nextOrderId;
+                    
+                    return (
+                      <tr 
+                        key={r._id} 
+                        className={`hover:bg-muted/30 transition-colors ${isLastInGroup ? 'border-b-2 border-black/10' : 'border-b-0'}`}
+                      >
+                        <td className="px-4 py-2 font-mono text-[10px] font-black align-middle">
+                          {isFirstInGroup ? (
+                            `#${orderId.slice(-6).toUpperCase()}`
+                          ) : (
+                            <span className="text-muted-foreground/30 ml-4">↳</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 align-middle">
+                          <div className="flex items-center gap-3">
+                            <img src={r.product_id?.images?.[0]} className="h-8 w-6 object-cover rounded border border-black/10 shrink-0" />
+                            <span className="font-bold text-xs">{r.product_id?.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 align-middle">
+                          <div className="flex items-center gap-2 text-[11px]">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-medium">
+                              {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 font-black text-primary text-xs align-middle">
+                          {formatCurrency(r.total)}
+                        </td>
+                        <td className="px-4 py-2 align-middle">
+                          <Badge variant="outline" className={`text-[10px] font-black uppercase border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${r.status === 'cancelled' ? 'bg-destructive/5' : ''}`}>
+                            {STATUS_LABELS[r.status] || r.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-2 text-center align-middle">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-1px] active:shadow-none transition-all" 
+                            onClick={() => navigate(`/admin/reservations?status=${r.status}&page=1&limit=10`)}
+                          >
+                            <ShoppingBag className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

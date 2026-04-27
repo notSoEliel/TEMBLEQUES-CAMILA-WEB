@@ -108,7 +108,7 @@ export const productsApi = {
 
 // Rentals
 export const rentalsApi = {
-  create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
+  create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean; orderGroupId?: string }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
   bulkCreate: (items: any[], token: string) =>
@@ -176,11 +176,12 @@ export const adminApi = {
     api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
 
   // Rentals
-  rentals: (token: string, params: { status?: string; page?: number; limit?: number } = {}) => {
+  rentals: (token: string, params: { status?: string; page?: number; limit?: number; sort?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.status) searchParams.set("status", params.status);
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.sort) searchParams.set("sort", params.sort);
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return api<PaginatedResponse<any>>(`/admin/rentals${query}`, { token });
   },
@@ -201,10 +202,11 @@ export const adminApi = {
     api<{ user: any }>(`/admin/users/${id}`, { token }),
 
 
-  userRentals: (userId: string, token: string, params: { page?: number; limit?: number } = {}) => {
+  userRentals: (userId: string, token: string, params: { page?: number; limit?: number; status?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.status) searchParams.set("status", params.status);
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return api<PaginatedResponse<any>>(`/admin/users/${userId}/rentals${query}`, { token });
   },

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
@@ -114,10 +115,9 @@ export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, token } = useAuth();
+  const { items, total: cartTotal, totalDeposit: cartTotalDeposit, clearCart, isLoading: cartLoading } = useCart();
+  const { user, token, isLoading: authLoading } = useAuth();
   const { errorModal, showError } = useErrorModal();
-
-  const { items, total: cartTotal, totalDeposit: cartTotalDeposit, clearCart } = useCart();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -134,6 +134,8 @@ export default function Checkout() {
   );
 
   useEffect(() => {
+    if (authLoading || cartLoading) return;
+
     if (!user) {
       navigate("/login");
       return;
@@ -215,14 +217,20 @@ export default function Checkout() {
       let rentalIds: string[] = [];
 
       if (isMulti) {
-        const bulkItems = items.map(item => ({
-          productId: item.productId,
-          selectedSize: item.size,
-          startDate: item.startDate,
-          endDate: item.endDate,
-          termsAccepted: true,
-          paymentType,
-        }));
+        const bulkItems: any[] = [];
+        items.forEach((item) => {
+          // Expand by quantity
+          for (let i = 0; i < item.quantity; i++) {
+            bulkItems.push({
+              productId: item.productId,
+              selectedSize: item.size,
+              startDate: item.startDate,
+              endDate: item.endDate,
+              termsAccepted: true,
+              paymentType,
+            });
+          }
+        });
         const response = await rentalsApi.bulkCreate(bulkItems, token!);
         rentalIds = response.rentals.map((r: any) => r._id);
       } else {
@@ -537,6 +545,13 @@ export default function Checkout() {
                   <span className="font-black text-2xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
                 </div>
               </div>
+
+              {paymentType === "reservation" && (
+                <div className="mt-4 p-3 bg-destructive/5 border-2 border-destructive/20 rounded-xl">
+                  <p className="text-[10px] font-black uppercase text-destructive mb-1 text-center italic">Saldo restante a pagar en tienda</p>
+                  <p className="text-xl font-black text-destructive text-center">{formatCurrency(finalTotal - finalDeposit)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

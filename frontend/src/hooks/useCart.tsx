@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useAuth } from "./useAuth";
 
 export interface CartItem {
   id: string;
@@ -11,6 +12,7 @@ export interface CartItem {
   depositAmount: number;
   startDate: string;
   endDate: string;
+  stock: number;
 }
 
 interface CartContextType {
@@ -21,49 +23,48 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   totalDeposit: number;
+  getAvailableStock: (productId: string, size: string, dbStock: number) => number;
+  isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-import { useAuth } from "./useAuth";
-
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const cartKey = user ? `cart_${user.id}` : "cart_guest";
+  const { user, isLoading: authLoading } = useAuth();
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [prevUser, setPrevUser] = useState<string | undefined>(undefined);
 
-  const [items, setItems] = useState<CartItem[]>(() => {
-    // Initial load will just use guest cart or wait for effect
-    return [];
-  });
-
-  const [prevUser, setPrevUser] = useState(user?.id);
-
-  // Load cart when user changes, and clear on logout
+  // Load cart when auth is ready or user changes
   useEffect(() => {
-    // If user logged out
-    if (prevUser && !user) {
-      localStorage.removeItem("cart_guest");
-      localStorage.removeItem(`cart_${prevUser}`);
-      setItems([]);
-    } else {
+    if (authLoading) return;
+
+    const cartKey = user ? `cart_${user.id}` : "cart_guest";
+    
+    // Logic to handle user switching or initial load
+    if (user?.id !== prevUser) {
       const saved = localStorage.getItem(cartKey);
       if (saved) {
         setItems(JSON.parse(saved));
       } else {
         setItems([]);
       }
+      setPrevUser(user?.id);
     }
-    setPrevUser(user?.id);
-  }, [user, cartKey, prevUser]);
+    
+    setIsLoading(false);
+  }, [authLoading, user, prevUser]);
 
-  // Save cart when items change
+  // Save cart changes
   useEffect(() => {
+    if (isLoading || authLoading) return;
+    
+    const cartKey = user ? `cart_${user.id}` : "cart_guest";
     localStorage.setItem(cartKey, JSON.stringify(items));
-  }, [items, cartKey]);
+  }, [items, user, isLoading, authLoading]);
 
   const addItem = (item: CartItem) => {
     setItems((prev) => {
-      // Check if item with same productId, size, and dates already exists
       const existing = prev.find(
         (i) =>
           i.productId === item.productId &&
@@ -74,7 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       if (existing) {
         return prev.map((i) =>
-          i === existing ? { ...i, quantity: i.quantity + item.quantity } : i
+          i === existing ? { ...i, quantity: Math.min(i.stock, i.quantity + item.quantity) } : i
         );
       }
       return [...prev, { ...item, id: crypto.randomUUID() }];
@@ -87,7 +88,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuantity = (id: string, quantity: number) => {
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: Math.max(1, quantity) } : i))
+      prev.map((i) => (i.id === id ? { ...i, quantity: Math.min(i.stock, Math.max(1, quantity)) } : i))
     );
   };
 
@@ -97,6 +98,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalDeposit = items.reduce((acc, item) => acc + item.depositAmount * item.quantity, 0);
+
+  const getAvailableStock = (productId: string, size: string, dbStock: number) => {
+    const inCart = items
+      .filter((i) => i.productId === productId && i.size === size)
+      .reduce((acc, i) => acc + i.quantity, 0);
+    return Math.max(0, dbStock - inCart);
+  };
 
   return (
     <CartContext.Provider
@@ -108,6 +116,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         total,
         totalDeposit,
+        getAvailableStock,
+        isLoading,
       }}
     >
       {children}

@@ -38,7 +38,7 @@ export default function ProductDetail() {
   const [endDate, setEndDate] = useState("");
   const [calendarConflict, setCalendarConflict] = useState(false);
   
-  const { items, addItem } = useCart();
+  const { items, addItem, getAvailableStock } = useCart();
   const { errorModal, showError } = useErrorModal();
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -118,6 +118,12 @@ export default function ProductDetail() {
     
 
 
+    const maxAvailable = getAvailableStock(product._id, selectedSize, selectedVariant.stock);
+    if (quantity > maxAvailable) {
+      showError(`Solo puedes añadir ${maxAvailable} unidades más al carrito.`, "validation");
+      return;
+    }
+
     addItem({
       id: "", // Will be set by context
       productId: product._id,
@@ -129,6 +135,7 @@ export default function ProductDetail() {
       depositAmount,
       startDate,
       endDate,
+      stock: selectedVariant.stock,
     });
 
     setShowAddModal(true);
@@ -296,26 +303,47 @@ export default function ProductDetail() {
           {/* Quantity Selector */}
           <div>
             <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Cantidad</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 hover:bg-muted transition-colors border-r-2 border-black"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="w-12 text-center font-bold">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(selectedVariant?.stock ?? 99, quantity + 1))}
-                  className="p-2 hover:bg-muted transition-colors border-l-2 border-black"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="p-2 hover:bg-muted transition-colors border-r-2 border-black"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      const max = selectedVariant ? getAvailableStock(product._id, selectedSize!, selectedVariant.stock) : 99;
+                      if (!isNaN(val)) {
+                        setQuantity(Math.min(Math.max(1, val), max));
+                      }
+                    }}
+                    className="w-12 text-center font-bold border-none focus:ring-0"
+                  />
+                  <button
+                    onClick={() => {
+                      const max = selectedVariant ? getAvailableStock(product._id, selectedSize!, selectedVariant.stock) : 99;
+                      setQuantity(Math.min(max, quantity + 1));
+                    }}
+                    className="p-2 hover:bg-muted transition-colors border-l-2 border-black"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {selectedVariant && (
+                  <span className="text-xs text-muted-foreground">
+                    Disponibles: {getAvailableStock(product._id, selectedSize!, selectedVariant.stock)} unidades
+                  </span>
+                )}
               </div>
-              {selectedVariant && (
-                <span className="text-xs text-muted-foreground">
-                  Máximo {selectedVariant.stock} unidades
-                </span>
+              {selectedVariant && getAvailableStock(product._id, selectedSize!, selectedVariant.stock) === 0 && (
+                <p className="text-[10px] text-destructive font-bold animate-pulse">
+                  * Has agotado el stock disponible para esta sesión (ya en carrito).
+                </p>
               )}
             </div>
           </div>
@@ -347,9 +375,9 @@ export default function ProductDetail() {
           <div className="bg-amber-50 border-2 border-black rounded-xl p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex gap-3">
             <Info className="h-5 w-5 text-amber-600 shrink-0" />
             <div className="text-sm">
-              <p className="font-bold text-amber-900">Alerta de Depósito</p>
+              <p className="font-bold text-amber-900">Alerta de Reserva</p>
               <p className="text-amber-800 leading-snug mt-0.5">
-                Cada ítem requiere un depósito de garantía inicial. Este monto se retiene y libera al devolver la prenda sin daños.
+                Cada ítem requiere una reserva de garantía inicial. Este monto se retiene y libera al devolver la prenda sin daños.
               </p>
             </div>
           </div>

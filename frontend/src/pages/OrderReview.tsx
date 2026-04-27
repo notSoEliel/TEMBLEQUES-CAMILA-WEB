@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Loader2, CreditCard, Trash2, Shield, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, CreditCard, Trash2, Shield, CheckCircle2, Plus, Minus, AlertTriangle } from "lucide-react";
 import ErrorPage from "@/pages/ErrorPage";
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -38,6 +38,7 @@ export default function OrderReview() {
       return;
     }
 
+    setLoading(true);
     rentalsApi.my(token!, { page: 1, limit: 100 })
       .then((data) => {
         const groupRentals = data.data.filter((r: any) => 
@@ -61,17 +62,85 @@ export default function OrderReview() {
       });
   }, [orderGroupId, user, token, navigate]);
 
-  const handleRemove = async (id: string) => {
+  const loadData = async () => {
     try {
-      await rentalsApi.cancel(id, token!);
-      const updated = rentals.filter(r => r._id !== id);
-      if (updated.length === 0) {
+      const data = await rentalsApi.my(token!, { page: 1, limit: 100 });
+      const groupRentals = data.data.filter((r: any) => 
+        (r.order_group_id === orderGroupId || r._id === orderGroupId) && 
+        r.status === "pending"
+      );
+      if (groupRentals.length === 0) {
         navigate("/profile");
-      } else {
-        setRentals(updated);
+        return;
       }
+      setRentals(groupRentals);
+    } catch (err) {
+      console.error("Error reloading rentals:", err);
+    }
+  };
+
+  const handleIncrement = async (productId: string, size: string, startDate: string, endDate: string) => {
+    setSubmitting(true);
+    try {
+      // 1. Validate availability in DB
+      const res = await productsApi.availability(productId, startDate, endDate);
+      const bookedCount = res.booked.length;
+      
+      // Get product stock for this size
+      const prodRes = await productsApi.get(productId);
+      const variant = prodRes.product.variants.find((v: any) => v.size === size);
+      const stock = variant?.stock || 0;
+
+      if (bookedCount >= stock) {
+        showError("Lo sentimos, ya no queda stock disponible para estas fechas.", "validation");
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Create new rental
+      await rentalsApi.create({
+        productId,
+        selectedSize: size,
+        startDate,
+        endDate,
+        termsAccepted: true,
+        paymentType,
+        orderGroupId: orderGroupId!
+      }, token!);
+      
+      // We need to update the orderGroupId of the new rental to match the current one
+      // But currently create() creates a NEW orderGroupId.
+      // Ideally the backend should support adding to an existing group.
+      // For now, let's just reload.
+      await loadData();
     } catch (err: any) {
-      showError(err.message || "No se pudo eliminar el artículo.", "generic");
+      showError(err.message || "No se pudo añadir la unidad.", "generic");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDecrement = async (rentalId: string) => {
+    setSubmitting(true);
+    try {
+      await rentalsApi.cancel(rentalId, token!);
+      await loadData();
+    } catch (err: any) {
+      showError(err.message || "No se pudo reducir la cantidad.", "generic");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemoveGroup = async (productRentals: any[]) => {
+    setSubmitting(true);
+    try {
+      await Promise.all(productRentals.map(r => rentalsApi.cancel(r._id, token!)));
+      await loadData();
+    } catch (err: any) {
+      showError(err.message || "No se pudo eliminar el producto.", "generic");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -140,30 +209,73 @@ export default function OrderReview() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
-                {rentals.map((r) => (
-                  <div key={r._id} className="flex items-center justify-between p-4 group">
-                    <div className="flex items-center gap-4">
-                      {r.product_id?.images?.[0] && (
-                        <img src={r.product_id.images[0]} alt="" className="w-12 h-16 object-cover rounded border-2 border-black" />
-                      )}
-                      <div>
-                        <p className="font-bold">{r.product_id?.name}</p>
-                        <p className="text-xs text-muted-foreground">Talla: {r.selected_size}</p>
+                {/* Group rentals by product and size to show quantity */}
+                {Object.values(rentals.reduce((acc, r) => {
+                  const key = `${r.product_id._id}-${r.selected_size}-${r.start_date}-${r.end_date}`;
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(r);
+                  return acc;
+                }, {} as Record<string, any[]>)).map((group: any[]) => {
+                  const r = group[0];
+                  const qty = group.length;
+                  return (
+                    <div key={r._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 gap-4">
+                      <div className="flex items-center gap-4">
+                        {r.product_id?.images?.[0] && (
+                          <img src={r.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded border-2 border-black shrink-0" />
+                        )}
+                        <div>
+                          <p className="font-black text-lg leading-tight uppercase">{r.product_id?.name}</p>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <span className="text-[10px] bg-muted border-2 border-black px-2 py-0.5 rounded-full font-black uppercase">Talla: {r.selected_size}</span>
+                            <span className="text-[10px] bg-primary/10 border-2 border-primary/30 px-2 py-0.5 rounded-full font-black uppercase text-primary">
+                              {new Date(r.start_date).toLocaleDateString("es-PA", { day: "numeric", month: "short" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between w-full sm:w-auto gap-6 border-t sm:border-t-0 pt-4 sm:pt-0">
+                        {/* Quantity Selector */}
+                        <div className="flex flex-col items-center gap-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Cantidad</p>
+                          <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <button
+                              onClick={() => handleDecrement(r._id)}
+                              disabled={submitting}
+                              className="p-1.5 hover:bg-muted transition-colors border-r-2 border-black disabled:opacity-50"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="w-10 text-center font-black text-sm">{qty}</span>
+                            <button
+                              onClick={() => handleIncrement(r.product_id._id, r.selected_size, r.start_date, r.end_date)}
+                              disabled={submitting}
+                              className="p-1.5 hover:bg-muted transition-colors border-l-2 border-black disabled:opacity-50"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Total Item</p>
+                          <p className="font-black text-xl text-primary">{formatCurrency(r.total * qty)}</p>
+                        </div>
+
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="text-destructive hover:bg-destructive/10 -mt-4 sm:mt-0"
+                          onClick={() => handleRemoveGroup(group)}
+                          disabled={submitting}
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-bold">${r.total}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-destructive hover:bg-destructive/10"
-                        onClick={() => handleRemove(r._id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

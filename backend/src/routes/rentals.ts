@@ -19,6 +19,7 @@ const createRentalSchema = z.object({
   endDate: z.string().min(1, "La fecha de fin es requerida"),
   termsAccepted: z.boolean(),
   paymentType: z.enum(["reservation", "full"]).default("reservation"),
+  orderGroupId: z.string().optional(),
 });
 
 const bulkCreateRentalSchema = z.object({
@@ -38,7 +39,7 @@ rentals.post("/", async (c) => {
   const data = createRentalSchema.parse(body); // ZodError → global handler
   const user = c.get("user") as any;
 
-  const orderGroupId = crypto.randomUUID();
+  const orderGroupId = data.orderGroupId || crypto.randomUUID();
 
   const rental = await createRental({
     userId: user._id.toString(),
