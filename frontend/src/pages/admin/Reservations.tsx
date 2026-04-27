@@ -8,17 +8,20 @@ import { Separator } from "@/components/ui/separator";
 import { Calendar, RefreshCw } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { useSearchParams } from "react-router-dom";
+import { LayoutGrid, List, ArrowDownAz, ArrowUpAz } from "lucide-react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
+import OrderCard from "@/components/admin/OrderCard";
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente", paid: "Pagado", confirmed: "Confirmado",
+  pending: "Pendiente", reserved: "Reservado", paid: "Pagado", confirmed: "Confirmado",
   delivered: "Entregado", returned: "Devuelto", late: "Atrasado",
   damaged: "Dañado", cancelled: "Cancelado",
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  reserved: "Reservar",
   paid: "Marcar como Pagado",
   confirmed: "Confirmar Reserva",
   delivered: "Marcar como Entregado",
@@ -29,14 +32,15 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline", paid: "default", confirmed: "default",
+  pending: "outline", reserved: "secondary", paid: "default", confirmed: "default",
   delivered: "secondary", returned: "secondary", late: "destructive",
   damaged: "destructive", cancelled: "outline",
 };
 
 const TRANSITIONS: Record<string, string[]> = {
-  pending: ["paid", "cancelled"],
-  paid: ["confirmed", "cancelled"],
+  pending: ["reserved", "paid", "cancelled"],
+  reserved: ["delivered", "cancelled"],
+  paid: ["confirmed", "delivered", "cancelled"],
   confirmed: ["delivered", "cancelled"],
   delivered: ["returned", "late", "damaged"],
   late: ["returned", "damaged"],
@@ -53,6 +57,8 @@ export default function AdminReservations() {
   const [filter, setFilter] = useState(searchParams.get("status") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
+  const [viewMode, setViewMode] = useState<"items" | "orders">("items");
+  const [sortOrder, setSortOrder] = useState(searchParams.get("sort") || "desc");
 
   useEffect(() => {
     // Ensure page and limit are always in the URL
@@ -70,15 +76,17 @@ export default function AdminReservations() {
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const status = searchParams.get("status") || "";
+    const sort = searchParams.get("sort") || "desc";
 
     // Update local state to match URL
     if (page !== currentPage) setCurrentPage(page);
     if (limit !== currentLimit) setCurrentLimit(limit);
     if (status !== filter) setFilter(status);
+    if (sort !== sortOrder) setSortOrder(sort);
 
     setLoading(true);
     try {
-      const response = await adminApi.rentals(token!, { status: status || undefined, page, limit });
+      const response = await adminApi.rentals(token!, { status: status || undefined, page, limit, sort });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err: any) {
@@ -90,6 +98,13 @@ export default function AdminReservations() {
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await adminApi.updateRentalStatus(id, status, token!);
+      loadRentals();
+    } catch (err: any) { showError(err.message, "generic"); }
+  };
+
+  const handleBulkStatusChange = async (ids: string[], status: string) => {
+    try {
+      await Promise.all(ids.map(id => adminApi.updateRentalStatus(id, status, token!)));
       loadRentals();
     } catch (err: any) { showError(err.message, "generic"); }
   };
@@ -121,6 +136,14 @@ export default function AdminReservations() {
     setSearchParams(newParams);
   };
 
+  const toggleSort = () => {
+    const newSort = sortOrder === "desc" ? "asc" : "desc";
+    setSortOrder(newSort);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("sort", newSort);
+    setSearchParams(newParams);
+  };
+
   return (
     <div className="space-y-6">
       {errorModal}
@@ -129,11 +152,42 @@ export default function AdminReservations() {
           <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Reservas</h1>
           <p className="text-muted-foreground mt-1">Gestiona las reservas.</p>
         </div>
-        <Button variant="outline" onClick={loadRentals}><RefreshCw className="h-4 w-4 mr-2" />Actualizar</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={toggleSort} className="border-2 border-black font-black uppercase text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none transition-all">
+            {sortOrder === "desc" ? <ArrowDownAz className="h-4 w-4 mr-2" /> : <ArrowUpAz className="h-4 w-4 mr-2" />}
+            {sortOrder === "desc" ? "Recientes Primero" : "Antiguos Primero"}
+          </Button>
+          <Button variant="outline" onClick={loadRentals}><RefreshCw className="h-4 w-4 mr-2" />Actualizar</Button>
+        </div>
+      </div>
+
+      <div className="flex bg-muted/50 p-1 rounded-xl border-2 border-black w-fit">
+        <button
+          onClick={() => setViewMode("items")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+            viewMode === "items" 
+              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" 
+              : "text-muted-foreground hover:text-black"
+          }`}
+        >
+          <List className="w-3.5 h-3.5" />
+          Individual
+        </button>
+        <button
+          onClick={() => setViewMode("orders")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+            viewMode === "orders" 
+              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" 
+              : "text-muted-foreground hover:text-black"
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Agrupado (Pedidos)
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {["", "pending", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"].map((f) => (
+        {["", "pending", "reserved", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"].map((f) => (
           <Button key={f || "all"} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => handleFilterChange(f)}>
             {f ? STATUS_LABELS[f] : "Todos"}
           </Button>
@@ -146,60 +200,46 @@ export default function AdminReservations() {
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Card key={i} className="animate-pulse"><CardContent className="p-4"><div className="h-16 bg-muted rounded" /></CardContent></Card>)}</div>
       ) : rentals.length === 0 ? (
         <Card><CardContent className="p-8 text-center"><Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="font-bold">Sin reservas</p></CardContent></Card>
-      ) : (
+      ) : viewMode === "items" ? (
         <>
           <div className="space-y-3">
             {rentals.map((r) => (
-              <Card key={r._id}>
+              <Card key={r._id} className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                 <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1">
-                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-12 object-cover rounded-lg border-2 border-border" />}
+                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-16 object-cover rounded-lg border-2 border-black shrink-0" />}
                     <div>
-                      <h3 className="font-bold">
+                      <h3 className="font-black uppercase text-sm leading-tight">
                         {r.product_id?.name || "Producto"}
                         {r.selected_size && (
-                          <span className="ml-2 text-xs font-normal bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
+                          <span className="ml-2 text-[10px] font-black bg-black text-white px-1.5 py-0.5 rounded uppercase">
                             Talla: {r.selected_size}
                           </span>
                         )}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{r.user_id?.name} ({r.user_id?.email})</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground font-medium mt-0.5">{r.user_id?.name} ({r.user_id?.email})</p>
+                      <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground font-bold uppercase">
                         <Calendar className="h-3 w-3" />
-                        {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
-                        <span className="font-bold text-primary ml-2">${r.total}</span>
+                        {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
+                        <span className="font-black text-primary ml-2">Total: ${r.total}</span>
                       </div>
-
-                      {(r.deposit_status === "held" || r.deposit_status === "failed" || r.late_fee_status === "failed" || r.late_fee_status === "charged") && (
-                        <div className="mt-1 space-y-0.5 text-xs">
-                          {(r.deposit_status === "held" || r.deposit_status === "failed") && (
-                            <p className={r.deposit_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
-                              Depósito: {r.deposit_status === "held" ? "Hold activo" : "Fallido"}
-                            </p>
-                          )}
-                          {(r.late_fee_status === "charged" || r.late_fee_status === "failed") && (
-                            <p className={r.late_fee_status === "failed" ? "text-destructive" : "text-muted-foreground"}>
-                              Mora: {r.late_fee_status === "charged" ? "Cobrada" : "Fallida"}
-                            </p>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={STATUS_COLORS[r.status]} className="text-sm px-3 py-1">
+                    <Badge variant={STATUS_COLORS[r.status]} className="text-[10px] font-black uppercase px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                       {STATUS_LABELS[r.status]}
                     </Badge>
                     
                     {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
                       <>
-                        <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block" />
+                        <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block bg-black/10" />
                         <div className="flex flex-wrap items-center gap-2">
                           {TRANSITIONS[r.status].map((s) => {
                             const isDestructive = s === "cancelled" || s === "damaged";
+                            const actionLabel = r.status === "reserved" && s === "delivered" ? "Cobrar Saldo y Entregar" : ACTION_LABELS[s] || s;
                             const btn = (
-                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
-                                {ACTION_LABELS[s] || s}
+                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} className="text-[10px] font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-0.5 transition-all" onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
+                                {actionLabel}
                               </Button>
                             );
 
@@ -227,17 +267,42 @@ export default function AdminReservations() {
             ))}
           </div>
 
-          {pagination && (
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
-              limit={currentLimit}
-              onLimitChange={handleLimitChange}
-              totalResults={pagination.total}
-            />
-          )}
+
         </>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(rentals.reduce((acc, r) => {
+            const gid = r.order_group_id || `legacy-${r.user_id?.email}-${r.start_date}`;
+            if (!acc[gid]) acc[gid] = [];
+            acc[gid].push(r);
+            return acc;
+          }, {} as Record<string, any[]>)).map(([gid, group]) => (
+            <OrderCard
+              key={gid}
+              orderGroupId={gid}
+              rentals={group}
+              onStatusChange={handleStatusChange}
+              onBulkStatusChange={handleBulkStatusChange}
+              statusLabels={STATUS_LABELS}
+              statusColors={STATUS_COLORS}
+              actionLabels={ACTION_LABELS}
+              transitions={TRANSITIONS}
+            />
+          ))}
+        </div>
+      )}
+
+      {pagination && pagination.totalPages > 0 && (
+        <div className="pt-4 border-t-2 border-black/5">
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={handlePageChange}
+            limit={currentLimit}
+            onLimitChange={handleLimitChange}
+            totalResults={pagination.total}
+          />
+        </div>
       )}
     </div>
   );

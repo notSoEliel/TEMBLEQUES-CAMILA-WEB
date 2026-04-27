@@ -7,14 +7,15 @@ import {
 } from "react-router-dom";
 import { productsApi, rentalsApi, stripeApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
-  Calendar,
   Shield,
   CreditCard,
   Loader2,
@@ -26,11 +27,16 @@ import { useErrorModal } from "@/components/ErrorModal";
 import AvailabilityCalendar from "@/components/ui/AvailabilityCalendar";
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
-const STEPS = [
-  { id: 1, label: "Producto", icon: Package },
-  { id: 2, label: "Fechas", icon: Calendar },
-  { id: 3, label: "Términos", icon: Shield },
-  { id: 4, label: "Pagar", icon: CreditCard },
+const STEPS_SINGLE = [
+  { id: 1, label: "Producto y Fechas", icon: Package },
+  { id: 2, label: "Términos", icon: Shield },
+  { id: 3, label: "Pagar", icon: CreditCard },
+];
+
+const STEPS_MULTI = [
+  { id: 1, label: "Productos", icon: Package },
+  { id: 2, label: "Términos", icon: Shield },
+  { id: 3, label: "Pagar", icon: CreditCard },
 ];
 
 function calculateDays(start: string, end: string): number {
@@ -46,37 +52,12 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-const DEPOSIT_THRESHOLD_USD = Number(
-  import.meta.env.VITE_STRIPE_DEPOSIT_THRESHOLD_USD || 350,
-);
-const DEPOSIT_RATE = Number(import.meta.env.VITE_STRIPE_DEPOSIT_RATE || 0.35);
+const DEPOSIT_RATE = 0.25;
 
 function estimateDeposit(
   total: number,
   productSettings?: any,
 ): { required: boolean; amount: number } {
-  if (productSettings) {
-    if (!productSettings.required) {
-      return { required: false, amount: 0 };
-    }
-    if (
-      productSettings.overrideAmount !== undefined &&
-      productSettings.overrideAmount > 0
-    ) {
-      return {
-        required: true,
-        amount: Math.round(productSettings.overrideAmount * 100) / 100,
-      };
-    }
-    return {
-      required: true,
-      amount: Math.round(total * DEPOSIT_RATE * 100) / 100,
-    };
-  }
-
-  if (total < DEPOSIT_THRESHOLD_USD) {
-    return { required: false, amount: 0 };
-  }
   return {
     required: true,
     amount: Math.round(total * DEPOSIT_RATE * 100) / 100,
@@ -84,13 +65,13 @@ function estimateDeposit(
 }
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
-function Stepper({ current }: { current: number }) {
+function Stepper({ current, steps }: { current: number, steps: { id: number; label: string; icon: any }[] }) {
   return (
     <nav
       aria-label="Progreso de reserva"
       className="flex items-center gap-0 mb-8 overflow-x-auto"
     >
-      {STEPS.map((step, idx) => {
+      {steps.map((step, idx) => {
         const done = current > step.id;
         const active = current === step.id;
         const Icon = step.icon;
@@ -116,7 +97,7 @@ function Stepper({ current }: { current: number }) {
                 {step.label}
               </span>
             </div>
-            {idx < STEPS.length - 1 && (
+            {idx < steps.length - 1 && (
               <div
                 className={`h-px w-8 sm:w-14 shrink-0 mx-1 mt-[-10px] ${done ? "bg-primary" : "bg-border"}`}
               />
@@ -134,9 +115,9 @@ export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, token } = useAuth();
+  const { items, total: cartTotal, totalDeposit: cartTotalDeposit, clearCart, isLoading: cartLoading } = useCart();
+  const { user, token, isLoading: authLoading } = useAuth();
   const { errorModal, showError } = useErrorModal();
-
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -146,20 +127,31 @@ export default function Checkout() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showFullTerms, setShowFullTerms] = useState(false);
   const [calendarConflict, setCalendarConflict] = useState(false);
+  const [paymentType, setPaymentType] = useState<"reservation" | "full">("reservation");
 
-  // Get selectedSize from location state (passed from ProductDetail)
   const [selectedSize] = useState<string>(
     (location.state as any)?.selectedSize || "",
   );
 
   useEffect(() => {
+    if (authLoading || cartLoading) return;
+
     if (!user) {
       navigate("/login");
       return;
     }
+    
+    if (productId === "multi") {
+      if (items.length === 0 && !submitting) {
+        navigate("/cart");
+        return;
+      }
+      setLoading(false);
+      return;
+    }
+
     if (!productId) return;
     if (!selectedSize) {
-      // No size selected — redirect back to product detail
       navigate(`/product/${productId}`);
       return;
     }
@@ -170,7 +162,7 @@ export default function Checkout() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [productId, user]);
+  }, [productId, user, items.length, selectedSize, submitting]);
 
   useEffect(() => {
     if (searchParams.get("cancelled") === "1") {
@@ -181,42 +173,38 @@ export default function Checkout() {
     }
   }, []);
 
-  // Find the selected variant to get the correct price
+  const isMulti = productId === "multi";
+
   const selectedVariant = product?.variants?.find(
     (v: any) => v.size === selectedSize,
   );
   const pricePerDay =
     selectedVariant?.price_override ?? product?.rental_price ?? 0;
   const days = calculateDays(startDate, endDate);
-  const totalPrice = days > 0 ? days * pricePerDay : 0;
-  const estimatedDeposit = estimateDeposit(
-    totalPrice,
-    product?.deposit_settings,
-  );
+  
+  const subtotal = isMulti ? cartTotal : (days > 0 ? days * pricePerDay : 0);
+  const itbms = subtotal * 0.07;
+  const finalTotal = subtotal + itbms;
+  const finalDeposit = isMulti ? cartTotalDeposit : estimateDeposit(finalTotal, product?.deposit_settings).amount;
+  const depositRequired = isMulti ? cartTotalDeposit > 0 : estimateDeposit(finalTotal, product?.deposit_settings).required;
 
   function goToStep(step: number) {
-    if (step === 3 && (!startDate || !endDate || days <= 0)) {
+    if (step === 2 && !isMulti && (!startDate || !endDate || days <= 0)) {
       showError(
         "Selecciona las fechas de alquiler antes de continuar.",
         "validation",
       );
       return;
     }
-    if (step === 3 && calendarConflict) {
+    if (step === 2 && calendarConflict) {
       showError(
-        "Las fechas seleccionadas se solapan con una reserva existente.",
-        "validation",
-      );
-      return;
-    }
-    if (step === 4 && !termsAccepted) {
-      showError(
-        "Debes aceptar los términos y condiciones para continuar.",
+        "Las fechas seleccionadas tienen conflicto de disponibilidad.",
         "validation",
       );
       return;
     }
     setCurrentStep(step);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSubmit() {
@@ -224,34 +212,53 @@ export default function Checkout() {
       showError("Debes aceptar los términos y condiciones.", "validation");
       return;
     }
-    if (calendarConflict) {
-      showError(
-        "Las fechas seleccionadas tienen un conflicto. Vuelve al paso 2.",
-        "validation",
-      );
-      return;
-    }
     setSubmitting(true);
     try {
-      const rentalData = await rentalsApi.create(
-        {
-          productId: productId!,
-          selectedSize,
-          startDate,
-          endDate,
-          termsAccepted,
-        },
+      let rentalIds: string[] = [];
+
+      if (isMulti) {
+        const bulkItems: any[] = [];
+        items.forEach((item) => {
+          // Expand by quantity
+          for (let i = 0; i < item.quantity; i++) {
+            bulkItems.push({
+              productId: item.productId,
+              selectedSize: item.size,
+              startDate: item.startDate,
+              endDate: item.endDate,
+              termsAccepted: true,
+              paymentType,
+            });
+          }
+        });
+        const response = await rentalsApi.bulkCreate(bulkItems, token!);
+        rentalIds = response.rentals.map((r: any) => r._id);
+      } else {
+        const response = await rentalsApi.create(
+          {
+            productId: productId!,
+            selectedSize,
+            startDate,
+            endDate,
+            termsAccepted,
+            paymentType,
+          },
+          token!,
+        );
+        rentalIds = [response.rental._id];
+      }
+
+      const paymentResult = await stripeApi.createBulkCheckoutSession(
+        rentalIds,
         token!,
       );
-      const paymentResult = await stripeApi.createCheckoutSession(
-        rentalData.rental._id,
-        token!,
-      );
+
+      if (isMulti) clearCart();
 
       if (paymentResult.url) {
         window.location.href = paymentResult.url;
       } else {
-        navigate(`/confirmation?rental=${rentalData.rental._id}`);
+        navigate(`/confirmation?session_id=${paymentResult.sessionId}`);
       }
     } catch (err: any) {
       showError(
@@ -273,7 +280,9 @@ export default function Checkout() {
     );
   }
 
-  if (!product) return <ErrorPage variant="product-not-found" />;
+  if (!isMulti && !product) return <ErrorPage variant="product-not-found" />;
+
+  const steps = isMulti ? STEPS_MULTI : STEPS_SINGLE;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
@@ -293,165 +302,107 @@ export default function Checkout() {
         className="text-3xl font-bold mb-6"
         style={{ fontFamily: "'Playfair Display', serif" }}
       >
-        Reservar Producto
+        Finalizar Reserva
       </h1>
 
-      <Stepper current={currentStep} />
+      <Stepper current={currentStep} steps={steps} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* ── Main column ── */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Step 1 — Product */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
-                  {currentStep > 1 ? (
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  ) : (
-                    "1"
-                  )}
-                </span>
-                Producto seleccionado
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-4">
-                <img
-                  src={
-                    product.images?.[0] ||
-                    `https://picsum.photos/seed/${product._id}/200/250`
-                  }
-                  alt={product.name}
-                  className="w-20 h-28 object-cover rounded-lg border border-border shrink-0"
-                />
-                <div className="flex flex-col justify-center gap-1.5">
-                  <h3 className="font-bold text-lg leading-tight">
-                    {product.name}
-                  </h3>
-                  <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded w-fit">
-                    Talla: {selectedSize}
-                  </span>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {product.description}
-                  </p>
-                  <p className="text-lg font-bold text-primary">
-                    {formatCurrency(pricePerDay)}
-                    <span className="text-sm font-normal text-muted-foreground">
-                      /día
-                    </span>
-                  </p>
-                </div>
-              </div>
-
-              {currentStep === 1 && (
-                <Button className="mt-4 w-full" onClick={() => goToStep(2)}>
-                  Continuar — Seleccionar fechas
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Step 2 — Dates */}
-          {currentStep >= 2 && (
-            <Card>
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* Step 1 — Items & Dates */}
+          {currentStep >= 1 && (
+            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${currentStep > 2 ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"}`}
-                  >
-                    {currentStep > 2 ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : (
-                      "2"
-                    )}
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                    {currentStep > 1 ? <CheckCircle2 className="w-3.5 h-3.5" /> : "1"}
                   </span>
-                  Seleccionar fechas
+                  {isMulti ? `Prendas en el carrito (${items.length})` : "Producto y Fechas"}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <AvailabilityCalendar
-                  productId={productId!}
-                  stock={selectedVariant?.stock ?? 1}
-                  startDate={startDate}
-                  endDate={endDate}
-                  onStartDateChange={(d) => {
-                    setStartDate(d);
-                    setEndDate("");
-                    setCalendarConflict(false);
-                  }}
-                  onEndDateChange={setEndDate}
-                  onConflict={setCalendarConflict}
-                />
+              <CardContent className="space-y-6">
+                {!isMulti && product && (
+                  <>
+                    <div className="flex gap-4 p-4 bg-muted/30 rounded-xl border-2 border-dashed border-black/10">
+                      {product.images?.[0] && (
+                        <img
+                          src={product.images[0]}
+                          alt=""
+                          className="w-16 h-20 object-cover rounded-lg border-2 border-black shrink-0"
+                        />
+                      )}
+                      <div>
+                        <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
+                        <Badge variant="outline" className="mt-2 border-2 border-black font-black uppercase text-[10px]">
+                          Talla: {selectedSize}
+                        </Badge>
+                      </div>
+                    </div>
 
-                {startDate && endDate && days > 0 && !calendarConflict && (
-                  <div className="grid grid-cols-3 gap-3 text-center bg-muted/50 rounded-lg p-3 text-sm">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">
-                        Inicio
-                      </p>
-                      <p className="font-semibold">
-                        {new Date(startDate + "T12:00:00").toLocaleDateString(
-                          "es-PA",
-                          { day: "numeric", month: "short" },
-                        )}
-                      </p>
+                    <div className="space-y-4">
+                      <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Selecciona el período de alquiler</Label>
+                      <AvailabilityCalendar
+                        productId={productId!}
+                        stock={selectedVariant?.stock ?? 1}
+                        startDate={startDate}
+                        endDate={endDate}
+                        onStartDateChange={(d) => {
+                          setStartDate(d);
+                          setEndDate("");
+                          setCalendarConflict(false);
+                        }}
+                        onEndDateChange={setEndDate}
+                        onConflict={setCalendarConflict}
+                      />
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">
-                        Días
-                      </p>
-                      <p className="font-bold text-xl">{days}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">
-                        Devolución
-                      </p>
-                      <p className="font-semibold">
-                        {new Date(endDate + "T12:00:00").toLocaleDateString(
-                          "es-PA",
-                          { day: "numeric", month: "short" },
-                        )}
-                      </p>
-                    </div>
+                  </>
+                )}
+
+                {isMulti && (
+                  <div className="divide-y divide-border">
+                    {items.map((item) => (
+                      <div key={item.id} className="py-4 first:pt-0 last:pb-0">
+                        <div className="flex gap-4">
+                          {item.image && (
+                            <img src={item.image} alt="" className="w-12 h-16 object-cover rounded border-2 border-black" />
+                          )}
+                          <div className="flex-1">
+                            <p className="font-bold text-sm">{item.name}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline" className="text-[10px] border-2 border-black py-0">Talla: {item.size}</Badge>
+                              <span className="text-[10px] text-muted-foreground font-medium">
+                                {new Date(item.startDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })} - {new Date(item.endDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {currentStep === 2 && (
-                  <Button
-                    className="w-full"
-                    disabled={!startDate || !endDate || calendarConflict}
-                    onClick={() => {
-                      if (days > 30) {
-                        showError(
-                          "El período máximo de alquiler es 30 días.",
-                          "validation",
-                        );
-                        return;
-                      }
-                      goToStep(3);
-                    }}
+                {currentStep === 1 && (
+                  <Button 
+                    className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+                    onClick={() => goToStep(2)}
+                    disabled={!isMulti && (!startDate || !endDate || days <= 0 || calendarConflict)}
                   >
-                    Continuar — Términos y condiciones
+                    Continuar a Términos
                   </Button>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Step 3 — Terms */}
-          {currentStep >= 3 && (
-            <Card>
+          {/* Step 2 — Terms */}
+          {currentStep >= 2 && (
+            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${currentStep > 3 ? "bg-primary text-primary-foreground" : "bg-primary text-primary-foreground"}`}
-                  >
-                    {currentStep > 3 ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : (
-                      "3"
-                    )}
+                  <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
+                    {currentStep > 2 ? <CheckCircle2 className="w-3.5 h-3.5" /> : "2"}
                   </span>
                   Términos y condiciones
                 </CardTitle>
@@ -459,27 +410,15 @@ export default function Checkout() {
               <CardContent className="space-y-4">
                 <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm text-muted-foreground leading-relaxed space-y-2">
                   <p>
-                    El cliente acepta devolver el producto en las mismas
-                    condiciones en que fue entregado.
+                    El cliente acepta devolver el producto en las mismas condiciones en que fue entregado.
                   </p>
                   <p>
-                    En caso de pérdida, daño, rotura, manchas permanentes o
-                    deterioro causado durante el alquiler, el cliente asume la
-                    responsabilidad total del costo de reparación o reposición.
+                    En caso de pérdida, daño o manchas permanentes, el cliente asume la responsabilidad total del costo de reparación o reposición.
                   </p>
                   {showFullTerms && (
-                    <>
-                      <p>
-                        Si el alquiler corresponde únicamente a accesorios
-                        (tembleques, peinetas, joyería, etc.), el cliente será
-                        responsable en su totalidad por cualquier daño o pérdida
-                        del artículo.
-                      </p>
-                      <p>
-                        Retrasos en devolución podrán generar cargos adicionales
-                        proporcionales al tiempo de atraso.
-                      </p>
-                    </>
+                    <p>
+                      Retrasos en la devolución podrán generar cargos adicionales proporcionales al tiempo de atraso.
+                    </p>
                   )}
                   <button
                     type="button"
@@ -495,219 +434,126 @@ export default function Checkout() {
                     id="terms"
                     checked={termsAccepted}
                     onCheckedChange={(v) => setTermsAccepted(v === true)}
-                    data-testid="terms-checkbox"
                     className="mt-0.5"
                   />
-                  <Label
-                    htmlFor="terms"
-                    className="text-sm leading-relaxed cursor-pointer"
-                  >
+                  <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
                     He leído y acepto los términos y condiciones de alquiler.
-                    Entiendo mi responsabilidad sobre el cuidado y devolución
-                    del producto en perfectas condiciones.
                   </Label>
                 </div>
 
-                {currentStep === 3 && (
-                  <Button
-                    className="w-full"
+                {currentStep === 2 && (
+                  <Button 
+                    className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+                    onClick={() => goToStep(3)}
                     disabled={!termsAccepted}
-                    onClick={() => goToStep(4)}
                   >
-                    Continuar — Revisar y pagar
+                    Continuar a Revisión
                   </Button>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Step 4 — Review & Pay */}
-          {currentStep >= 4 && (
-            <Card>
+          {/* Step 3 — Review & Pay */}
+          {currentStep >= 3 && (
+            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
-                    4
+                    3
                   </span>
                   Revisar y pagar
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Producto</span>
-                    <span className="font-medium">{product.name}</span>
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <h3 className="font-bold text-sm">Modalidad de Pago</h3>
+                  
+                  <div 
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentType === "reservation" ? "border-primary bg-primary/5" : "border-border"}`}
+                    onClick={() => setPaymentType("reservation")}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentType === "reservation" ? "border-primary" : "border-muted-foreground"}`}>
+                          {paymentType === "reservation" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <span className="font-bold">Solo Reserva (25%)</span>
+                      </div>
+                      <span className="font-bold text-primary">{formatCurrency(finalDeposit)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Talla</span>
-                    <span className="font-medium">{selectedSize}</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Período</span>
-                    <span className="font-medium">
-                      {new Date(startDate + "T12:00:00").toLocaleDateString(
-                        "es-PA",
-                      )}{" "}
-                      →{" "}
-                      {new Date(endDate + "T12:00:00").toLocaleDateString(
-                        "es-PA",
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Duración</span>
-                    <span className="font-medium">
-                      {days} día{days !== 1 ? "s" : ""}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">
-                      Precio por día
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(pricePerDay)}
-                    </span>
+
+                  <div 
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentType === "full" ? "border-primary bg-primary/5" : "border-border"}`}
+                    onClick={() => setPaymentType("full")}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentType === "full" ? "border-primary" : "border-muted-foreground"}`}>
+                          {paymentType === "full" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <span className="font-bold">Pago Completo (100%)</span>
+                      </div>
+                      <span className="font-bold text-primary">{formatCurrency(finalTotal)}</span>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center py-1">
-                  <span className="font-bold text-lg">Total</span>
-                  <span className="font-bold text-2xl text-primary">
-                    {formatCurrency(totalPrice)}
-                  </span>
-                </div>
-
-                {estimatedDeposit.required && (
-                  <div className="flex justify-between items-center py-1 text-sm border-t border-border pt-3">
-                    <span className="text-muted-foreground">
-                      Depósito en hold
-                    </span>
-                    <span className="font-semibold">
-                      {formatCurrency(estimatedDeposit.amount)}
-                    </span>
-                  </div>
-                )}
-
-                {estimatedDeposit.required && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Este monto se autoriza como garantía y se libera al devolver
-                    la prenda sin incidencias.
-                  </p>
-                )}
-
-                <p className="text-xs text-muted-foreground text-center">
-                  ✓ Términos y condiciones aceptados
-                </p>
 
                 <Button
                   size="lg"
-                  className="w-full"
-                  id="checkout-button"
-                  data-testid="checkout-button"
+                  className="w-full font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-8 text-xl"
                   onClick={handleSubmit}
                   disabled={submitting}
                 >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Procesando…
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Pagar {formatCurrency(totalPrice)}
-                    </>
-                  )}
+                  {submitting ? <Loader2 className="animate-spin" /> : `Pagar ${formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}`}
                 </Button>
-
-                <p className="text-center text-xs text-muted-foreground">
-                  Pago seguro procesado por Stripe
-                </p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* ── Sticky summary ── */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-24">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Resumen de Reserva</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Producto</span>
-                  <span className="font-medium text-right max-w-[55%] leading-tight">
-                    {product.name}
-                  </span>
+        {/* ── Sidebar ── */}
+        <div className="lg:col-span-1 sticky top-24">
+          <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <CardHeader className="pb-3 border-b-2 border-black bg-muted/30">
+              <CardTitle className="text-base font-bold uppercase tracking-widest flex justify-between items-center">
+                <span>Resumen</span>
+                {isMulti && <span className="text-xs text-muted-foreground font-normal normal-case">({items.length} ítems)</span>}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-bold">{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Talla</span>
-                  <span className="font-medium">{selectedSize}</span>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">ITBMS (7%)</span>
+                  <span className="font-bold">{formatCurrency(itbms)}</span>
                 </div>
-                {days > 0 && (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Días</span>
-                      <span className="font-medium">{days}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Por día</span>
-                      <span className="font-medium">
-                        {formatCurrency(pricePerDay)}
-                      </span>
-                    </div>
-                  </>
-                )}
-
                 <Separator />
+                <div className="flex justify-between items-center pt-2">
+                  <span className="font-bold">Total Alquiler</span>
+                  <span className="font-black text-2xl text-primary">{formatCurrency(finalTotal)}</span>
+                </div>
+              </div>
 
+              <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold">Total</span>
-                  <span className="font-bold text-xl text-primary">
-                    {totalPrice > 0 ? formatCurrency(totalPrice) : "—"}
-                  </span>
+                  <span className="font-bold text-sm">Monto a Pagar Hoy</span>
+                  <span className="font-black text-2xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
                 </div>
+              </div>
 
-                {estimatedDeposit.required && (
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>Depósito en hold</span>
-                    <span className="font-semibold text-foreground">
-                      {formatCurrency(estimatedDeposit.amount)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Step shortcuts for completed steps */}
-                <div className="pt-2 space-y-1">
-                  {STEPS.map((step) => {
-                    const done = currentStep > step.id;
-                    const active = currentStep === step.id;
-                    return (
-                      <div
-                        key={step.id}
-                        onClick={() => done && setCurrentStep(step.id)}
-                        className={`flex items-center gap-2 text-xs px-2 py-1.5 rounded transition-colors
-                          ${active ? "bg-primary/10 text-primary font-medium" : ""}
-                          ${done ? "text-muted-foreground hover:bg-muted cursor-pointer" : "text-muted-foreground/50"}
-                        `}
-                      >
-                        {done ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />
-                        ) : (
-                          <step.icon
-                            className={`w-3.5 h-3.5 shrink-0 ${active ? "text-primary" : ""}`}
-                          />
-                        )}
-                        {step.label}
-                      </div>
-                    );
-                  })}
+              {paymentType === "reservation" && (
+                <div className="mt-4 p-3 bg-destructive/5 border-2 border-destructive/20 rounded-xl">
+                  <p className="text-[10px] font-black uppercase text-destructive mb-1 text-center italic">Saldo restante a pagar en tienda</p>
+                  <p className="text-xl font-black text-destructive text-center">{formatCurrency(finalTotal - finalDeposit)}</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

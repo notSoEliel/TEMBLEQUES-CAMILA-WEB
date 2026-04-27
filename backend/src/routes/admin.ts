@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
 import { Product } from "../models/Product.js";
@@ -28,6 +29,7 @@ admin.get("/dashboard", async (c) => {
     totalProducts,
     damagedCount,
     possibleLateReturns,
+    statusBreakdown,
   ] = await Promise.all([
     Rental.countDocuments({ status: { $in: ["paid", "confirmed", "delivered"] } }),
     Rental.find({
@@ -40,7 +42,6 @@ admin.get("/dashboard", async (c) => {
     Rental.aggregate([
       {
         $match: {
-          // Only count payments that actually completed AND the rental wasn't cancelled
           payment_status: "completed",
           status: { $nin: ["cancelled"] },
           createdAt: { $gte: startOfMonth },
@@ -68,12 +69,29 @@ admin.get("/dashboard", async (c) => {
     Rental.countDocuments({ status: "damaged" }),
     Rental.find({
       status: "delivered",
-      end_date: { $lt: getPanamaTodayUTC() }, // Compare directly to today midnight UTC
+      end_date: { $lt: getPanamaTodayUTC() },
     })
       .populate("product_id", "name")
       .populate("user_id", "name email")
       .limit(10),
+    Rental.aggregate([
+      { $match: { status: { $nin: ["cancelled"] } } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
   ]);
+
+  const breakdown: Record<string, number> = {
+    pending: 0,
+    paid: 0,
+    confirmed: 0,
+    delivered: 0,
+    returned: 0,
+    late: 0,
+    damaged: 0,
+  };
+  statusBreakdown.forEach((s: any) => {
+    if (breakdown[s._id] !== undefined) breakdown[s._id] = s.count;
+  });
 
   return c.json({
     dashboard: {
@@ -88,6 +106,7 @@ admin.get("/dashboard", async (c) => {
       totalProducts,
       damagedCount,
       possibleLateReturns,
+      statusBreakdown: breakdown,
     },
   });
 });
@@ -165,16 +184,18 @@ admin.delete("/products/:id", async (c) => {
 
 // GET /api/admin/rentals
 admin.get("/rentals", async (c) => {
-  const { status } = c.req.query();
+  const { status, sort } = c.req.query();
   const { page, limit, skip } = getPaginationParams(c);
   const filter: any = {};
   if (status) filter.status = status;
+
+  const sortOrder = sort === "asc" ? 1 : -1;
 
   const [allRentals, total] = await Promise.all([
     Rental.find(filter)
       .populate("user_id", "name email phone")
       .populate("product_id", "name category images")
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: sortOrder })
       .skip(skip)
       .limit(limit),
     Rental.countDocuments(filter),
@@ -209,10 +230,21 @@ admin.get("/users", async (c) => {
   return c.json(createPaginatedResponse(users, total, page, limit));
 });
 
+// GET /api/admin/users/:id
+admin.get("/users/:id", async (c) => {
+  const user = await User.findById(c.req.param("id"));
+  if (!user) {
+    throw new AppError("Usuario no encontrado", 404, "USER_NOT_FOUND");
+  }
+  return c.json({ user });
+});
+
 // GET /api/admin/users/:id/rentals
 admin.get("/users/:id/rentals", async (c) => {
   const { page, limit, skip } = getPaginationParams(c);
-  const filter = { user_id: c.req.param("id") };
+  const { status } = c.req.query();
+  const filter: any = { user_id: c.req.param("id") };
+  if (status) filter.status = status;
 
   const [userRentals, total] = await Promise.all([
     Rental.find(filter)
@@ -224,6 +256,31 @@ admin.get("/users/:id/rentals", async (c) => {
   ]);
 
   return c.json(createPaginatedResponse(userRentals, total, page, limit));
+});
+
+// GET /api/admin/users/:id/stats
+admin.get("/users/:id/stats", async (c) => {
+  const userId = c.req.param("id");
+  const [total, cancelled, pending, reserved, spentResult] = await Promise.all([
+    Rental.countDocuments({ user_id: userId }),
+    Rental.countDocuments({ user_id: userId, status: "cancelled" }),
+    Rental.countDocuments({ user_id: userId, status: "pending" }),
+    Rental.countDocuments({ user_id: userId, status: { $in: ["reserved", "confirmed"] } }),
+    Rental.aggregate([
+      { 
+        $match: { 
+          user_id: new mongoose.Types.ObjectId(userId), 
+          payment_status: "completed", 
+          status: { $nin: ["cancelled", "pending"] } 
+        } 
+      },
+      { $group: { _id: null, total: { $sum: "$total" } } }
+    ])
+  ]);
+
+  return c.json({
+    stats: { total, cancelled, pending, reserved, totalSpent: spentResult[0]?.total || 0 },
+  });
 });
 
 export default admin;

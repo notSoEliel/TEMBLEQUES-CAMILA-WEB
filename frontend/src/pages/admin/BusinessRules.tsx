@@ -90,7 +90,7 @@ export default function AdminBusinessRules() {
             <div className="p-3 w-fit rounded-lg bg-green-100 border-2 border-green-200 mb-2">
               <Shield className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle>Depósitos y Daños</CardTitle>
+            <CardTitle>Reservas y Daños</CardTitle>
             <CardDescription>Seguridad financiera y protección de inventario.</CardDescription>
           </CardHeader>
           <CardContent className="flex-1">
@@ -169,7 +169,7 @@ function TabsGuide({ onBack }: { onBack: () => void }) {
           Configuración global. Aquí defines qué categorías y qué grupos de tallas existen. El orden que pongas aquí define el orden en que el cliente verá los filtros en la tienda.
         </TabItem>
         <TabItem icon={Info} title="Info y Reglas" color="bg-red-100 text-red-600">
-          Esta documentación. Úsala para resolver dudas sobre cálculos de mora o manejo de depósitos de seguridad.
+          Esta documentación. Úsala para resolver dudas sobre cálculos de mora o manejo de reservas de seguridad.
         </TabItem>
       </div>
     </div>
@@ -204,9 +204,9 @@ function StatesGuide({ onBack }: { onBack: () => void }) {
             <StateStep status="Pagado" description="Stripe confirmó los fondos. El producto está oficialmente reservado para esas fechas." />
             <StateStep status="Confirmado" description="Acción del Admin: Has verificado el pedido y el producto está listo para ser recogido." />
             <StateStep status="Entregado" description="El cliente ya tiene el producto en su poder. El tiempo de alquiler está corriendo." />
-            <StateStep status="Devuelto" description="Fin exitoso. El producto regresó en buen estado. Se libera el hold del depósito si existía." />
+            <StateStep status="Devuelto" description="Fin exitoso. El producto regresó en buen estado. Se libera el hold de la reserva si existía." />
             <StateStep status="Atrasado" description="El cliente no entregó a tiempo. El sistema calcula mora diaria." />
-            <StateStep status="Dañado" description="El producto regresó con daños. Se debe capturar el depósito de garantía." />
+            <StateStep status="Dañado" description="El producto regresó con daños. Se debe capturar la reserva de garantía." />
           </ol>
         </CardContent>
       </Card>
@@ -228,14 +228,14 @@ function DepositGuide({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-6 max-w-4xl">
       <Button variant="ghost" onClick={onBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Volver</Button>
-      <h2 className="text-3xl font-bold">Depósitos de Garantía (Hold/Capture)</h2>
+      <h2 className="text-3xl font-bold">Reservas de Garantía (Hold/Capture)</h2>
       <Card className="border-2 border-black p-6 space-y-4">
         <div className="flex gap-4 items-start">
           <Shield className="h-8 w-8 text-green-600 shrink-0" />
           <div className="space-y-2">
             <h3 className="font-bold text-xl">¿Cómo protegemos el inventario?</h3>
             <p className="text-muted-foreground">
-              En lugar de cobrar un depósito y luego devolverlo (lo cual genera comisiones bancarias), usamos el modelo de <strong>Pre-autorización</strong>.
+              En lugar de cobrar una reserva y luego devolverlo (lo cual genera comisiones bancarias), usamos el modelo de <strong>Pre-autorización</strong>.
             </p>
           </div>
         </div>

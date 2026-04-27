@@ -289,7 +289,7 @@ export default function AdminInventory() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border p-4 rounded-lg bg-muted/20">
                 <div className="space-y-2">
-                  <Label>Depósito Fijo</Label>
+                  <Label>Reserva Fija</Label>
                   <div className="flex items-center gap-2 mt-2">
                     <input
                       type="checkbox"
@@ -302,7 +302,7 @@ export default function AdminInventory() {
                       className="w-4 h-4 rounded border-gray-300"
                     />
                     <Label htmlFor="deposit-required" className="text-sm font-normal cursor-pointer">
-                      Forzar cobro de depósito
+                      Forzar cobro de reserva
                     </Label>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -323,7 +323,7 @@ export default function AdminInventory() {
                       placeholder="Ej. 50"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Si lo dejas vacío usará el porcentaje global de depósito.
+                      Si lo dejas vacío usará el porcentaje global de reserva.
                     </p>
                   </div>
                 )}

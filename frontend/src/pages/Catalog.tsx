@@ -382,9 +382,9 @@ export default function Catalog() {
               const available = isProductAvailable(product);
 
               return (
-                <Link key={product._id} to={`/product/${product._id}`}>
-                  <Card className="group overflow-hidden transition-all duration-200 hover:-translate-y-1">
-                    <div className="aspect-[3/4] overflow-hidden bg-muted relative">
+                <Link key={product._id} to={`/product/${product._id}`} className="h-full">
+                  <Card className="group overflow-hidden transition-all duration-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none h-full flex flex-col">
+                    <div className="aspect-[3/4] overflow-hidden bg-muted relative border-b-2 border-black">
                       <img
                         src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
                         alt={product.name}
@@ -392,31 +392,35 @@ export default function Catalog() {
                       />
                       {!available && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <Badge variant="destructive" className="text-sm font-bold">Agotado</Badge>
+                          <Badge variant="destructive" className="text-sm font-bold border-2 border-black">Agotado</Badge>
                         </div>
                       )}
                     </div>
-                    <CardContent className="p-4 space-y-2">
-                      <Badge variant="outline" className="text-xs">
+                    <CardContent className="p-4 space-y-2 flex-1 flex flex-col">
+                      <Badge variant="outline" className="text-[10px] w-fit border-black uppercase font-bold tracking-wider">
                         {categories.find(c => c.id === product.category)?.label || product.category}
                       </Badge>
-                      <h3 className="font-bold line-clamp-1">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-lg font-bold text-primary">
+                      <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] flex-1">
+                        {product.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-between pt-2 border-t border-black/10 mt-auto">
+                        <span className="text-lg font-black text-primary">
                           {hasRange
                             ? `${formatCurrency(min)} – ${formatCurrency(max)}`
                             : `${formatCurrency(min)}/día`
                           }
                         </span>
                       </div>
+                      
                       {/* Size badges */}
                       {sizes.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1">
                           {sizes.slice(0, 5).map((size) => (
                             <span
                               key={size}
-                              className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-medium"
+                              className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold"
                             >
                               {size}
                             </span>

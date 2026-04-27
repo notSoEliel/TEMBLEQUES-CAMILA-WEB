@@ -92,13 +92,41 @@ export default function AdminDashboard() {
 
       {/* Damaged Warning */}
       {dashboard?.damagedCount > 0 && (
-        <Card className="border-destructive">
+        <Card className="border-destructive border-2 border-black bg-destructive/5">
           <CardContent className="p-4 flex items-center gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="font-medium">{dashboard.damagedCount} producto(s) reportado(s) como dañado(s).</span>
+            <span className="font-bold text-destructive">{dashboard.damagedCount} producto(s) reportado(s) como dañado(s).</span>
           </CardContent>
         </Card>
       )}
+
+      {/* Status Breakdown Section */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          Estados por Etapa
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          {[
+            { key: "pending", label: "Pendientes", color: "bg-gray-100 text-gray-600" },
+            { key: "paid", label: "Pagados", color: "bg-blue-100 text-blue-600" },
+            { key: "confirmed", label: "Confirmados", color: "bg-purple-100 text-purple-600" },
+            { key: "delivered", label: "En Uso", color: "bg-orange-100 text-orange-600" },
+            { key: "returned", label: "Devueltos", color: "bg-green-100 text-green-600" },
+            { key: "late", label: "Atrasados", color: "bg-red-100 text-red-600" },
+            { key: "damaged", label: "Dañados", color: "bg-black text-white" },
+          ].map((status) => (
+            <Card key={status.key} className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+              <CardContent className="p-4 text-center">
+                <p className={`text-[10px] font-black uppercase mb-1 px-2 py-0.5 rounded-full inline-block ${status.color}`}>
+                  {status.label}
+                </p>
+                <p className="text-2xl font-black">{dashboard?.statusBreakdown?.[status.key] || 0}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Products */}

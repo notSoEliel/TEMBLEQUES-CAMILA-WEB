@@ -2,6 +2,7 @@ import mongoose, { Schema, type Document, type Types } from "mongoose";
 
 export type RentalStatus =
   | "pending"
+  | "reserved"
   | "paid"
   | "confirmed"
   | "delivered"
@@ -23,10 +24,13 @@ export type FeeStatus = "not_applicable" | "pending" | "charged" | "failed";
 export interface IRental extends Document {
   user_id: Types.ObjectId;
   product_id: Types.ObjectId;
+  order_group_id: string;
   selected_size: string;
   start_date: Date;
   end_date: Date;
   total: number;
+  balance_due: number;
+  payment_type: "reservation" | "full";
   status: RentalStatus;
   payment_status: "pending" | "completed" | "failed" | "refunded";
   terms_accepted: boolean;
@@ -52,13 +56,16 @@ const rentalSchema = new Schema<IRental>(
   {
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     product_id: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    order_group_id: { type: String, required: false },
     selected_size: { type: String, required: true },
     start_date: { type: Date, required: true },
     end_date: { type: Date, required: true },
     total: { type: Number, required: true, min: 0 },
+    balance_due: { type: Number, required: true, default: 0, min: 0 },
+    payment_type: { type: String, enum: ["reservation", "full"], required: true, default: "reservation" },
     status: {
       type: String,
-      enum: ["pending", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"],
+      enum: ["pending", "reserved", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"],
       default: "pending",
     },
     payment_status: {

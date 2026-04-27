@@ -37,6 +37,7 @@ auth.get("/me", authMiddleware, async (c) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
+      createdAt: user.createdAt,
     },
   });
 });

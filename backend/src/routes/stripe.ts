@@ -14,103 +14,106 @@ const stripe = new Hono<{ Variables: AuthVariables }>();
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 const createSessionSchema = z.object({
-  rentalId: z.string().min(1, "El ID de la reserva es requerido"),
+  orderGroupId: z.string().optional(),
+  rentalIds: z.array(z.string()).min(1, "Al menos un ID de reserva es requerido").optional(),
+  rentalId: z.string().optional(), // Fallback for backward compatibility
+  paymentType: z.enum(["reservation", "full"]).optional(),
 });
 
 // ─── POST /api/stripe/create-checkout-session ─────────────────────────────────
 stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   const user = c.get("user") as any;
-
-  // Validate body with Zod — errors bubble to global handler
   const body = await c.req.json();
-  const { rentalId } = createSessionSchema.parse(body);
+  const { orderGroupId, rentalIds: inputIds, rentalId: inputId, paymentType } = createSessionSchema.parse(body);
+  
+  let rentals = [];
 
-  const rental = await Rental.findOne({
-    _id: rentalId,
-    user_id: user._id,
-    status: "pending",
-  }).populate("product_id");
+  if (orderGroupId) {
+    rentals = await Rental.find({
+      order_group_id: orderGroupId,
+      user_id: user._id,
+      status: "pending",
+    }).populate("product_id");
+  } else {
+    const rentalIds = inputIds || (inputId ? [inputId] : []);
+    
+    if (rentalIds.length === 0) {
+      throw new AppError("No se proporcionó orderGroupId ni IDs de reserva.", 400, "BAD_REQUEST");
+    }
 
-  if (!rental) {
+    rentals = await Rental.find({
+      _id: { $in: rentalIds },
+      user_id: user._id,
+      status: "pending",
+    }).populate("product_id");
+  }
+
+  if (rentals.length === 0) {
     throw new AppError(
-      "Reserva no encontrada o ya fue procesada.",
+      "No se encontraron reservas pendientes para procesar.",
       404,
       "RENTAL_NOT_FOUND",
     );
   }
 
-  if (!rental.terms_accepted) {
-    throw new AppError(
-      "Debe aceptar los términos y condiciones antes de pagar.",
-      400,
-      "RENTAL_TERMS_NOT_ACCEPTED",
-    );
-  }
-
-  // Re-check availability to prevent race conditions (double booking).
-  // This is the authoritative server-side check even if the frontend validated.
-  const isAvailable = await checkAvailability(
-    rental.product_id._id.toString(),
-    rental.start_date,
-    rental.end_date,
-    rental.selected_size,
-    rental._id.toString(),
-  );
-
-  if (!isAvailable) {
-    // Mark as cancelled so the product slot is freed
-    rental.status = "cancelled";
-    await rental.save();
-    throw new AppError(
-      "El producto ya no está disponible para las fechas seleccionadas. La reserva fue cancelada.",
-      409,
-      "PRODUCT_DATES_UNAVAILABLE",
-    );
-  }
-
-  // ── Demo mode (Stripe not configured) ─────────────────────────────────────
-  if (!isStripeConfigured()) {
-    rental.status = "paid";
-    rental.payment_status = "completed";
-    rental.stripe_session_id = `demo_session_${Date.now()}`;
-    if (rental.deposit_required && rental.deposit_amount > 0) {
-      rental.deposit_status = "held";
-      rental.deposit_failure_reason = undefined;
+  // Update payment type if requested
+  if (paymentType) {
+    for (const rental of rentals) {
+      rental.payment_type = paymentType;
+      await rental.save();
     }
-    await rental.save();
+  }
+
+  // Re-check availability for all
+  for (const rental of rentals) {
+    const isAvailable = await checkAvailability(
+      rental.product_id._id.toString(),
+      rental.start_date,
+      rental.end_date,
+      rental.selected_size,
+      rental._id.toString(),
+    );
+
+    if (!isAvailable) {
+      rental.status = "cancelled";
+      await rental.save();
+      throw new AppError(
+        `El producto "${rental.product_id.name}" ya no está disponible para las fechas seleccionadas.`,
+        409,
+        "PRODUCT_DATES_UNAVAILABLE",
+      );
+    }
+  }
+
+  // Demo mode
+  if (!isStripeConfigured()) {
+    for (const rental of rentals) {
+      rental.status = "paid";
+      rental.payment_status = "completed";
+      rental.stripe_session_id = `demo_session_${Date.now()}`;
+      if (rental.deposit_required && rental.deposit_amount > 0) {
+        rental.deposit_status = "held";
+      }
+      await rental.save();
+    }
 
     return c.json({
       mode: "demo",
-      message: "Pago simulado exitosamente (modo demo — Stripe no configurado).",
-      rental: {
-        id: rental._id,
-        status: rental.status,
-        total: rental.total,
-        depositRequired: rental.deposit_required,
-        depositAmount: rental.deposit_amount,
-        depositStatus: rental.deposit_status,
-      },
+      message: "Pago simulado exitosamente (modo demo).",
+      rentals: rentals.map(r => ({ id: r._id, status: r.status })),
     });
   }
 
-  // ── Real Stripe integration ────────────────────────────────────────────────
-  const product = rental.product_id as any;
+  // Real Stripe
   const origin = c.req.header("origin") || "http://localhost:5173";
+  const { url, sessionId } = await createStripeSession(rentals as any, origin);
 
-  const { url, sessionId } = await createStripeSession(rental, product, origin);
+  for (const rental of rentals) {
+    rental.stripe_session_id = sessionId;
+    await rental.save();
+  }
 
-  rental.stripe_session_id = sessionId;
-  await rental.save();
-
-  return c.json({
-    url,
-    sessionId,
-    deposit: {
-      required: rental.deposit_required,
-      amount: rental.deposit_amount,
-      status: rental.deposit_status,
-    },
-  });
+  return c.json({ url, sessionId });
 });
 
 // ─── GET /api/stripe/verify-session ───────────────────────────────────────────
@@ -132,13 +135,26 @@ stripe.get("/verify-session", authMiddleware, async (c) => {
     const session = await stripeClient.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status === "paid") {
-      const rentalId = session.metadata?.rentalId;
-      if (rentalId) {
-        // Update rental just in case webhook hasn't fired yet
-        await Rental.findByIdAndUpdate(rentalId, {
-          status: "paid",
-          payment_status: "completed",
-        });
+      const orderGroupId = session.metadata?.orderGroupId;
+      if (orderGroupId) {
+        // Update rentals just in case webhook hasn't fired yet
+        const rentalsToUpdate = await Rental.find({ order_group_id: orderGroupId });
+        for (const rental of rentalsToUpdate) {
+          rental.status = rental.payment_type === "full" ? "paid" : "reserved";
+          rental.payment_status = "completed";
+          await rental.save();
+        }
+      } else {
+        // Fallback for older sessions
+        const rentalId = session.metadata?.rentalId;
+        if (rentalId) {
+          const rental = await Rental.findById(rentalId);
+          if (rental) {
+            rental.status = rental.payment_type === "full" ? "paid" : "reserved";
+            rental.payment_status = "completed";
+            await rental.save();
+          }
+        }
       }
     }
     return c.json({ verified: true, payment_status: session.payment_status });

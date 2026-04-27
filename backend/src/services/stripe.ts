@@ -6,7 +6,7 @@ function toCents(amount: number): number {
 }
 
 // We import Stripe lazily so demo mode does not crash at startup.
-async function getStripeClient() {
+export async function getStripeClient() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key || key === "sk_test_placeholder") {
     throw new AppError(
@@ -25,44 +25,41 @@ export function isStripeConfigured(): boolean {
 }
 
 export async function createStripeSession(
-  rental: IRental & { _id: any },
-  product: { _id?: string; name: string; description?: string },
+  rentals: (IRental & { _id: any; product_id: any })[],
   origin: string,
 ): Promise<{ url: string; sessionId: string }> {
   const stripe = await getStripeClient();
 
+  const line_items = rentals.map((rental) => ({
+    price_data: {
+      currency: "usd",
+      product_data: {
+        name: `${rental.payment_type === "full" ? "Pago Completo" : "Reserva (25%)"}: ${rental.product_id.name}`,
+        description: `Talla: ${rental.selected_size} | ${rental.start_date.toLocaleDateString("es-PA")} -> ${rental.end_date.toLocaleDateString("es-PA")}`,
+      },
+      unit_amount: toCents(rental.payment_type === "full" ? rental.total : rental.deposit_amount), // Charge based on payment_type
+    },
+    quantity: 1,
+  }));
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
-    line_items: [
-      {
-        price_data: {
-          currency: "usd",
-          product_data: {
-            name: `Alquiler: ${product.name}`,
-            description: `${rental.start_date.toLocaleDateString("es-PA")} -> ${rental.end_date.toLocaleDateString("es-PA")}`,
-          },
-          unit_amount: toCents(rental.total),
-        },
-        quantity: 1,
-      },
-    ],
+    line_items,
     mode: "payment",
     payment_intent_data: {
       setup_future_usage: "off_session",
     },
-    success_url: `${origin}/confirmation?rental=${rental._id}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/checkout/${product._id || (product as any)._id}?cancelled=1`,
+    success_url: `${origin}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/cart?cancelled=1`,
     metadata: {
-      rentalId: rental._id.toString(),
-      userId: rental.user_id.toString(),
-      depositRequired: rental.deposit_required ? "true" : "false",
-      depositAmount: String(rental.deposit_amount ?? 0),
+      orderGroupId: rentals[0].order_group_id,
+      userId: rentals[0].user_id.toString(),
     },
   });
 
   if (!session.url) {
     throw new AppError(
-      "Stripe no devolvio una URL de pago. Intenta de nuevo.",
+      "Stripe no devolvió una URL de pago. Intenta de nuevo.",
       502,
       "STRIPE_SESSION_NO_URL",
     );
@@ -105,44 +102,64 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
-      const rentalId = session.metadata?.rentalId;
-      if (!rentalId) {
-        break;
-      }
-
-      const rental = await Rental.findById(rentalId);
-      if (!rental) {
-        break;
-      }
-
-      rental.status = "paid";
-      rental.payment_status = "completed";
-      await hydrateRentalPaymentSources(rental, session);
-      await rental.save();
-
-      if (rental.deposit_required && rental.deposit_amount > 0) {
-        try {
-          await createDepositHold(rental);
-          rental.deposit_status = "held";
-          rental.deposit_failure_reason = undefined;
-        } catch (error: any) {
-          rental.deposit_status = "failed";
-          rental.deposit_failure_reason =
-            error?.message || "No se pudo crear el hold del deposito de garantia.";
+      const orderGroupId = session.metadata?.orderGroupId;
+      
+      let rentalsToUpdate = [];
+      if (orderGroupId) {
+        rentalsToUpdate = await Rental.find({ order_group_id: orderGroupId });
+      } else {
+        // Fallback for older sessions
+        const rentalIds = session.metadata?.rentalIds?.split(",") || [];
+        const singleId = session.metadata?.rentalId;
+        if (singleId && rentalIds.length === 0) rentalIds.push(singleId);
+        if (rentalIds.length > 0) {
+          rentalsToUpdate = await Rental.find({ _id: { $in: rentalIds } });
         }
+      }
+
+      for (const rental of rentalsToUpdate) {
+        rental.status = rental.payment_type === "full" ? "paid" : "reserved";
+        rental.payment_status = "completed";
+        await hydrateRentalPaymentSources(rental, session);
         await rental.save();
+
+        if (rental.deposit_required && rental.deposit_amount > 0) {
+          try {
+            await createDepositHold(rental);
+            rental.deposit_status = "held";
+            rental.deposit_failure_reason = undefined;
+          } catch (error: any) {
+            rental.deposit_status = "failed";
+            rental.deposit_failure_reason =
+              error?.message || "No se pudo crear el hold del deposito de garantia.";
+          }
+          await rental.save();
+        }
       }
       break;
     }
 
     case "checkout.session.expired": {
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
-      const rentalId = session.metadata?.rentalId;
-      if (rentalId) {
-        await Rental.findByIdAndUpdate(rentalId, {
-          status: "cancelled",
-          payment_status: "failed",
-        });
+      const orderGroupId = session.metadata?.orderGroupId;
+      
+      let rentalsToCancel = [];
+      if (orderGroupId) {
+        rentalsToCancel = await Rental.find({ order_group_id: orderGroupId, status: "pending" });
+      } else {
+        // Fallback for older sessions
+        const rentalIds = session.metadata?.rentalIds?.split(",") || [];
+        const singleId = session.metadata?.rentalId;
+        if (singleId && rentalIds.length === 0) rentalIds.push(singleId);
+        if (rentalIds.length > 0) {
+          rentalsToCancel = await Rental.find({ _id: { $in: rentalIds }, status: "pending" });
+        }
+      }
+
+      for (const rental of rentalsToCancel) {
+        rental.status = "cancelled";
+        rental.payment_status = "failed";
+        await rental.save();
       }
       break;
     }

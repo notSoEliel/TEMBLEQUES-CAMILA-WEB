@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: "client" | "admin";
   phone?: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {
