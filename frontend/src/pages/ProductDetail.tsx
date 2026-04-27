@@ -282,23 +282,33 @@ export default function ProductDetail() {
           )}
 
           {/* Date Selector */}
-          <div>
-            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Fechas de Alquiler</h3>
-            <AvailabilityCalendar
-              productId={product._id}
-              selectedSize={selectedSize}
-              stock={selectedVariant?.stock ?? 1}
-              startDate={startDate}
-              endDate={endDate}
-              onStartDateChange={(d) => {
-                setStartDate(d);
-                setEndDate("");
-                setCalendarConflict(false);
-              }}
-              onEndDateChange={setEndDate}
-              onConflict={setCalendarConflict}
-            />
-          </div>
+          {selectedSize ? (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Fechas de Alquiler</h3>
+              <AvailabilityCalendar
+                productId={product._id}
+                selectedSize={selectedSize}
+                stock={selectedVariant?.stock ?? 1}
+                startDate={startDate}
+                endDate={endDate}
+                onStartDateChange={(d) => {
+                  setStartDate(d);
+                  setEndDate("");
+                  setCalendarConflict(false);
+                }}
+                onEndDateChange={setEndDate}
+                onConflict={setCalendarConflict}
+              />
+            </div>
+          ) : (
+            <div className="p-6 border-2 border-dashed border-black/10 rounded-2xl bg-muted/20 flex flex-col items-center text-center gap-3">
+              <Calendar className="h-8 w-8 text-muted-foreground/40" />
+              <div className="space-y-1">
+                <p className="font-bold text-sm">Disponibilidad</p>
+                <p className="text-xs text-muted-foreground">Selecciona una talla primero para ver las fechas disponibles en el calendario.</p>
+              </div>
+            </div>
+          )}
 
           {/* Quantity Selector */}
           <div>

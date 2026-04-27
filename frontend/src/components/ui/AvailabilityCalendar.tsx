@@ -144,7 +144,10 @@ export default function AvailabilityCalendar({
 
   // Fetch booked ranges for the current month view window
   useEffect(() => {
-    if (!productId) return;
+    if (!productId || productId === "preview-id") {
+      setBookedRanges([]);
+      return;
+    }
     setLoadingAvailability(true);
     const from = isoDate(startOfMonth(viewDate));
     const to = isoDate(endOfMonth(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0)));
@@ -253,10 +256,10 @@ export default function AvailabilityCalendar({
       : false;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       {/* 6 PM Warning Banner */}
       <div className={`border-2 p-3 text-sm flex gap-3 items-start font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isPast6pm ? "bg-amber-100 border-amber-900 text-amber-900" : "bg-muted border-black text-foreground"}`}>
-        <span className="text-xl leading-none">⏰</span>
+        <span className="text-xs font-black uppercase py-1 px-2 border border-current">Nota</span>
         <p className="leading-snug">
           Las reservas para el día siguiente solo están disponibles hasta las <strong>6:00 PM</strong>.
           {isPast6pm && <span className="block mt-1 text-destructive font-bold">Como ya pasaron las 6:00 PM, la fecha más próxima para alquilar es pasado mañana.</span>}
@@ -297,7 +300,7 @@ export default function AvailabilityCalendar({
           const isDisabled = state === "past" || state === "booked";
 
           let cellClass =
-            "h-9 w-full flex items-center justify-center text-sm transition-colors select-none rounded-sm ";
+            "h-9 w-full flex items-center justify-center text-sm transition-colors select-none rounded-none ";
 
           switch (state) {
             case "past":
@@ -342,13 +345,13 @@ export default function AvailabilityCalendar({
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-primary inline-block" /> Seleccionado
+          <span className="w-3 h-3 rounded-none bg-primary inline-block" /> Seleccionado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-primary/15 inline-block" /> Rango
+          <span className="w-3 h-3 rounded-none bg-primary/15 inline-block" /> Rango
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
+          <span className="w-3 h-3 rounded-none bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
         </span>
       </div>
 
@@ -358,23 +361,23 @@ export default function AvailabilityCalendar({
 
       {/* Range conflict warning */}
       {hasRangeConflict && (
-        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2 font-medium">
-          ✗ El rango seleccionado se solapa con una reserva existente. Por favor elige otras fechas.
+        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-none px-3 py-2 font-medium flex items-center gap-2">
+          <span>Error:</span> El rango seleccionado se solapa con una reserva existente. Por favor elige otras fechas.
         </div>
       )}
 
       {/* Stock indicator */}
       {startDate && endDate && !hasRangeConflict && (
         <div
-          className={`text-sm px-3 py-2 rounded-md border font-medium ${
+          className={`text-sm px-3 py-2 border font-medium flex items-center gap-2 ${
             availableUnits > 0
-              ? "bg-muted border-border text-foreground"
+              ? "bg-muted border-black text-foreground"
               : "bg-destructive/10 border-destructive/30 text-destructive"
           }`}
         >
           {availableUnits > 0
-            ? `✓ ${availableUnits} unidad${availableUnits !== 1 ? "es" : ""} disponible${availableUnits !== 1 ? "s" : ""} para este período`
-            : "✗ Sin unidades disponibles para las fechas seleccionadas"}
+            ? `Confirmado: ${availableUnits} unidad${availableUnits !== 1 ? "es" : ""} disponible${availableUnits !== 1 ? "s" : ""} para este período`
+            : "Error: Sin unidades disponibles para las fechas seleccionadas"}
         </div>
       )}
 
