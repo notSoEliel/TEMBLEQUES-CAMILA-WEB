@@ -13,7 +13,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente", paid: "Pagado", confirmed: "Confirmado",
+  pending: "Pendiente", reserved: "Abonado", paid: "Pagado", confirmed: "Confirmado",
   delivered: "Entregado", returned: "Devuelto", late: "Atrasado",
   damaged: "Dañado", cancelled: "Cancelado",
 };
@@ -29,14 +29,15 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline", paid: "default", confirmed: "default",
+  pending: "outline", reserved: "secondary", paid: "default", confirmed: "default",
   delivered: "secondary", returned: "secondary", late: "destructive",
   damaged: "destructive", cancelled: "outline",
 };
 
 const TRANSITIONS: Record<string, string[]> = {
-  pending: ["paid", "cancelled"],
-  paid: ["confirmed", "cancelled"],
+  pending: ["reserved", "paid", "cancelled"],
+  reserved: ["delivered", "cancelled"],
+  paid: ["confirmed", "delivered", "cancelled"],
   confirmed: ["delivered", "cancelled"],
   delivered: ["returned", "late", "damaged"],
   late: ["returned", "damaged"],
@@ -133,7 +134,7 @@ export default function AdminReservations() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {["", "pending", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"].map((f) => (
+        {["", "pending", "reserved", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"].map((f) => (
           <Button key={f || "all"} size="sm" variant={filter === f ? "default" : "outline"} onClick={() => handleFilterChange(f)}>
             {f ? STATUS_LABELS[f] : "Todos"}
           </Button>
@@ -166,8 +167,13 @@ export default function AdminReservations() {
                       <p className="text-sm text-muted-foreground">{r.user_id?.name} ({r.user_id?.email})</p>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
-                        <span className="font-bold text-primary ml-2">${r.total}</span>
+                        {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
+                        <span className="font-bold text-primary ml-2">Total: ${r.total}</span>
+                        {r.balance_due > 0 && (
+                          <span className="font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded ml-2">
+                            Deuda: ${r.balance_due}
+                          </span>
+                        )}
                       </div>
 
                       {(r.deposit_status === "held" || r.deposit_status === "failed" || r.late_fee_status === "failed" || r.late_fee_status === "charged") && (
@@ -197,9 +203,10 @@ export default function AdminReservations() {
                         <div className="flex flex-wrap items-center gap-2">
                           {TRANSITIONS[r.status].map((s) => {
                             const isDestructive = s === "cancelled" || s === "damaged";
+                            const actionLabel = r.status === "reserved" && s === "delivered" ? "Cobrar Saldo y Entregar" : ACTION_LABELS[s] || s;
                             const btn = (
                               <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
-                                {ACTION_LABELS[s] || s}
+                                {actionLabel}
                               </Button>
                             );
 

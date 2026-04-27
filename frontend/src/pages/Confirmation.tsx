@@ -32,18 +32,18 @@ export default function Confirmation() {
   const sessionId = searchParams.get("session_id");
 
   useEffect(() => {
-    if (!rentalId || !token) { setLoading(false); return; }
+    if (!token) return;
     
-    const fetchRental = async () => {
+    const fetchSession = async () => {
       try {
         if (sessionId) {
-          // Manually verify the session with Stripe API just in case the webhook
-          // hasn't fired yet (race condition). This ensures the DB is updated to 'paid'.
           await import("@/services/api").then(m => m.stripeApi.verifySession(sessionId, token));
         }
         
-        const data = await rentalsApi.get(rentalId, token);
-        setRental(data.rental);
+        if (rentalId) {
+          const data = await rentalsApi.get(rentalId, token);
+          setRental(data.rental);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -51,7 +51,7 @@ export default function Confirmation() {
       }
     };
 
-    fetchRental();
+    fetchSession();
   }, [rentalId, sessionId, token]);
 
   if (loading) {
@@ -85,40 +85,54 @@ export default function Confirmation() {
 
       {/* Rental details */}
       {rental ? (
-        <Card className="text-left mb-8">
+        <Card className="text-left mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <CardContent className="p-6 space-y-4">
-            <h3 className="font-bold text-lg">Detalles de la Reserva</h3>
-            <Separator />
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <h3 className="font-bold text-lg leading-none">Detalles de la Reserva</h3>
+            <Separator className="bg-black/10" />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Producto</p>
-                <p className="font-medium">{rental.product_id?.name || "N/A"}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Producto</p>
+                <p className="font-bold text-primary">{rental.product_id?.name || "N/A"}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Estado</p>
-                <p className="font-medium">{STATUS_LABELS[rental.status] ?? rental.status}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Estado</p>
+                <p className="font-bold">{STATUS_LABELS[rental.status] ?? rental.status}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Fecha Inicio</p>
-                <p className="font-medium">{new Date(rental.start_date).toLocaleDateString("es-PA")}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Fecha Inicio</p>
+                <p className="font-bold">{new Date(rental.start_date + "T12:00:00").toLocaleDateString("es-PA")}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Fecha Devolución</p>
-                <p className="font-medium">{new Date(rental.end_date).toLocaleDateString("es-PA")}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Fecha Devolución</p>
+                <p className="font-bold">{new Date(rental.end_date + "T12:00:00").toLocaleDateString("es-PA")}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">Total Pagado</p>
-                <p className="font-bold text-primary text-lg">{formatCurrency(rental.total)}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Total Pagado</p>
+                <p className="font-black text-primary text-xl">{formatCurrency(rental.total)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5">ID Reserva</p>
-                <p className="font-mono text-xs text-muted-foreground break-all">{rental._id}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">ID Reserva</p>
+                <p className="font-mono text-[10px] text-muted-foreground break-all">{rental._id}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+      ) : sessionId ? (
+        <Card className="mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-primary/5">
+          <CardContent className="p-8">
+            <div className="flex flex-col items-center gap-3">
+              <div className="bg-primary/20 p-2 rounded-full">
+                <CheckCircle className="h-6 w-6 text-primary" />
+              </div>
+              <p className="font-bold text-lg">Reserva Múltiple Procesada</p>
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                Tus reservas han sido procesadas correctamente. Puedes ver todos los detalles en tu perfil.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <Card className="mb-8">
+        <Card className="mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           <CardContent className="p-6">
             <p className="text-muted-foreground text-sm">
               Los detalles estarán disponibles en unos instantes mientras procesamos tu confirmación.

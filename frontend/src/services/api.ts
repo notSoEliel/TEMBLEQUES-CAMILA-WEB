@@ -111,10 +111,14 @@ export const rentalsApi = {
   create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
-  my: (token: string, params: { page?: number; limit?: number } = {}) => {
+  bulkCreate: (items: any[], token: string) =>
+    api<{ rentals: any[] }>("/rentals/bulk", { method: "POST", body: { items }, token }),
+
+  my: (token: string, params: { page?: number; limit?: number; view?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
+    if (params.view) searchParams.set("view", params.view);
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return api<PaginatedResponse<any>>(`/rentals/my${query}`, { token });
   },
@@ -138,6 +142,18 @@ export const stripeApi = {
     }>("/stripe/create-checkout-session", {
       method: "POST",
       body: { rentalId },
+      token,
+    }),
+
+  createBulkCheckoutSession: (rentalIds: string[], token: string, orderGroupId?: string, paymentType?: "reservation" | "full") =>
+    api<{
+      url?: string;
+      mode?: string;
+      message?: string;
+      rentals?: any[];
+    }>("/stripe/create-checkout-session", {
+      method: "POST",
+      body: { rentalIds, orderGroupId, paymentType },
       token,
     }),
   verifySession: (sessionId: string, token: string) =>
@@ -181,6 +197,10 @@ export const adminApi = {
     return api<PaginatedResponse<any>>(`/admin/users${query}`, { token });
   },
 
+  getUser: (id: string, token: string) =>
+    api<{ user: any }>(`/admin/users/${id}`, { token }),
+
+
   userRentals: (userId: string, token: string, params: { page?: number; limit?: number } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", String(params.page));
@@ -188,6 +208,9 @@ export const adminApi = {
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
     return api<PaginatedResponse<any>>(`/admin/users/${userId}/rentals${query}`, { token });
   },
+
+  userStats: (userId: string, token: string) =>
+    api<{ stats: { completed: number; cancelled: number; pending: number } }>(`/admin/users/${userId}/stats`, { token }),
 };
 
 // Settings

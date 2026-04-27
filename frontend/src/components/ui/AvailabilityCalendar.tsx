@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 interface BookedRange {
   start: string;
   end: string;
+  size: string;
 }
 
 interface AvailabilityCalendarProps {
   productId: string;
+  selectedSize?: string | null;
   stock: number;
   startDate: string;
   endDate: string;
@@ -51,33 +53,50 @@ const MONTH_NAMES_ES = [
 const DAY_NAMES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 
 // ─── Range overlap check ──────────────────────────────────────────────────────
+
 /**
- * Returns true if [rangeStart, rangeEnd] overlaps ANY booked range.
- * Overlap condition: rangeStart <= bookedEnd AND rangeEnd >= bookedStart
+ * Returns how many overlapping bookings exist for a specific day.
  */
-function rangeOverlapsBooked(
-  rangeStart: string,
-  rangeEnd: string,
+function getOverlappingBookingsCount(
+  iso: string,
   bookedRanges: BookedRange[],
-): boolean {
+): number {
+  let count = 0;
   for (const r of bookedRanges) {
     const bStart = isoDate(new Date(r.start));
     const bEnd   = isoDate(new Date(r.end));
-    // Standard interval overlap: A.start <= B.end AND A.end >= B.start
-    if (rangeStart <= bEnd && rangeEnd >= bStart) return true;
+    if (iso >= bStart && iso <= bEnd) count++;
   }
-  return false;
+  return count;
 }
 
 /**
- * Returns true if a given day falls within any booked range
- * (used to paint individual days red).
+ * Returns true if a given day is fully booked (bookings >= stock)
  */
-function dayIsBooked(iso: string, bookedRanges: BookedRange[]): boolean {
-  for (const r of bookedRanges) {
-    const bStart = isoDate(new Date(r.start));
-    const bEnd   = isoDate(new Date(r.end));
-    if (iso >= bStart && iso <= bEnd) return true;
+function dayIsFullyBooked(
+  iso: string,
+  bookedRanges: BookedRange[],
+  stock: number
+): boolean {
+  return getOverlappingBookingsCount(iso, bookedRanges) >= stock;
+}
+
+/**
+ * Returns true if [rangeStart, rangeEnd] overlaps ANY fully booked day.
+ */
+function rangeHasConflict(
+  rangeStart: string,
+  rangeEnd: string,
+  bookedRanges: BookedRange[],
+  stock: number
+): boolean {
+  if (rangeStart > rangeEnd) return false;
+  let current = new Date(rangeStart + "T12:00:00");
+  const end = new Date(rangeEnd + "T12:00:00");
+  while (current <= end) {
+    const iso = isoDate(current);
+    if (dayIsFullyBooked(iso, bookedRanges, stock)) return true;
+    current.setDate(current.getDate() + 1);
   }
   return false;
 }
@@ -85,19 +104,20 @@ function dayIsBooked(iso: string, bookedRanges: BookedRange[]): boolean {
 /**
  * Returns true if selecting `candidateEnd` as the end date would create a
  * range [startDate, candidateEnd] that overlaps a booked period.
- * Used to prevent hovering/clicking on dates that would create a conflicting range.
  */
 function endWouldConflict(
   startDate: string,
   candidateEnd: string,
   bookedRanges: BookedRange[],
+  stock: number
 ): boolean {
   if (candidateEnd <= startDate) return false;
-  return rangeOverlapsBooked(startDate, candidateEnd, bookedRanges);
+  return rangeHasConflict(startDate, candidateEnd, bookedRanges, stock);
 }
 
 export default function AvailabilityCalendar({
   productId,
+  selectedSize,
   stock,
   startDate,
   endDate,
@@ -130,16 +150,24 @@ export default function AvailabilityCalendar({
     const to = isoDate(endOfMonth(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0)));
     productsApi
       .availability(productId, from, to)
-      .then((data) => setBookedRanges(data.booked))
+      .then((data) => {
+        setBookedRanges(data.booked || []);
+      })
       .catch(() => setBookedRanges([]))
       .finally(() => setLoadingAvailability(false));
   }, [productId, viewDate]);
 
+  // Filter booked ranges by the selected size
+  const relevantBookedRanges = useMemo(() => {
+    if (!selectedSize) return [];
+    return bookedRanges.filter((r) => r.size === selectedSize || r.size === "Único");
+  }, [bookedRanges, selectedSize]);
+
   // Notify parent if the currently selected range has a conflict
   useEffect(() => {
     if (!startDate || !endDate || !onConflict) return;
-    onConflict(rangeOverlapsBooked(startDate, endDate, bookedRanges));
-  }, [startDate, endDate, bookedRanges]);
+    onConflict(rangeHasConflict(startDate, endDate, relevantBookedRanges, stock));
+  }, [startDate, endDate, relevantBookedRanges, stock]);
 
   const days = useMemo(
     () => eachDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()),
@@ -158,7 +186,7 @@ export default function AvailabilityCalendar({
 
   function handleDayClick(day: Date) {
     const iso = isoDate(day);
-    if (iso < minDate || dayIsBooked(iso, bookedRanges)) return;
+    if (iso < minDate || dayIsFullyBooked(iso, relevantBookedRanges, stock)) return;
 
     if (!waitingForEnd) {
       // First click → set start, enter "waiting for end" mode
@@ -174,8 +202,8 @@ export default function AvailabilityCalendar({
         return;
       }
 
-      // Check if the proposed range overlaps any booked period
-      if (rangeOverlapsBooked(startDate, iso, bookedRanges)) {
+      // Check if the proposed range overlaps any fully booked period
+      if (rangeHasConflict(startDate, iso, relevantBookedRanges, stock)) {
         // Instead of ignoring the click, we assume they want to start a new range
         onStartDateChange(iso);
         onEndDateChange("");
@@ -192,31 +220,36 @@ export default function AvailabilityCalendar({
 
   function getDayState(iso: string): DayState {
     if (iso < minDate) return "past";
-    if (dayIsBooked(iso, bookedRanges)) return "booked";
+    if (dayIsFullyBooked(iso, relevantBookedRanges, stock)) return "booked";
     if (iso === startDate) return "start";
     if (iso === endDate) return "end";
     if (startDate && endDate && iso > startDate && iso < endDate) return "inRange";
     // When waiting for end: shade dates that would create a conflicting range
     if (waitingForEnd && startDate && iso > startDate) {
-      if (endWouldConflict(startDate, iso, bookedRanges)) return "conflictEnd";
+      if (endWouldConflict(startDate, iso, relevantBookedRanges, stock)) return "conflictEnd";
     }
     return "available";
   }
 
-  // Count overlapping rentals for stock availability
+  // Count MAX overlapping rentals during the selected range for stock availability
   const conflictingRentals = useMemo(() => {
     if (!startDate || !endDate) return 0;
-    return bookedRanges.filter((r) => {
-      const bStart = isoDate(new Date(r.start));
-      const bEnd   = isoDate(new Date(r.end));
-      return startDate <= bEnd && endDate >= bStart;
-    }).length;
-  }, [bookedRanges, startDate, endDate]);
+    let maxConflicts = 0;
+    let current = new Date(startDate + "T12:00:00");
+    const end = new Date(endDate + "T12:00:00");
+    while (current <= end) {
+      const iso = isoDate(current);
+      const c = getOverlappingBookingsCount(iso, relevantBookedRanges);
+      if (c > maxConflicts) maxConflicts = c;
+      current.setDate(current.getDate() + 1);
+    }
+    return maxConflicts;
+  }, [relevantBookedRanges, startDate, endDate]);
 
   const availableUnits = Math.max(0, stock - conflictingRentals);
   const hasRangeConflict =
     startDate && endDate
-      ? rangeOverlapsBooked(startDate, endDate, bookedRanges)
+      ? rangeHasConflict(startDate, endDate, relevantBookedRanges, stock)
       : false;
 
   return (

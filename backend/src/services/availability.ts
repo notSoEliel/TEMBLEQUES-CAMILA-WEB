@@ -34,8 +34,27 @@ export async function checkAvailability(
     query._id = { $ne: excludeRentalId };
   }
 
-  const conflicting = await Rental.countDocuments(query);
-  return conflicting < variant.stock;
+  const conflictingRentals = await Rental.find(query).select("start_date end_date");
+
+  // Calculate maximum concurrent rentals for any single day in the requested range
+  let maxConcurrent = 0;
+  let current = new Date(startDate);
+  current.setUTCHours(12, 0, 0, 0); // use middle of the day to avoid timezone edge cases
+  const end = new Date(endDate);
+  end.setUTCHours(12, 0, 0, 0);
+
+  while (current <= end) {
+    let count = 0;
+    for (const r of conflictingRentals) {
+      if (current >= r.start_date && current <= r.end_date) {
+        count++;
+      }
+    }
+    if (count > maxConcurrent) maxConcurrent = count;
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return maxConcurrent < variant.stock;
 }
 
 /**

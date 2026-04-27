@@ -8,6 +8,7 @@ import {
   calculateLateFeeAmount,
   calculateRentalDays,
   evaluateDeposit,
+  getPanamaTodayUTC,
 } from "./payment-rules.js";
 import {
   captureDepositForDamage,
@@ -25,7 +26,9 @@ export function calculateTotal(
   endDate: Date,
 ): number {
   const days = calculateRentalDays(startDate, endDate);
-  return pricePerDay * days;
+  const subtotal = pricePerDay * days;
+  const itbms = subtotal * 0.07;
+  return subtotal + itbms;
 }
 
 /**
@@ -38,6 +41,8 @@ export async function createRental(params: {
   startDate: Date;
   endDate: Date;
   termsAccepted: boolean;
+  paymentType: "reservation" | "full";
+  orderGroupId: string;
   ipAddress: string;
   userAgent: string;
 }) {
@@ -48,6 +53,8 @@ export async function createRental(params: {
     startDate,
     endDate,
     termsAccepted,
+    paymentType,
+    orderGroupId,
     ipAddress,
     userAgent,
   } = params;
@@ -147,10 +154,13 @@ export async function createRental(params: {
   const rental = await Rental.create({
     user_id: userId,
     product_id: productId,
+    order_group_id: orderGroupId,
     selected_size: selectedSize,
     start_date: startDate,
     end_date: endDate,
     total,
+    balance_due: paymentType === "full" ? 0 : total - deposit.amount,
+    payment_type: paymentType,
     status: "pending",
     payment_status: "pending",
     terms_accepted: true,
@@ -177,7 +187,8 @@ export async function createRental(params: {
 // Label map for status transitions — used in error messages
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
-  paid: "Pagado",
+  reserved: "Abonado - Pendiente de Saldo",
+  paid: "Pagado Totalmente",
   confirmed: "Confirmado",
   delivered: "Entregado",
   returned: "Devuelto",
@@ -194,8 +205,9 @@ export async function updateRentalStatus(
   newStatus: RentalStatus,
 ) {
   const validTransitions: Record<string, string[]> = {
-    pending: ["paid", "cancelled"],
-    paid: ["confirmed", "cancelled"],
+    pending: ["reserved", "paid", "cancelled"],
+    reserved: ["delivered", "cancelled"],
+    paid: ["confirmed", "delivered", "cancelled"],
     confirmed: ["delivered", "cancelled"],
     delivered: ["returned", "late", "damaged"],
     late: ["returned", "damaged"],
@@ -220,10 +232,33 @@ export async function updateRentalStatus(
     );
   }
 
+  // REGLA: Bloquear "Dañado", "Devuelto" o "Atrasado" si es demasiado pronto.
+  // Se permite entregar un día antes de la fecha pactada.
+  const today = getPanamaTodayUTC();
+  const allowReturnDate = new Date(rental.end_date);
+  allowReturnDate.setUTCDate(allowReturnDate.getUTCDate() - 1);
+
+  if (["damaged", "returned", "late"].includes(newStatus)) {
+    if (allowReturnDate > today) {
+       const d = new Date(allowReturnDate);
+       const formattedDate = isNaN(d.getTime()) ? "la fecha pactada" : d.toLocaleDateString("es-PA");
+       throw new AppError(
+         `No se puede marcar como "${STATUS_LABELS[newStatus]}" antes de la fecha permitida (${formattedDate}).`,
+         400,
+         "RENTAL_DATE_NOT_REACHED"
+       );
+    }
+  }
+
   rental.status = newStatus;
 
-  if (newStatus === "paid") {
+  if (newStatus === "paid" || newStatus === "reserved") {
     rental.payment_status = "completed";
+  }
+
+  // Si se pasa a entregado, la deuda se cancela automáticamente
+  if (newStatus === "delivered" && rental.balance_due > 0) {
+    rental.balance_due = 0;
   }
 
   if (newStatus === "late") {

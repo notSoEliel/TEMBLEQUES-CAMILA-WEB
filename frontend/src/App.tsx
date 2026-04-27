@@ -8,15 +8,18 @@ import Landing from "@/pages/Landing";
 import Catalog from "@/pages/Catalog";
 import ProductDetail from "@/pages/ProductDetail";
 import Checkout from "@/pages/Checkout";
+import OrderReview from "@/pages/OrderReview";
 import Confirmation from "@/pages/Confirmation";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Profile from "@/pages/Profile";
+import Cart from "@/pages/Cart";
 import ErrorPage from "@/pages/ErrorPage";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminInventory from "@/pages/admin/Inventory";
 import AdminReservations from "@/pages/admin/Reservations";
 import AdminUsers from "@/pages/admin/Users";
+import AdminUserDetail from "@/pages/admin/UserDetail";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
 
@@ -69,67 +72,89 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+import { CartProvider } from "@/hooks/useCart";
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Client Routes */}
-          <Route element={<ClientLayout />}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            {/* Clerk handles the full auth UI — routing="path" must match these paths */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/login/*" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/register/*" element={<Register />} />
-            <Route
-              path="/checkout/:productId"
-              element={
-                <ProtectedRoute>
-                  <Checkout />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/confirmation"
-              element={
-                <ProtectedRoute>
-                  <Confirmation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+      <CartProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Client Routes */}
+            <Route element={<ClientLayout />}>
+              <Route path="/" element={<Landing />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              {/* Clerk handles the full auth UI — routing="path" must match these paths */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/login/*" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/register/*" element={<Register />} />
+              <Route
+                path="/checkout/:productId"
+                element={
+                  <ProtectedRoute>
+                    <Checkout />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkout/review"
+                element={
+                  <ProtectedRoute>
+                    <OrderReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/confirmation"
+                element={
+                  <ProtectedRoute>
+                    <Confirmation />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cart"
+                element={
+                  <ProtectedRoute>
+                    <Cart />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* 404 Catch-all — must be last inside ClientLayout */}
-            <Route path="*" element={<ErrorPage variant="not-found" />} />
-          </Route>
 
-          {/* Admin Routes */}
-          <Route
-            element={
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            }
-          >
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/inventory" element={<AdminInventory />} />
-            <Route path="/admin/reservations" element={<AdminReservations />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
-            <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+              {/* 404 Catch-all — must be last inside ClientLayout */}
+              <Route path="*" element={<ErrorPage variant="not-found" />} />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route
+              element={
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              }
+            >
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/inventory" element={<AdminInventory />} />
+              <Route path="/admin/reservations" element={<AdminReservations />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+              <Route path="/admin/settings" element={<AdminSettings />} />
+              <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </CartProvider>
     </AuthProvider>
   );
 }

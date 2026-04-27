@@ -1,12 +1,14 @@
 import React from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User, ShoppingBag, LogOut, Menu, X } from "lucide-react";
+import { User, ShoppingBag, LogOut, Menu, X, ShoppingCart } from "lucide-react";
 
 export default function ClientLayout() {
   const { user, logout } = useAuth();
+  const { items } = useCart();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
 
@@ -33,6 +35,15 @@ export default function ClientLayout() {
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/catalog">Catálogo</Link>
               </Button>
+              
+              <Link to="/cart" className="relative p-2 hover:bg-muted rounded-full transition-colors">
+                <ShoppingCart className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute top-0 right-0 h-4 w-4 bg-primary text-[10px] font-bold text-primary-foreground rounded-full flex items-center justify-center border-2 border-background">
+                    {items.length}
+                  </span>
+                )}
+              </Link>
               {user ? (
                 <>
                   <Button variant="ghost" size="sm" asChild>
@@ -72,21 +83,32 @@ export default function ClientLayout() {
 
         {/* Mobile Nav */}
         {menuOpen && (
-          <div className="md:hidden border-t-2 border-border bg-background px-4 py-4 space-y-2">
-            <Link to="/catalog" className="block py-2 font-medium" onClick={() => setMenuOpen(false)}>
-              Catálogo
-            </Link>
+          <div className="md:hidden border-t-2 border-border bg-background px-4 py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <Link to="/catalog" className="font-medium" onClick={() => setMenuOpen(false)}>
+                Catálogo
+              </Link>
+              <Link to="/cart" className="relative p-2 hover:bg-muted rounded-full transition-colors" onClick={() => setMenuOpen(false)}>
+                <ShoppingCart className="h-6 w-6" />
+                {items.length > 0 && (
+                  <span className="absolute top-0 right-0 h-4 w-4 bg-primary text-[10px] font-bold text-primary-foreground rounded-full flex items-center justify-center border-2 border-background">
+                    {items.length}
+                  </span>
+                )}
+              </Link>
+            </div>
+            <Separator />
             {user ? (
               <>
                 <Link to="/profile" className="block py-2 font-medium" onClick={() => setMenuOpen(false)}>
-                  Mi Perfil
+                  Mi Perfil ({user.name.split(' ')[0]})
                 </Link>
                 {user.role === "admin" && (
                   <Link to="/admin" className="block py-2 font-medium text-primary" onClick={() => setMenuOpen(false)}>
                     Panel Admin
                   </Link>
                 )}
-                <button onClick={handleLogout} className="block py-2 font-medium text-destructive">
+                <button onClick={handleLogout} className="block py-2 font-medium text-destructive w-full text-left">
                   Cerrar Sesión
                 </button>
               </>

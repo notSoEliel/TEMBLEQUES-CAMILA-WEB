@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Calendar, ShoppingBag, Package, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Calendar, ShoppingBag, Package, AlertTriangle, Plus, Minus, Info, X, CheckCircle2 } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
+import AvailabilityCalendar from "@/components/ui/AvailabilityCalendar";
+import { useErrorModal } from "@/components/ErrorModal";
 import ErrorPage from "@/pages/ErrorPage";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -30,6 +33,14 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [calendarConflict, setCalendarConflict] = useState(false);
+  
+  const { items, addItem } = useCart();
+  const { errorModal, showError } = useErrorModal();
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -76,17 +87,56 @@ export default function ProductDetail() {
     ? (selectedVariant.price_override ?? product.rental_price)
     : null;
 
-  function handleReserve() {
+  function handleAddToCart() {
     if (!user) {
       navigate("/login");
       return;
     }
-    if (!selectedSize) return;
-    navigate(`/checkout/${product._id}`, { state: { selectedSize } });
+    if (!selectedSize) {
+      showError("Por favor selecciona una talla.", "validation");
+      return;
+    }
+    if (!startDate || !endDate) {
+      showError("Por favor selecciona las fechas de alquiler.", "validation");
+      return;
+    }
+    if (calendarConflict) {
+      showError("Las fechas seleccionadas tienen un conflicto de disponibilidad.", "validation");
+      return;
+    }
+
+    const pricePerDay = selectedVariant?.price_override ?? product.rental_price;
+    const diff = new Date(endDate).getTime() - new Date(startDate).getTime();
+    const days = Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
+    const subtotal = pricePerDay * days;
+    const itbms = subtotal * 0.07;
+    const totalPrice = subtotal + itbms;
+    
+    // Deposit calculation logic (mirroring Checkout.tsx for now)
+    const DEPOSIT_RATE = 0.25;
+    const depositAmount = totalPrice * DEPOSIT_RATE;
+    
+
+
+    addItem({
+      id: "", // Will be set by context
+      productId: product._id,
+      name: product.name,
+      image: product.images?.[0] || "",
+      size: selectedSize,
+      quantity,
+      price: totalPrice,
+      depositAmount,
+      startDate,
+      endDate,
+    });
+
+    setShowAddModal(true);
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      {errorModal}
       {/* Back */}
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate("/catalog")}>
         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -185,11 +235,10 @@ export default function ProductDetail() {
             <h3 className="font-bold mb-2">Descripción</h3>
             <p className="text-muted-foreground leading-relaxed">{product.description}</p>
           </div>
-
-          {/* Size Selector */}
+                   {/* Size Selector */}
           {variants.length > 0 && (
             <div>
-              <h3 className="font-bold mb-3">Selecciona tu talla</h3>
+              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Selecciona tu talla</h3>
               <div className="flex flex-wrap gap-2">
                 {variants.map((v: any) => {
                   const isDisabled = v.in_maintenance || v.stock <= 0;
@@ -200,12 +249,12 @@ export default function ProductDetail() {
                       onClick={() => !isDisabled && setSelectedSize(isSelected ? null : v.size)}
                       disabled={isDisabled}
                       className={`
-                        relative px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all duration-150
+                        relative px-5 py-2 rounded-xl border-2 text-sm font-bold transition-all duration-150 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none
                         ${isSelected
-                          ? "bg-primary text-primary-foreground border-primary"
+                          ? "bg-primary text-primary-foreground border-black -translate-y-0.5"
                           : isDisabled
-                            ? "bg-muted/30 text-muted-foreground/40 border-border/50 cursor-not-allowed"
-                            : "bg-card text-foreground border-border hover:border-primary"
+                            ? "bg-muted/30 text-muted-foreground/40 border-border/50 cursor-not-allowed shadow-none"
+                            : "bg-white text-black border-black hover:-translate-y-0.5"
                         }
                       `}
                     >
@@ -218,17 +267,58 @@ export default function ProductDetail() {
                 })}
               </div>
               {selectedSize && selectedVariant && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {selectedVariant.stock} disponible{selectedVariant.stock !== 1 ? "s" : ""} en talla {selectedSize}
-                </p>
-              )}
-              {!selectedSize && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Selecciona una talla para continuar.
+                <p className="mt-3 text-xs font-medium text-muted-foreground">
+                  ✓ {selectedVariant.stock} disponible{selectedVariant.stock !== 1 ? "s" : ""} en talla {selectedSize}
                 </p>
               )}
             </div>
           )}
+
+          {/* Date Selector */}
+          <div>
+            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Fechas de Alquiler</h3>
+            <AvailabilityCalendar
+              productId={product._id}
+              selectedSize={selectedSize}
+              stock={selectedVariant?.stock ?? 1}
+              startDate={startDate}
+              endDate={endDate}
+              onStartDateChange={(d) => {
+                setStartDate(d);
+                setEndDate("");
+                setCalendarConflict(false);
+              }}
+              onEndDateChange={setEndDate}
+              onConflict={setCalendarConflict}
+            />
+          </div>
+
+          {/* Quantity Selector */}
+          <div>
+            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Cantidad</h3>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="p-2 hover:bg-muted transition-colors border-r-2 border-black"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-12 text-center font-bold">{quantity}</span>
+                <button
+                  onClick={() => setQuantity(Math.min(selectedVariant?.stock ?? 99, quantity + 1))}
+                  className="p-2 hover:bg-muted transition-colors border-l-2 border-black"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {selectedVariant && (
+                <span className="text-xs text-muted-foreground">
+                  Máximo {selectedVariant.stock} unidades
+                </span>
+              )}
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Card className="p-4">
@@ -253,20 +343,33 @@ export default function ProductDetail() {
 
           <Separator />
 
+          {/* Deposit Alert */}
+          <div className="bg-amber-50 border-2 border-black rounded-xl p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex gap-3">
+            <Info className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="text-sm">
+              <p className="font-bold text-amber-900">Alerta de Depósito</p>
+              <p className="text-amber-800 leading-snug mt-0.5">
+                Cada ítem requiere un depósito de garantía inicial. Este monto se retiene y libera al devolver la prenda sin daños.
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* CTA */}
           {isAvailable ? (
             <Button
               size="lg"
-              className="w-full"
-              disabled={!selectedSize}
-              onClick={handleReserve}
+              className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+              disabled={!selectedSize || !startDate || !endDate || calendarConflict}
+              onClick={handleAddToCart}
             >
-              <Calendar className="h-5 w-5 mr-2" />
-              {selectedSize ? "Reservar Este Producto" : "Selecciona una talla"}
+              <ShoppingBag className="h-5 w-5 mr-2" />
+              {!selectedSize ? "Selecciona talla" : !startDate || !endDate ? "Selecciona fechas" : "Añadir al Carrito"}
             </Button>
           ) : (
-            <Button size="lg" className="w-full" disabled>
-              No Disponible
+            <Button size="lg" className="w-full border-2 border-black grayscale" disabled>
+              Agotado Temporalmente
             </Button>
           )}
 
@@ -277,6 +380,38 @@ export default function ProductDetail() {
           )}
         </div>
       </div>
+      {/* Add to Cart Confirmation Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <Card className="max-w-sm w-full border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white p-6 relative">
+            <button 
+              onClick={() => setShowAddModal(false)}
+              className="absolute top-4 right-4 p-1 hover:bg-muted rounded-full transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto border-2 border-primary">
+                <CheckCircle2 className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tight">¡Añadido exitosamente!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Tu reserva ha sido agregada al carrito.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <Button className="w-full font-bold border-2 border-black" onClick={() => navigate("/cart")}>
+                  Ir al Carrito
+                </Button>
+                <Button variant="outline" className="w-full font-bold border-2 border-black" onClick={() => setShowAddModal(false)}>
+                  Seguir Comprando
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

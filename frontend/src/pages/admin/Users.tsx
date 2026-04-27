@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users as UsersIcon, Calendar } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 
 export default function AdminUsers() {
   const { token } = useAuth();
@@ -95,39 +95,21 @@ export default function AdminUsers() {
           <div className="space-y-3">
             {users.map((u) => (
               <div key={u._id}>
-                <Card className="cursor-pointer transition-shadow" onClick={() => viewRentals(u._id)}>
-                  <CardContent className="p-4 flex items-center justify-between">
+                <Card className="hover:border-primary transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-none overflow-hidden">
+                  <Link to={`/admin/users/${u._id}`} className="p-4 flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold">{u.name}</h3>
+                      <h3 className="font-bold text-lg leading-tight">{u.name}</h3>
                       <p className="text-sm text-muted-foreground">{u.email}{u.phone ? ` | ${u.phone}` : ""}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Registrado: {new Date(u.createdAt).toLocaleDateString("es-PA")}</p>
+                      <div className="flex gap-4 mt-2">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Registrado: {new Date(u.createdAt).toLocaleDateString("es-PA")}</p>
+                        {u.clerkId && <p className="text-[10px] uppercase tracking-wider font-bold text-primary">✓ Clerk Sincronizado</p>}
+                      </div>
                     </div>
-                    <Badge variant="outline">{selectedUser === u._id ? "Ocultar" : "Ver Historial"}</Badge>
-                  </CardContent>
+                    <div className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-sm">
+                      Ver Perfil
+                    </div>
+                  </Link>
                 </Card>
-                {selectedUser === u._id && (
-                  <div className="ml-4 mt-2 mb-4 space-y-2">
-                    {userRentals.length === 0 ? (
-                      <p className="text-sm text-muted-foreground pl-4">Sin reservas.</p>
-                    ) : userRentals.map((r) => (
-                      <Card key={r._id} className="bg-muted/50">
-                        <CardContent className="p-3 flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{r.product_id?.name}</span>
-                            <span className="text-muted-foreground">
-                              {new Date(r.start_date).toLocaleDateString("es-PA")} - {new Date(r.end_date).toLocaleDateString("es-PA")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-primary">${r.total}</span>
-                            <Badge variant="outline" className="text-xs capitalize">{r.status}</Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
           </div>

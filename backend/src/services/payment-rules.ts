@@ -1,5 +1,6 @@
 const PANAMA_UTC_OFFSET_HOURS = -5;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEPOSIT_RATE = 0.25;
 
 function parsePositiveNumber(value: string | undefined, fallback: number): number {
   const parsed = Number(value);
@@ -25,7 +26,7 @@ function getUTCDateOnly(date: Date): Date {
 
 export const PAYMENT_RULES = {
   depositThresholdUsd: parsePositiveNumber(process.env.STRIPE_DEPOSIT_THRESHOLD_USD, 350),
-  depositRate: parsePositiveNumber(process.env.STRIPE_DEPOSIT_RATE, 0.35),
+  depositRate: DEPOSIT_RATE,
   lateFeeDailyRate: parsePositiveNumber(process.env.STRIPE_LATE_FEE_DAILY_RATE, 1),
 };
 
@@ -38,26 +39,12 @@ export function evaluateDeposit(
   total: number,
   productSettings?: { required: boolean; overrideAmount?: number }
 ): { required: boolean; amount: number } {
-  // 1. If product explicitly overrides the required flag
-  if (productSettings) {
-    if (!productSettings.required) {
-      return { required: false, amount: 0 };
-    }
-    // If required and has an override amount, use it
-    if (productSettings.overrideAmount !== undefined && productSettings.overrideAmount > 0) {
-      return { required: true, amount: roundMoney(productSettings.overrideAmount) };
-    }
-    // If required but no override amount, calculate standard percentage
-    return {
-      required: true,
-      amount: roundMoney(total * PAYMENT_RULES.depositRate),
-    };
+  // Enforce strict 25% rule, ignoring minimum thresholds
+  // If product explicitly has an override amount, use it instead of 25%
+  if (productSettings && productSettings.overrideAmount !== undefined && productSettings.overrideAmount > 0) {
+    return { required: true, amount: roundMoney(productSettings.overrideAmount) };
   }
-
-  // 2. Fallback to global threshold
-  if (total < PAYMENT_RULES.depositThresholdUsd) {
-    return { required: false, amount: 0 };
-  }
+  
   return {
     required: true,
     amount: roundMoney(total * PAYMENT_RULES.depositRate),
