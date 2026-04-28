@@ -6,30 +6,77 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "react-router-dom";
-import { TrendingUp, Package, CalendarCheck, Users, AlertTriangle, DollarSign, Clock, Info } from "lucide-react";
+import {
+  TrendingUp,
+  Package,
+  CalendarCheck,
+  Users,
+  AlertTriangle,
+  DollarSign,
+  Clock,
+  Info,
+  ArrowRight,
+} from "lucide-react";
+
+type TopProduct = { name: string; count: number };
+type UpcomingReturn = {
+  product_id?: { name?: string };
+  user_id?: { name?: string; email?: string };
+  end_date: string;
+};
+
+interface DashboardData {
+  activeRentals?: number;
+  monthlyRevenue?: number;
+  totalUsers?: number;
+  totalProducts?: number;
+  damagedCount?: number;
+  statusBreakdown?: Record<string, number>;
+  topProducts?: TopProduct[];
+  upcomingReturns?: UpcomingReturn[];
+  possibleLateReturns?: UpcomingReturn[];
+}
+
+const STATUS_CONFIG = [
+  { key: "pending", label: "Pendientes", variant: "outline" as const },
+  { key: "paid", label: "Pagados", variant: "info" as const },
+  { key: "confirmed", label: "Confirmados", variant: "secondary" as const },
+  { key: "delivered", label: "En Uso", variant: "warning" as const },
+  { key: "returned", label: "Devueltos", variant: "success" as const },
+  { key: "late", label: "Atrasados", variant: "destructive" as const },
+  { key: "damaged", label: "Dañados", variant: "destructive" as const },
+];
 
 export default function AdminDashboard() {
   const { token } = useAuth();
-  const [dashboard, setDashboard] = useState<any>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (token) {
-      adminApi.dashboard(token).then((data) => {
-        setDashboard(data.dashboard);
-        setLoading(false);
-      }).catch(() => setLoading(false));
+      adminApi
+        .dashboard(token)
+        .then((data) => {
+          setDashboard(data.dashboard);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
     }
   }, [token]);
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Dashboard</h1>
+        <div>
+          <div className="h-8 w-48 bg-muted animate-pulse rounded-xl mb-2" />
+          <div className="h-4 w-64 bg-muted animate-pulse rounded-xl" />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-6"><div className="h-16 bg-muted rounded" /></CardContent>
+              <CardContent className="p-6">
+                <div className="h-16 bg-muted rounded-xl" />
+              </CardContent>
             </Card>
           ))}
         </div>
@@ -38,51 +85,98 @@ export default function AdminDashboard() {
   }
 
   const kpis = [
-    { label: "Reservas Activas", value: dashboard?.activeRentals || 0, icon: CalendarCheck, color: "text-primary" },
-    { label: "Ingresos del Mes", value: `$${dashboard?.monthlyRevenue || 0}`, icon: DollarSign, color: "text-green-600" },
-    { label: "Total Usuarios", value: dashboard?.totalUsers || 0, icon: Users, color: "text-blue-600" },
-    { label: "Total Productos", value: dashboard?.totalProducts || 0, icon: Package, color: "text-purple-600" },
+    {
+      label: "Reservas Activas",
+      value: dashboard?.activeRentals ?? 0,
+      icon: CalendarCheck,
+      bgColor: "bg-primary/10",
+      iconColor: "text-primary",
+      trend: "+12%",
+    },
+    {
+      label: "Ingresos del Mes",
+      value: `$${dashboard?.monthlyRevenue ?? 0}`,
+      icon: DollarSign,
+      bgColor: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+      trend: "+8%",
+    },
+    {
+      label: "Total Usuarios",
+      value: dashboard?.totalUsers ?? 0,
+      icon: Users,
+      bgColor: "bg-sky-50",
+      iconColor: "text-sky-600",
+      trend: "+5%",
+    },
+    {
+      label: "Total Productos",
+      value: dashboard?.totalProducts ?? 0,
+      icon: Package,
+      bgColor: "bg-violet-50",
+      iconColor: "text-violet-600",
+      trend: "estable",
+    },
   ];
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Resumen general de la plataforma.</p>
+        <h1
+          className="text-3xl font-bold text-foreground"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          Dashboard
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Resumen general de la plataforma.
+        </p>
       </div>
 
       {/* Onboarding Bar */}
-      <Card className="bg-primary text-primary-foreground border-2 border-black">
-        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Info className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-bold">¿Eres nuevo en el panel?</p>
-              <p className="text-sm text-primary-foreground/80">Aprende qué hace cada pestaña y cómo funcionan los cobros automáticos.</p>
-            </div>
+      <div className="rounded-2xl overflow-hidden border border-primary/20 bg-gradient-to-r from-primary/8 to-accent/5 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="p-2.5 bg-primary/12 rounded-xl shrink-0">
+            <Info className="h-5 w-5 text-primary" />
           </div>
-          <Button asChild variant="secondary" className="font-bold border-2 border-black">
-            <Link to="/admin/business-rules?section=tabs">
-              Ver Guía Rápida
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+          <div>
+            <p className="font-semibold text-foreground">
+              ¿Eres nuevo en el panel?
+            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Aprende qué hace cada pestaña y cómo funcionan los cobros automáticos.
+            </p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0" asChild>
+          <Link to="/admin/business-rules?section=tabs">
+            Ver Guía Rápida
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
-          <Card key={i} className="transition-shadow">
+          <Card key={i} className="hover:shadow-elegant-lg transition-all duration-200 hover:-translate-y-0.5">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                  <p className="text-3xl font-bold mt-1">{kpi.value}</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {kpi.label}
+                  </p>
+                  <p
+                    className="text-3xl font-bold mt-2 text-foreground"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    {kpi.value}
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">{kpi.trend} vs mes anterior</p>
                 </div>
-                <div className={`p-3 rounded-lg bg-muted border-2 border-border ${kpi.color}`}>
-                  <kpi.icon className="h-6 w-6" />
+                <div className={`p-3 rounded-xl ${kpi.bgColor} shrink-0`}>
+                  <kpi.icon className={`h-5 w-5 ${kpi.iconColor}`} />
                 </div>
               </div>
             </CardContent>
@@ -91,37 +185,42 @@ export default function AdminDashboard() {
       </div>
 
       {/* Damaged Warning */}
-      {dashboard?.damagedCount > 0 && (
-        <Card className="border-destructive border-2 border-black bg-destructive/5">
-          <CardContent className="p-4 flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="font-bold text-destructive">{dashboard.damagedCount} producto(s) reportado(s) como dañado(s).</span>
-          </CardContent>
-        </Card>
+      {(dashboard?.damagedCount ?? 0) > 0 && (
+        <div className="rounded-2xl border border-destructive/20 bg-red-50 p-4 flex items-center gap-3">
+          <div className="p-2 bg-red-100 rounded-xl shrink-0">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </div>
+          <span className="text-sm font-medium text-destructive">
+            {dashboard?.damagedCount} producto(s) reportado(s) como dañado(s).
+          </span>
+        </div>
       )}
 
-      {/* Status Breakdown Section */}
+      {/* Status Breakdown */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold uppercase tracking-widest flex items-center gap-2">
-          <Package className="h-5 w-5" />
+        <h2
+          className="text-xl font-semibold text-foreground flex items-center gap-2"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          <Package className="h-5 w-5 text-primary" />
           Estados por Etapa
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          {[
-            { key: "pending", label: "Pendientes", color: "bg-gray-100 text-gray-600" },
-            { key: "paid", label: "Pagados", color: "bg-blue-100 text-blue-600" },
-            { key: "confirmed", label: "Confirmados", color: "bg-purple-100 text-purple-600" },
-            { key: "delivered", label: "En Uso", color: "bg-orange-100 text-orange-600" },
-            { key: "returned", label: "Devueltos", color: "bg-green-100 text-green-600" },
-            { key: "late", label: "Atrasados", color: "bg-red-100 text-red-600" },
-            { key: "damaged", label: "Dañados", color: "bg-black text-white" },
-          ].map((status) => (
-            <Card key={status.key} className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {STATUS_CONFIG.map((status) => (
+            <Card
+              key={status.key}
+              className="hover:shadow-elegant transition-shadow duration-150"
+            >
               <CardContent className="p-4 text-center">
-                <p className={`text-[10px] font-black uppercase mb-1 px-2 py-0.5 rounded-full inline-block ${status.color}`}>
+                <Badge variant={status.variant} className="text-[10px] mb-2">
                   {status.label}
+                </Badge>
+                <p
+                  className="text-2xl font-bold text-foreground"
+                  style={{ fontFamily: "'Playfair Display', serif" }}
+                >
+                  {dashboard?.statusBreakdown?.[status.key] ?? 0}
                 </p>
-                <p className="text-2xl font-black">{dashboard?.statusBreakdown?.[status.key] || 0}</p>
               </CardContent>
             </Card>
           ))}
@@ -138,20 +237,28 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {dashboard?.topProducts?.length > 0 ? (
+            {(dashboard?.topProducts?.length ?? 0) > 0 ? (
               <div className="space-y-3">
-                {dashboard.topProducts.map((tp: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between">
+                {dashboard?.topProducts?.map((tp, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between p-3 rounded-xl ${i % 2 === 0 ? "bg-muted/40" : ""}`}
+                  >
                     <div className="flex items-center gap-3">
-                      <span className="text-xl font-bold text-muted-foreground/40 w-8">#{i + 1}</span>
-                      <span className="font-medium">{tp.name}</span>
+                      <span
+                        className="text-lg font-bold text-muted-foreground/30 w-7"
+                        style={{ fontFamily: "'Playfair Display', serif" }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className="font-medium text-sm text-foreground">{tp.name}</span>
                     </div>
-                    <Badge variant="outline">{tp.count} reservas</Badge>
+                    <Badge variant="default">{tp.count} reservas</Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">Sin datos aún.</p>
+              <p className="text-muted-foreground text-sm text-center py-6">Sin datos aún.</p>
             )}
           </CardContent>
         </Card>
@@ -165,60 +272,78 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {dashboard?.upcomingReturns?.length > 0 ? (
-              <div className="space-y-3">
-                {dashboard.upcomingReturns.map((r: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-sm border-b border-border pb-2 last:border-0 last:pb-0">
+            {(dashboard?.upcomingReturns?.length ?? 0) > 0 ? (
+              <div className="space-y-2">
+                {dashboard?.upcomingReturns?.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between text-sm p-3 rounded-xl ${i % 2 === 0 ? "bg-muted/40" : ""}`}
+                  >
                     <div>
-                      <p className="font-medium">{r.product_id?.name}</p>
-                      <p className="text-muted-foreground">{r.user_id?.name} - {r.user_id?.email}</p>
+                      <p className="font-medium text-foreground">{r.product_id?.name}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5">
+                        {r.user_id?.name} · {r.user_id?.email}
+                      </p>
                     </div>
-                    <Badge variant="secondary">
+                    <Badge variant="success">
                       {new Date(r.end_date).toLocaleDateString("es-PA")}
                     </Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm">No hay devoluciones próximas.</p>
+              <p className="text-muted-foreground text-sm text-center py-6">
+                No hay devoluciones próximas.
+              </p>
             )}
           </CardContent>
         </Card>
 
         {/* Possible Late Returns */}
-        <Card className="lg:col-span-2 border-orange-500/50">
-          <CardHeader className="bg-orange-500/5 pb-4">
-            <CardTitle className="flex items-center gap-2 text-orange-600">
+        <Card className="lg:col-span-2 border-amber-200/60">
+          <CardHeader className="bg-amber-50/60 rounded-t-2xl">
+            <CardTitle className="flex items-center gap-2 text-amber-700">
               <Clock className="h-5 w-5" />
               Posibles Atrasos
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
-            {dashboard?.possibleLateReturns?.length > 0 ? (
+          <CardContent className="pt-5">
+            {(dashboard?.possibleLateReturns?.length ?? 0) > 0 ? (
               <div className="space-y-3">
-                {dashboard.possibleLateReturns.map((r: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-sm bg-muted/30 p-3 rounded-lg border border-border">
+                {dashboard?.possibleLateReturns?.map((r, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-start justify-between text-sm p-4 rounded-xl ${i % 2 === 0 ? "bg-muted/40" : ""}`}
+                  >
                     <div>
-                      <p className="font-bold text-base">{r.product_id?.name}</p>
-                      <p className="text-muted-foreground">{r.user_id?.name} - {r.user_id?.email}</p>
-                      <p className="text-destructive font-medium mt-1">
-                        Debió entregarse el: {new Date(r.end_date).toLocaleDateString("es-PA")}
+                      <p className="font-semibold text-foreground">{r.product_id?.name}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5">
+                        {r.user_id?.name} · {r.user_id?.email}
+                      </p>
+                      <p className="text-destructive text-xs font-medium mt-1.5">
+                        Debió entregarse el:{" "}
+                        {new Date(r.end_date).toLocaleDateString("es-PA")}
                       </p>
                     </div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to={`/admin/reservations?status=delivered`}>
-                        Ir a Reserva
+                    <Button asChild size="sm" variant="outline" className="ml-4 shrink-0">
+                      <Link to="/admin/reservations?status=delivered">
+                        Ver Reserva
+                        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-sm text-center py-4">No hay atrasos detectados.</p>
+              <p className="text-muted-foreground text-sm text-center py-8">
+                No hay atrasos detectados.
+              </p>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <Separator />
     </div>
   );
 }

@@ -291,7 +291,7 @@ export default function Catalog() {
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isSizeDropdownOpen ? "rotate-180" : ""}`} />
                 </Button>
                 
-                <div className={`absolute top-full left-0 right-0 z-10 mt-2 bg-card border-2 border-border rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden transition-all duration-300 ease-in-out origin-top ${isSizeDropdownOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 pointer-events-none"}`}>
+                <div className={`absolute top-full left-0 right-0 z-10 mt-2 bg-card border-2 border-border rounded-lg shadow-elegant overflow-hidden transition-all duration-300 ease-in-out origin-top ${isSizeDropdownOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 pointer-events-none"}`}>
                   <div className="max-h-56 overflow-y-auto p-2 space-y-3">
                      {sizeGroups.map((group) => (
                        <div key={group.label}>
@@ -383,7 +383,7 @@ export default function Catalog() {
 
               return (
                 <Link key={product._id} to={`/product/${product._id}`} className="h-full">
-                  <Card className="group overflow-hidden transition-all duration-200 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none h-full flex flex-col">
+                  <Card className="group overflow-hidden transition-all duration-200 border border-border/60 shadow-elegant hover:translate-x-1  h-full flex flex-col">
                     <div className="aspect-[3/4] overflow-hidden bg-muted relative border-b-2 border-black">
                       <img
                         src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
@@ -392,7 +392,7 @@ export default function Catalog() {
                       />
                       {!available && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <Badge variant="destructive" className="text-sm font-bold border-2 border-black">Agotado</Badge>
+                          <Badge variant="destructive" className="text-sm font-bold border border-border/60">Agotado</Badge>
                         </div>
                       )}
                     </div>

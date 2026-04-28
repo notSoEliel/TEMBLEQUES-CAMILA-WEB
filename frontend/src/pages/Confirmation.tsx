@@ -85,7 +85,7 @@ export default function Confirmation() {
 
       {/* Rental details */}
       {rental ? (
-        <Card className="text-left mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <Card className="text-left mb-8 border border-border/60 shadow-elegant">
           <CardContent className="p-6 space-y-4">
             <h3 className="font-bold text-lg leading-none">Detalles de la Reserva</h3>
             <Separator className="bg-black/10" />
@@ -118,7 +118,7 @@ export default function Confirmation() {
           </CardContent>
         </Card>
       ) : sessionId ? (
-        <Card className="mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-primary/5">
+        <Card className="mb-8 border border-border/60 shadow-elegant bg-primary/5">
           <CardContent className="p-8">
             <div className="flex flex-col items-center gap-3">
               <div className="bg-primary/20 p-2 rounded-full">
@@ -132,7 +132,7 @@ export default function Confirmation() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+        <Card className="mb-8 border border-border/60 shadow-elegant">
           <CardContent className="p-6">
             <p className="text-muted-foreground text-sm">
               Los detalles estarán disponibles en unos instantes mientras procesamos tu confirmación.

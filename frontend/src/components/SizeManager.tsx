@@ -85,7 +85,7 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
         </Button>
 
         {dropdownOpen && (
-          <div className="absolute z-50 mt-1 w-full bg-card border-2 border-border rounded-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-2xl shadow-elegant-lg p-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="max-h-60 overflow-y-auto pr-1 space-y-3">
               {sizeGroups.length === 0 && (
                 <p className="text-xs text-muted-foreground p-2">No hay grupos configurados. Añade manual.</p>
@@ -102,10 +102,10 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
                           type="button"
                           onClick={() => toggleSize(size)}
                           className={cn(
-                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border-2 transition-all duration-150",
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150",
                             isSelected
                               ? "bg-primary text-primary-foreground border-primary"
-                              : "bg-muted/50 text-foreground border-border hover:border-primary/50"
+                              : "bg-muted/50 text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
                           )}
                         >
                           {isSelected && <Check className="h-3 w-3" />}
@@ -158,10 +158,10 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
             <div
               key={variant.size}
               className={cn(
-                "flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border-2 transition-all duration-200",
+                "flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border transition-all duration-200",
                 variant.in_maintenance
-                  ? "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-                  : "border-border bg-card"
+                  ? "border-amber-300 bg-amber-50/50 dark:bg-amber-950/20"
+                  : "border-border/60 bg-card"
               )}
             >
               {/* Size badge */}
@@ -209,10 +209,10 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
                   onClick={() => updateVariant(idx, { in_maintenance: !variant.in_maintenance })}
                   title={variant.in_maintenance ? "Quitar de mantenimiento" : "Poner en mantenimiento"}
                   className={cn(
-                    "p-1.5 rounded-md border-2 transition-all duration-150",
+                    "p-1.5 rounded-lg border transition-all duration-150",
                     variant.in_maintenance
                       ? "bg-amber-500 text-white border-amber-600"
-                      : "bg-muted/50 text-muted-foreground border-border hover:border-amber-400"
+                      : "bg-muted/50 text-muted-foreground border-border/60 hover:border-amber-300 hover:bg-amber-50"
                   )}
                 >
                   <Wrench className="h-3.5 w-3.5" />
@@ -220,7 +220,7 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
                 <button
                   type="button"
                   onClick={() => removeVariant(idx)}
-                  className="p-1.5 rounded-md border-2 border-border bg-muted/50 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all duration-150"
+                  className="p-1.5 rounded-lg border border-border/60 bg-muted/50 text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 transition-all duration-150"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

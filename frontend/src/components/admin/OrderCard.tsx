@@ -53,15 +53,15 @@ export default function OrderCard({
   const bulkActions = getBulkActions();
 
   return (
-    <Card className="border-2 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+    <Card className="border border-border/60 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-elegant-lg">
       {/* Header */}
       <div className="bg-muted/30 border-b-2 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-black uppercase bg-black text-white px-2 py-0.5 rounded">
+            <span className="text-[10px] font-black uppercase bg-primary/8 text-primary px-2 py-0.5 rounded">
               Pedido #{orderGroupId.slice(-6).toUpperCase()}
             </span>
-            <Badge variant="outline" className="text-[10px] font-black border-2 border-black bg-muted/50">
+            <Badge variant="outline" className="text-[10px] font-black border border-border/60 bg-muted/50">
               {rentals.length} {rentals.length === 1 ? "Artículo" : "Artículos"}
             </Badge>
           </div>
@@ -95,7 +95,7 @@ export default function OrderCard({
               <List className="w-3 h-3" />
               Desglose de Facturación
             </h4>
-            <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="bg-white border border-border/60 rounded-xl p-4 space-y-2 shadow-elegant">
               <div className="flex justify-between text-xs font-medium">
                 <span>Subtotal (Neto)</span>
                 <span>{formatCurrency(totalOrder / 1.07)}</span>
@@ -117,7 +117,7 @@ export default function OrderCard({
               <CreditCard className="w-3 h-3" />
               Estado de Pago
             </h4>
-            <div className="bg-white border-2 border-black rounded-xl p-4 space-y-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="bg-white border border-border/60 rounded-xl p-4 space-y-2 shadow-elegant">
               <div className="flex justify-between text-xs font-medium">
                 <span>Monto Pagado</span>
                 <span className="text-green-600">{formatCurrency(totalOrder - balanceDue)}</span>
@@ -148,9 +148,9 @@ export default function OrderCard({
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
                   {r.product_id?.images?.[0] ? (
-                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded border-2 border-black" />
+                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded border border-border/60" />
                   ) : (
-                    <div className="w-10 h-14 bg-muted border-2 border-black rounded flex items-center justify-center">
+                    <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
                       <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
                     </div>
                   )}
@@ -160,7 +160,7 @@ export default function OrderCard({
                     {r.product_id?.name || "Producto"}
                   </p>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-[10px] font-black bg-muted border-2 border-black px-1.5 py-0 rounded uppercase">
+                    <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">
                       Talla: {r.selected_size}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
@@ -176,7 +176,7 @@ export default function OrderCard({
                   <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
                   <p className="font-black text-sm">{formatCurrency(r.total)}</p>
                 </div>
-                <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
                   {statusLabels[r.status]}
                 </Badge>
                 
@@ -199,7 +199,7 @@ export default function OrderCard({
                           key={s}
                           variant={isDestructive ? "destructive" : "outline"}
                           size="sm"
-                          className="text-xs font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-0.5 transition-all"
+                          className="text-xs font-black border border-border/60 shadow-sm active:shadow-none active:translate-y-0.5 transition-all"
                           onClick={() => onStatusChange(r._id, s)}
                         >
                           {actionLabels[s] || s}
@@ -251,7 +251,7 @@ export default function OrderCard({
                   <Button
                     size="sm"
                     variant={isDestructive ? "destructive" : isPositive ? "default" : "outline"}
-                    className={`flex-1 sm:flex-none text-[10px] font-black border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-0.5 transition-all uppercase px-4 py-2 h-auto`}
+                    className={`flex-1 sm:flex-none text-[10px] font-black border border-border/60 shadow-elegant active:shadow-none active:translate-y-0.5 transition-all uppercase px-4 py-2 h-auto`}
                   >
                     {isPositive && <CheckCircle2 className="w-3 h-3 mr-2" />}
                     {isDestructive && <Trash2 className="w-3 h-3 mr-2" />}

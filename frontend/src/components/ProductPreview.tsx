@@ -91,7 +91,7 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
               </Badge>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg border-2 border-border bg-muted/50 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all"
+                className="p-2 rounded-full bg-muted/60 hover:bg-destructive/10 hover:text-destructive transition-all"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -145,10 +145,10 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                           <button
                             key={i}
                             onClick={() => setSelectedImage(i)}
-                            className={`w-20 h-20 rounded-lg border-2 overflow-hidden transition-all shrink-0 snap-start ${
+                            className={`w-20 h-20 rounded-xl border overflow-hidden transition-all shrink-0 snap-start ${
                               selectedImage === i
                                 ? "border-primary ring-2 ring-primary/20"
-                                : "border-border opacity-70 hover:opacity-100"
+                                : "border-border/60 opacity-70 hover:opacity-100"
                             }`}
                           >
                             <img src={img} alt="" className="w-full h-full object-cover" />
@@ -222,12 +222,12 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                               onClick={() => setSelectedSize(isSelected ? null : v.size)}
                               disabled={isDisabled}
                               className={`
-                                px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all duration-150
+                                px-4 py-2 rounded-full border text-sm font-medium transition-all duration-150
                                 ${isSelected
                                   ? "bg-primary text-primary-foreground border-primary"
                                   : isDisabled
-                                    ? "bg-muted/30 text-muted-foreground/40 border-border/50 cursor-not-allowed line-through"
-                                    : "bg-card text-foreground border-border hover:border-primary"
+                                    ? "bg-muted/30 text-muted-foreground/40 border-border/40 cursor-not-allowed line-through"
+                                    : "bg-card text-foreground border-border/60 hover:border-primary/50 hover:bg-primary/5"
                                 }
                               `}
                             >

@@ -258,7 +258,7 @@ export default function AvailabilityCalendar({
   return (
     <div className="space-y-4 relative">
       {/* 6 PM Warning Banner */}
-      <div className={`border-2 p-3 text-sm flex gap-3 items-start font-medium shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${isPast6pm ? "bg-amber-100 border-amber-900 text-amber-900" : "bg-muted border-black text-foreground"}`}>
+      <div className={`border-2 p-3 text-sm flex gap-3 items-start font-medium shadow-sm ${isPast6pm ? "bg-amber-100 border-amber-900 text-amber-900" : "bg-muted border-black text-foreground"}`}>
         <span className="text-xs font-black uppercase py-1 px-2 border border-current">Nota</span>
         <p className="leading-snug">
           Las reservas para el día siguiente solo están disponibles hasta las <strong>6:00 PM</strong>.

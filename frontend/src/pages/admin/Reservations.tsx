@@ -153,7 +153,7 @@ export default function AdminReservations() {
           <p className="text-muted-foreground mt-1">Gestiona las reservas.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={toggleSort} className="border-2 border-black font-black uppercase text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none transition-all">
+          <Button variant="outline" size="sm" onClick={toggleSort} className="border border-border/60 font-black uppercase text-[10px] shadow-sm  transition-all">
             {sortOrder === "desc" ? <ArrowDownAz className="h-4 w-4 mr-2" /> : <ArrowUpAz className="h-4 w-4 mr-2" />}
             {sortOrder === "desc" ? "Recientes Primero" : "Antiguos Primero"}
           </Button>
@@ -161,12 +161,12 @@ export default function AdminReservations() {
         </div>
       </div>
 
-      <div className="flex bg-muted/50 p-1 rounded-xl border-2 border-black w-fit">
+      <div className="flex bg-muted/50 p-1 rounded-xl border border-border/60 w-fit">
         <button
           onClick={() => setViewMode("items")}
           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
             viewMode === "items" 
-              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" 
+              ? "bg-primary/8 text-primary shadow-sm" 
               : "text-muted-foreground hover:text-black"
           }`}
         >
@@ -177,7 +177,7 @@ export default function AdminReservations() {
           onClick={() => setViewMode("orders")}
           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
             viewMode === "orders" 
-              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" 
+              ? "bg-primary/8 text-primary shadow-sm" 
               : "text-muted-foreground hover:text-black"
           }`}
         >
@@ -204,15 +204,15 @@ export default function AdminReservations() {
         <>
           <div className="space-y-3">
             {rentals.map((r) => (
-              <Card key={r._id} className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <Card key={r._id} className="border border-border/60 shadow-elegant">
                 <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1">
-                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-16 object-cover rounded-lg border-2 border-black shrink-0" />}
+                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-16 object-cover rounded-lg border border-border/60 shrink-0" />}
                     <div>
                       <h3 className="font-black uppercase text-sm leading-tight">
                         {r.product_id?.name || "Producto"}
                         {r.selected_size && (
-                          <span className="ml-2 text-[10px] font-black bg-black text-white px-1.5 py-0.5 rounded uppercase">
+                          <span className="ml-2 text-[10px] font-black bg-primary/8 text-primary px-1.5 py-0.5 rounded uppercase">
                             Talla: {r.selected_size}
                           </span>
                         )}
@@ -226,7 +226,7 @@ export default function AdminReservations() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={STATUS_COLORS[r.status]} className="text-[10px] font-black uppercase px-3 py-1 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                    <Badge variant={STATUS_COLORS[r.status]} className="text-[10px] font-black uppercase px-3 py-1 border border-border/60 shadow-sm">
                       {STATUS_LABELS[r.status]}
                     </Badge>
                     
@@ -238,7 +238,7 @@ export default function AdminReservations() {
                             const isDestructive = s === "cancelled" || s === "damaged";
                             const actionLabel = r.status === "reserved" && s === "delivered" ? "Cobrar Saldo y Entregar" : ACTION_LABELS[s] || s;
                             const btn = (
-                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} className="text-[10px] font-black border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-0.5 transition-all" onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
+                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} className="text-[10px] font-black border border-border/60 shadow-sm active:shadow-none active:translate-y-0.5 transition-all" onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
                                 {actionLabel}
                               </Button>
                             );
