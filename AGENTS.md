@@ -100,5 +100,5 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 1. **Check Folder**: Verifica si estás en `/frontend` o `/backend`.
 2. **Reutiliza UI**: Revisa `components/ui` antes de crear nuevos estilos.
 3. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
-4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E o Docker.
+4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E, Docker o documentación (Architecture, Dependency Map, Setup, Design Decisions, Contributor Guide, Documentation Modularizer).
 5. **Rules**: Consulta siempre `.agents/rules/` para detalles técnicos profundos de cada módulo.
