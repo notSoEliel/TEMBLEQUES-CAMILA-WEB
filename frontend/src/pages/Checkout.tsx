@@ -313,7 +313,7 @@ export default function Checkout() {
           
           {/* Step 1 — Items & Dates */}
           {currentStep >= 1 && (
-            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <Card className="border border-border/60 shadow-elegant">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
@@ -330,12 +330,15 @@ export default function Checkout() {
                         <img
                           src={product.images[0]}
                           alt=""
-                          className="w-16 h-20 object-cover rounded-lg border-2 border-black shrink-0"
+                          className="w-16 h-20 object-cover rounded-lg border border-border/60 shrink-0"
                         />
                       )}
                       <div>
-                        <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
-                        <Badge variant="outline" className="mt-2 border-2 border-black font-black uppercase text-[10px]">
+                        <div className="flex justify-between items-start gap-4">
+                          <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
+                          <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">Alquiler x 1</p>
+                        </div>
+                        <Badge variant="outline" className="mt-2 border border-border/60 font-black uppercase text-[10px]">
                           Talla: {selectedSize}
                         </Badge>
                       </div>
@@ -366,12 +369,15 @@ export default function Checkout() {
                       <div key={item.id} className="py-4 first:pt-0 last:pb-0">
                         <div className="flex gap-4">
                           {item.image && (
-                            <img src={item.image} alt="" className="w-12 h-16 object-cover rounded border-2 border-black" />
+                            <img src={item.image} alt="" className="w-12 h-16 object-cover rounded border border-border/60" />
                           )}
                           <div className="flex-1">
-                            <p className="font-bold text-sm">{item.name}</p>
+                            <div className="flex justify-between items-start">
+                              <p className="font-bold text-sm">{item.name}</p>
+                              <p className="text-xs text-muted-foreground font-medium whitespace-nowrap">Alquiler x {item.quantity}</p>
+                            </div>
                             <div className="flex gap-2 mt-1">
-                              <Badge variant="outline" className="text-[10px] border-2 border-black py-0">Talla: {item.size}</Badge>
+                              <Badge variant="outline" className="text-[10px] border border-border/60 py-0">Talla: {item.size}</Badge>
                               <span className="text-[10px] text-muted-foreground font-medium">
                                 {new Date(item.startDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })} - {new Date(item.endDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })}
                               </span>
@@ -385,7 +391,7 @@ export default function Checkout() {
 
                 {currentStep === 1 && (
                   <Button 
-                    className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+                    className="w-full border border-border/60 shadow-elegant  transition-all py-6 text-lg font-bold"
                     onClick={() => goToStep(2)}
                     disabled={!isMulti && (!startDate || !endDate || days <= 0 || calendarConflict)}
                   >
@@ -398,7 +404,7 @@ export default function Checkout() {
 
           {/* Step 2 — Terms */}
           {currentStep >= 2 && (
-            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <Card className="border border-border/60 shadow-elegant">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
@@ -443,7 +449,7 @@ export default function Checkout() {
 
                 {currentStep === 2 && (
                   <Button 
-                    className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+                    className="w-full border border-border/60 shadow-elegant  transition-all py-6 text-lg font-bold"
                     onClick={() => goToStep(3)}
                     disabled={!termsAccepted}
                   >
@@ -456,7 +462,7 @@ export default function Checkout() {
 
           {/* Step 3 — Review & Pay */}
           {currentStep >= 3 && (
-            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <Card className="border border-border/60 shadow-elegant">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
@@ -502,7 +508,7 @@ export default function Checkout() {
 
                 <Button
                   size="lg"
-                  className="w-full font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-8 text-xl"
+                  className="w-full font-bold border border-border/60 shadow-elegant  transition-all py-8 text-xl"
                   onClick={handleSubmit}
                   disabled={submitting}
                 >
@@ -515,7 +521,7 @@ export default function Checkout() {
 
         {/* ── Sidebar ── */}
         <div className="lg:col-span-1 sticky top-24">
-          <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <Card className="border border-border/60 shadow-elegant">
             <CardHeader className="pb-3 border-b-2 border-black bg-muted/30">
               <CardTitle className="text-base font-bold uppercase tracking-widest flex justify-between items-center">
                 <span>Resumen</span>
@@ -539,17 +545,19 @@ export default function Checkout() {
                 </div>
               </div>
 
-              <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-sm">Monto a Pagar Hoy</span>
-                  <span className="font-black text-2xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
-                </div>
+              <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10 flex flex-col items-center justify-center text-center">
+                <span className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-1">Monto a Pagar Hoy</span>
+                <span className="font-black text-3xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
               </div>
 
               {paymentType === "reservation" && (
-                <div className="mt-4 p-3 bg-destructive/5 border-2 border-destructive/20 rounded-xl">
-                  <p className="text-[10px] font-black uppercase text-destructive mb-1 text-center italic">Saldo restante a pagar en tienda</p>
-                  <p className="text-xl font-black text-destructive text-center">{formatCurrency(finalTotal - finalDeposit)}</p>
+                <div className="mt-3 text-center px-1">
+                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                    Saldo restante: <span className="text-destructive">{formatCurrency(finalTotal - finalDeposit)}</span>
+                  </p>
+                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-tight italic opacity-70">
+                    a pagar en tienda
+                  </p>
                 </div>
               )}
             </CardContent>

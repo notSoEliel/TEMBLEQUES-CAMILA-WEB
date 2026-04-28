@@ -203,7 +203,7 @@ export default function OrderReview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <Card className="border border-border/60 shadow-elegant">
             <CardHeader className="pb-3 border-b-2 border-border bg-muted/20">
               <CardTitle>Artículos en el pedido ({rentals.length})</CardTitle>
             </CardHeader>
@@ -222,12 +222,15 @@ export default function OrderReview() {
                     <div key={r._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 gap-4">
                       <div className="flex items-center gap-4">
                         {r.product_id?.images?.[0] && (
-                          <img src={r.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded border-2 border-black shrink-0" />
+                          <img src={r.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded border border-border/60 shrink-0" />
                         )}
                         <div>
-                          <p className="font-black text-lg leading-tight uppercase">{r.product_id?.name}</p>
+                            <div className="flex justify-between items-start">
+                              <p className="font-black text-lg leading-tight uppercase">{r.product_id?.name}</p>
+                              <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">Alquiler x {qty}</p>
+                            </div>
                           <div className="flex flex-wrap gap-2 mt-2">
-                            <span className="text-[10px] bg-muted border-2 border-black px-2 py-0.5 rounded-full font-black uppercase">Talla: {r.selected_size}</span>
+                            <span className="text-[10px] bg-muted border border-border/60 px-2 py-0.5 rounded-full font-black uppercase">Talla: {r.selected_size}</span>
                             <span className="text-[10px] bg-primary/10 border-2 border-primary/30 px-2 py-0.5 rounded-full font-black uppercase text-primary">
                               {new Date(r.start_date).toLocaleDateString("es-PA", { day: "numeric", month: "short" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { day: "numeric", month: "short" })}
                             </span>
@@ -239,7 +242,7 @@ export default function OrderReview() {
                         {/* Quantity Selector */}
                         <div className="flex flex-col items-center gap-1">
                           <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Cantidad</p>
-                          <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          <div className="flex items-center border border-border/60 rounded-xl overflow-hidden bg-white shadow-sm">
                             <button
                               onClick={() => handleDecrement(r._id)}
                               disabled={submitting}
@@ -281,7 +284,7 @@ export default function OrderReview() {
           </Card>
 
           {depositRequired && (
-            <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+            <Card className="border border-border/60 shadow-elegant overflow-hidden">
               <CardHeader className="pb-3 border-b-2 border-black bg-yellow-50">
                 <CardTitle className="text-sm font-bold uppercase flex items-center gap-2">
                   <Shield className="w-4 h-4 text-yellow-600" />
@@ -294,7 +297,7 @@ export default function OrderReview() {
                     onClick={() => setPaymentType("reservation")}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
                       paymentType === "reservation"
-                        ? "border-primary bg-primary/5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                        ? "border-primary bg-primary/5 shadow-elegant"
                         : "border-border hover:border-black"
                     }`}
                   >
@@ -311,7 +314,7 @@ export default function OrderReview() {
                     onClick={() => setPaymentType("full")}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
                       paymentType === "full"
-                        ? "border-primary bg-primary/5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                        ? "border-primary bg-primary/5 shadow-elegant"
                         : "border-border hover:border-black"
                     }`}
                   >
@@ -330,7 +333,7 @@ export default function OrderReview() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sticky top-8">
+          <Card className="border border-border/60 shadow-elegant sticky top-8">
             <CardHeader className="pb-3 border-b-2 border-black bg-muted/30">
               <CardTitle className="text-base font-bold uppercase tracking-widest">Resumen de Pago</CardTitle>
             </CardHeader>
@@ -351,30 +354,25 @@ export default function OrderReview() {
                 <span className="font-bold text-lg">{formatCurrency(finalTotal)}</span>
               </div>
 
-              {paymentType === "reservation" && (
-                <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 space-y-2 overflow-hidden">
-                  <div className="flex justify-between items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <span className="font-bold text-primary text-sm leading-tight">Monto a pagar hoy (25% + ITBMS)</span>
-                    <span className="font-black text-2xl text-primary whitespace-nowrap">{formatCurrency(actualDepositToPay)}</span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground italic leading-relaxed">
-                    El saldo pendiente se cobrará en tienda física al momento del retiro.
-                  </p>
-                </div>
-              )}
+              <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 overflow-hidden flex flex-col items-center justify-center text-center">
+                <span className="font-bold text-primary text-xs uppercase tracking-widest mb-1">Monto a pagar hoy</span>
+                <span className="font-black text-3xl text-primary whitespace-nowrap">{formatCurrency(amountToPayNow)}</span>
+              </div>
 
-              {paymentType === "full" && (
-                <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 overflow-hidden">
-                  <div className="flex justify-between items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <span className="font-bold text-primary text-sm leading-tight">Monto a pagar hoy (100%)</span>
-                    <span className="font-black text-2xl text-primary whitespace-nowrap">{formatCurrency(finalTotal)}</span>
-                  </div>
+              {paymentType === "reservation" && (
+                <div className="mt-3 text-center px-1">
+                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                    Saldo restante: <span className="text-destructive">{formatCurrency(finalTotal - amountToPayNow)}</span>
+                  </p>
+                  <p className="text-[9px] text-muted-foreground font-black uppercase tracking-tight italic opacity-70">
+                    a pagar en tienda
+                  </p>
                 </div>
               )}
 
               <Button
                 size="lg"
-                className="w-full font-bold border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-8 text-xl mt-4"
+                className="w-full font-bold border border-border/60 shadow-elegant  transition-all py-8 text-xl mt-4"
                 onClick={handleSubmit}
                 disabled={submitting}
               >

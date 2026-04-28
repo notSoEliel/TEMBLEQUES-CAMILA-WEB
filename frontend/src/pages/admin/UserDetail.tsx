@@ -81,7 +81,7 @@ export default function AdminUserDetail() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate("/admin/users")} className="rounded-full border-2 border-black">
+          <Button variant="outline" size="icon" onClick={() => navigate("/admin/users")} className="rounded-full border border-border/60">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -96,7 +96,7 @@ export default function AdminUserDetail() {
             </div>
           </div>
         </div>
-        <Badge className="bg-primary text-primary-foreground text-sm py-1 px-4 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] uppercase">
+        <Badge className="bg-primary text-primary-foreground text-sm py-1 px-4 border border-border/60 shadow-sm uppercase">
           Cliente
         </Badge>
       </div>
@@ -104,7 +104,7 @@ export default function AdminUserDetail() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         <Card 
-          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "" ? "bg-primary/5 ring-2 ring-primary" : ""}`}
+          className={`border border-border/60 shadow-elegant bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "" ? "bg-primary/5 ring-2 ring-primary" : ""}`}
           onClick={() => { setFilterStatus(""); setCurrentPage(1); }}
         >
           <CardContent className="p-6 flex items-center gap-4">
@@ -119,7 +119,7 @@ export default function AdminUserDetail() {
         </Card>
 
         <Card 
-          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "cancelled" ? "bg-destructive/5 ring-2 ring-destructive" : ""}`}
+          className={`border border-border/60 shadow-elegant bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "cancelled" ? "bg-destructive/5 ring-2 ring-destructive" : ""}`}
           onClick={() => { setFilterStatus("cancelled"); setCurrentPage(1); }}
         >
           <CardContent className="p-6 flex items-center gap-4">
@@ -134,7 +134,7 @@ export default function AdminUserDetail() {
         </Card>
 
         <Card 
-          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "pending" ? "bg-amber-50 ring-2 ring-amber-500" : ""}`}
+          className={`border border-border/60 shadow-elegant bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "pending" ? "bg-amber-50 ring-2 ring-amber-500" : ""}`}
           onClick={() => { setFilterStatus("pending"); setCurrentPage(1); }}
         >
           <CardContent className="p-6 flex items-center gap-4">
@@ -149,7 +149,7 @@ export default function AdminUserDetail() {
         </Card>
 
         <Card 
-          className={`border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "reserved" ? "bg-cyan-50 ring-2 ring-cyan-500" : ""}`}
+          className={`border border-border/60 shadow-elegant bg-white cursor-pointer transition-all hover:translate-y-[-2px] ${filterStatus === "reserved" ? "bg-cyan-50 ring-2 ring-cyan-500" : ""}`}
           onClick={() => { setFilterStatus("reserved"); setCurrentPage(1); }}
         >
           <CardContent className="p-6 flex items-center gap-4">
@@ -165,7 +165,7 @@ export default function AdminUserDetail() {
       </div>
 
       {/* Activity Table */}
-      <Card className="border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+      <Card className="border border-border/60 shadow-elegant overflow-hidden">
         <CardHeader className="bg-muted/30 border-b-2 border-black">
           <CardTitle className="text-lg font-bold">Actividad de Reservas</CardTitle>
         </CardHeader>
@@ -236,7 +236,7 @@ export default function AdminUserDetail() {
                           {formatCurrency(r.total)}
                         </td>
                         <td className="px-4 py-2 align-middle">
-                          <Badge variant="outline" className={`text-[10px] font-black uppercase border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${r.status === 'cancelled' ? 'bg-destructive/5' : ''}`}>
+                          <Badge variant="outline" className={`text-[10px] font-black uppercase border border-border/60 shadow-sm ${r.status === 'cancelled' ? 'bg-destructive/5' : ''}`}>
                             {STATUS_LABELS[r.status] || r.status}
                           </Badge>
                         </td>
@@ -244,7 +244,7 @@ export default function AdminUserDetail() {
                           <Button 
                             variant="outline" 
                             size="icon" 
-                            className="h-8 w-8 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[-1px] active:shadow-none transition-all" 
+                            className="h-8 w-8 border border-border/60 shadow-sm hover:translate-y-[-1px] active:shadow-none transition-all" 
                             onClick={() => navigate(`/admin/reservations?status=${r.status}&page=1&limit=10`)}
                           >
                             <ShoppingBag className="h-3.5 w-3.5" />

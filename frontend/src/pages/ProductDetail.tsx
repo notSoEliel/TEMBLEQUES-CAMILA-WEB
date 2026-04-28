@@ -189,8 +189,8 @@ export default function ProductDetail() {
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
-                    className={`w-20 h-20 rounded-lg border-2 overflow-hidden transition-all shrink-0 snap-start ${
-                      selectedImage === i ? "border-primary ring-2 ring-primary/20" : "border-border opacity-70 hover:opacity-100"
+                    className={`w-20 h-20 rounded-xl border overflow-hidden transition-all shrink-0 snap-start ${
+                      selectedImage === i ? "border-primary ring-2 ring-primary/20" : "border-border/60 opacity-70 hover:opacity-100"
                     }`}
                   >
                     <img src={img} alt="" className="w-full h-full object-cover" />
@@ -256,12 +256,12 @@ export default function ProductDetail() {
                       onClick={() => !isDisabled && setSelectedSize(isSelected ? null : v.size)}
                       disabled={isDisabled}
                       className={`
-                        relative px-5 py-2 rounded-xl border-2 text-sm font-bold transition-all duration-150 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none
+                        relative px-5 py-2 rounded-full border text-sm font-medium transition-all duration-150
                         ${isSelected
-                          ? "bg-primary text-primary-foreground border-black -translate-y-0.5"
+                          ? "bg-primary text-primary-foreground border-primary"
                           : isDisabled
-                            ? "bg-muted/30 text-muted-foreground/40 border-border/50 cursor-not-allowed shadow-none"
-                            : "bg-white text-black border-black hover:-translate-y-0.5"
+                            ? "bg-muted/30 text-muted-foreground/40 border-border/40 cursor-not-allowed"
+                            : "bg-card text-foreground border-border/60 hover:border-primary/50 hover:bg-primary/5"
                         }
                       `}
                     >
@@ -315,10 +315,10 @@ export default function ProductDetail() {
             <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Cantidad</h3>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
-                <div className="flex items-center border-2 border-black rounded-xl overflow-hidden bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-2 hover:bg-muted transition-colors border-r-2 border-black"
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-background transition-colors"
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -339,7 +339,7 @@ export default function ProductDetail() {
                       const max = selectedVariant ? getAvailableStock(product._id, selectedSize!, selectedVariant.stock) : 99;
                       setQuantity(Math.min(max, quantity + 1));
                     }}
-                    className="p-2 hover:bg-muted transition-colors border-l-2 border-black"
+                    className="p-2 hover:bg-muted transition-colors rounded-full"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -382,7 +382,7 @@ export default function ProductDetail() {
           <Separator />
 
           {/* Deposit Alert */}
-          <div className="bg-amber-50 border-2 border-black rounded-xl p-4 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex gap-3">
+          <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-4 flex gap-3">
             <Info className="h-5 w-5 text-amber-600 shrink-0" />
             <div className="text-sm">
               <p className="font-bold text-amber-900">Alerta de Reserva</p>
@@ -398,7 +398,7 @@ export default function ProductDetail() {
           {isAvailable ? (
             <Button
               size="lg"
-              className="w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all py-6 text-lg font-bold"
+              className="w-full py-6 text-lg font-semibold shadow-md"
               disabled={!selectedSize || !startDate || !endDate || calendarConflict}
               onClick={handleAddToCart}
             >
@@ -406,7 +406,7 @@ export default function ProductDetail() {
               {!selectedSize ? "Selecciona talla" : !startDate || !endDate ? "Selecciona fechas" : "Añadir al Carrito"}
             </Button>
           ) : (
-            <Button size="lg" className="w-full border-2 border-black grayscale" disabled>
+            <Button size="lg" className="w-full grayscale" disabled>
               Agotado Temporalmente
             </Button>
           )}
@@ -421,7 +421,7 @@ export default function ProductDetail() {
       {/* Add to Cart Confirmation Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <Card className="max-w-sm w-full border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white p-6 relative">
+          <Card className="max-w-sm w-full shadow-elegant-lg bg-white p-6 relative">
             <button 
               onClick={() => setShowAddModal(false)}
               className="absolute top-4 right-4 p-1 hover:bg-muted rounded-full transition-colors"
@@ -429,20 +429,20 @@ export default function ProductDetail() {
               <X className="h-5 w-5" />
             </button>
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto border-2 border-primary">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto border border-primary/20">
                 <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-black uppercase tracking-tight">¡Añadido exitosamente!</h3>
+                <h3 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>¡Añadido exitosamente!</h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   Tu reserva ha sido agregada al carrito.
                 </p>
               </div>
               <div className="flex flex-col gap-2 pt-2">
-                <Button className="w-full font-bold border-2 border-black" onClick={() => navigate("/cart")}>
+                <Button className="w-full" onClick={() => navigate("/cart")}>
                   Ir al Carrito
                 </Button>
-                <Button variant="outline" className="w-full font-bold border-2 border-black" onClick={() => setShowAddModal(false)}>
+                <Button variant="outline" className="w-full" onClick={() => setShowAddModal(false)}>
                   Seguir Comprando
                 </Button>
               </div>

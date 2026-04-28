@@ -95,7 +95,7 @@ export default function AdminUsers() {
           <div className="space-y-3">
             {users.map((u) => (
               <div key={u._id}>
-                <Card className="hover:border-primary transition-colors border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-none overflow-hidden">
+                <Card className="hover:border-primary transition-colors border border-border/60 shadow-elegant hover:translate-y-0.5 hover:shadow-none overflow-hidden">
                   <Link to={`/admin/users/${u._id}`} className="p-4 flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-lg leading-tight">{u.name}</h3>
@@ -105,7 +105,7 @@ export default function AdminUsers() {
                         {u.clerkId && <p className="text-[10px] uppercase tracking-wider font-bold text-primary">✓ Clerk Sincronizado</p>}
                       </div>
                     </div>
-                    <div className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] text-sm">
+                    <div className="bg-primary text-primary-foreground font-bold px-4 py-2 rounded-xl border border-border/60 shadow-sm text-sm">
                       Ver Perfil
                     </div>
                   </Link>

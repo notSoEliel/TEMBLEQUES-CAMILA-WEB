@@ -47,7 +47,7 @@ export default function AdminBusinessRules() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Bento Item: Tabs Guide */}
-        <Card className="flex flex-col border-2 border-black hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("tabs")}>
+        <Card className="flex flex-col border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("tabs")}>
           <CardHeader>
             <div className="p-3 w-fit rounded-lg bg-blue-100 border-2 border-blue-200 mb-2">
               <LayoutDashboard className="h-6 w-6 text-blue-600" />
@@ -61,12 +61,12 @@ export default function AdminBusinessRules() {
             </p>
           </CardContent>
           <div className="p-6 pt-0">
-            <Button variant="outline" className="w-full border-2 border-black">Ver Guía</Button>
+            <Button variant="outline" className="w-full border border-border/60">Ver Guía</Button>
           </div>
         </Card>
 
         {/* Bento Item: States */}
-        <Card className="flex flex-col border-2 border-black hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("states")}>
+        <Card className="flex flex-col border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("states")}>
           <CardHeader>
             <div className="p-3 w-fit rounded-lg bg-purple-100 border-2 border-purple-200 mb-2">
               <BookOpen className="h-6 w-6 text-purple-600" />
@@ -80,12 +80,12 @@ export default function AdminBusinessRules() {
             </p>
           </CardContent>
           <div className="p-6 pt-0">
-            <Button variant="outline" className="w-full border-2 border-black">Ver Flujo</Button>
+            <Button variant="outline" className="w-full border border-border/60">Ver Flujo</Button>
           </div>
         </Card>
 
         {/* Bento Item: Deposit */}
-        <Card className="flex flex-col border-2 border-black hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("deposit")}>
+        <Card className="flex flex-col border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("deposit")}>
           <CardHeader>
             <div className="p-3 w-fit rounded-lg bg-green-100 border-2 border-green-200 mb-2">
               <Shield className="h-6 w-6 text-green-600" />
@@ -99,12 +99,12 @@ export default function AdminBusinessRules() {
             </p>
           </CardContent>
           <div className="p-6 pt-0">
-            <Button variant="outline" className="w-full border-2 border-black">Ver Reglas</Button>
+            <Button variant="outline" className="w-full border border-border/60">Ver Reglas</Button>
           </div>
         </Card>
 
         {/* Bento Item: Late */}
-        <Card className="flex flex-col border-2 border-black hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("late")}>
+        <Card className="flex flex-col border border-border/60 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("late")}>
           <CardHeader>
             <div className="p-3 w-fit rounded-lg bg-orange-100 border-2 border-orange-200 mb-2">
               <Clock className="h-6 w-6 text-orange-600" />
@@ -118,12 +118,12 @@ export default function AdminBusinessRules() {
             </p>
           </CardContent>
           <div className="p-6 pt-0">
-            <Button variant="outline" className="w-full border-2 border-black">Ver Cálculo</Button>
+            <Button variant="outline" className="w-full border border-border/60">Ver Cálculo</Button>
           </div>
         </Card>
 
         {/* Bento Item: Catalog/IDs */}
-        <Card className="flex flex-col border-2 border-black lg:col-span-2 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("catalog")}>
+        <Card className="flex flex-col border border-border/60 lg:col-span-2 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSection("catalog")}>
           <CardHeader>
             <div className="p-3 w-fit rounded-lg bg-amber-100 border-2 border-amber-200 mb-2">
               <AlertTriangle className="h-6 w-6 text-amber-600" />
@@ -137,7 +137,7 @@ export default function AdminBusinessRules() {
             </p>
           </CardContent>
           <div className="p-6 pt-0">
-            <Button variant="outline" className="w-full border-2 border-black">Ver Guía Técnica</Button>
+            <Button variant="outline" className="w-full border border-border/60">Ver Guía Técnica</Button>
           </div>
         </Card>
       </div>
@@ -178,7 +178,7 @@ function TabsGuide({ onBack }: { onBack: () => void }) {
 
 function TabItem({ icon: Icon, title, children, color }: any) {
   return (
-    <Card className="border-2 border-black">
+    <Card className="border border-border/60">
       <CardHeader className="flex flex-row items-center gap-4 space-y-0">
         <div className={`p-2 rounded-lg ${color} border-2 border-current/20`}>
           <Icon className="h-6 w-6" />
@@ -197,7 +197,7 @@ function StatesGuide({ onBack }: { onBack: () => void }) {
     <div className="space-y-6 max-w-4xl">
       <Button variant="ghost" onClick={onBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Volver</Button>
       <h2 className="text-3xl font-bold">Ciclo de Vida de una Reserva</h2>
-      <Card className="border-2 border-black">
+      <Card className="border border-border/60">
         <CardContent className="p-6">
           <ol className="relative border-l-2 border-black ml-3 space-y-8">
             <StateStep status="Pendiente" description="La reserva fue iniciada pero el pago en Stripe no se completó. Estos pedidos suelen expirar automáticamente." />
@@ -229,7 +229,7 @@ function DepositGuide({ onBack }: { onBack: () => void }) {
     <div className="space-y-6 max-w-4xl">
       <Button variant="ghost" onClick={onBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Volver</Button>
       <h2 className="text-3xl font-bold">Reservas de Garantía (Hold/Capture)</h2>
-      <Card className="border-2 border-black p-6 space-y-4">
+      <Card className="border border-border/60 p-6 space-y-4">
         <div className="flex gap-4 items-start">
           <Shield className="h-8 w-8 text-green-600 shrink-0" />
           <div className="space-y-2">
@@ -260,7 +260,7 @@ function LateGuide({ onBack }: { onBack: () => void }) {
     <div className="space-y-6 max-w-4xl">
       <Button variant="ghost" onClick={onBack} className="gap-2"><ArrowLeft className="h-4 w-4" /> Volver</Button>
       <h2 className="text-3xl font-bold">Manejo de Atrasos</h2>
-      <Card className="border-2 border-black p-6 space-y-6">
+      <Card className="border border-border/60 p-6 space-y-6">
         <div className="flex gap-4 items-start">
           <Clock className="h-8 w-8 text-orange-600 shrink-0" />
           <div className="space-y-2">
@@ -290,7 +290,7 @@ function CatalogGuide({ onBack }: { onBack: () => void }) {
       <h2 className="text-3xl font-bold">Guía de IDs e Integridad del Catálogo</h2>
       
       <div className="space-y-4">
-        <Card className="border-2 border-black overflow-hidden">
+        <Card className="border border-border/60 overflow-hidden">
           <div className="bg-amber-100 p-4 border-b-2 border-black">
             <h3 className="font-bold flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" /> Regla de Oro de los IDs
@@ -313,7 +313,7 @@ function CatalogGuide({ onBack }: { onBack: () => void }) {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-black">
+        <Card className="border border-border/60">
           <CardHeader>
             <CardTitle>Orden de Filtros</CardTitle>
           </CardHeader>
@@ -324,7 +324,7 @@ function CatalogGuide({ onBack }: { onBack: () => void }) {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-black">
+        <Card className="border border-border/60">
           <CardHeader>
             <CardTitle>Guía para Nuevas Categorías</CardTitle>
           </CardHeader>

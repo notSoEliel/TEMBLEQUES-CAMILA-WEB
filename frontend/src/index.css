@@ -3,111 +3,125 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.9559 0.0146 102.4588);
-  --foreground: oklch(0 0 0);
-  --card: oklch(0.9559 0.0146 102.4588);
-  --card-foreground: oklch(0 0 0);
-  --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0 0 0);
-  --primary: oklch(0.6862 0.2061 357.3956);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.6862 0.2061 357.3956);
-  --secondary-foreground: oklch(0 0 0);
-  --muted: oklch(0.9255 0.0160 102.8419);
-  --muted-foreground: oklch(0.5103 0 0);
-  --accent: oklch(0.6862 0.2061 357.3956);
-  --accent-foreground: oklch(1.0000 0 0);
-  --destructive: oklch(0.6730 0.2146 25.0397);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0 0 0);
-  --input: oklch(1.0000 0 0);
-  --ring: oklch(0.6862 0.2061 357.3956);
-  --chart-1: oklch(0.6862 0.2061 357.3956);
-  --chart-2: oklch(0.7169 0.1844 41.8853);
-  --chart-3: oklch(0 0 0);
-  --chart-4: oklch(0.5103 0 0);
-  --chart-5: oklch(0.7365 0.1287 265.7085);
-  --sidebar: oklch(0.9559 0.0146 102.4588);
-  --sidebar-foreground: oklch(0 0 0);
-  --sidebar-primary: oklch(0.6862 0.2061 357.3956);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.6862 0.2061 357.3956);
-  --sidebar-accent-foreground: oklch(1.0000 0 0);
-  --sidebar-border: oklch(0 0 0);
-  --sidebar-ring: oklch(0.6862 0.2061 357.3956);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
+  /* === Paleta Magenta / Vino (extraida del logo) === */
+  --background: #FEFEFE;
+  --foreground: #1A0812;
+
+  --card: #FFFFFF;
+  --card-foreground: #1A0812;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #1A0812;
+
+  /* Primary: Magenta profundo del logo */
+  --primary: #C2185B;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary: Rosa palido */
+  --secondary: #F8BBD9;
+  --secondary-foreground: #880E4F;
+
+  /* Muted: fondo suave con tinte rosa */
+  --muted: #FAF5F8;
+  --muted-foreground: #7A5068;
+
+  /* Accent: Deep wine */
+  --accent: #880E4F;
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --destructive: #D32F2F;
+  --destructive-foreground: #FFFFFF;
+
+  /* Borde sutil, no negro brutal */
+  --border: #EDE0E9;
+  --input: #FFFFFF;
+  --ring: #C2185B;
+
+  /* Charts */
+  --chart-1: #C2185B;
+  --chart-2: #E91E8C;
+  --chart-3: #880E4F;
+  --chart-4: #7A5068;
+  --chart-5: #AD1457;
+
+  /* Sidebar */
+  --sidebar: #FEFEFE;
+  --sidebar-foreground: #1A0812;
+  --sidebar-primary: #C2185B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FAF5F8;
+  --sidebar-accent-foreground: #C2185B;
+  --sidebar-border: #EDE0E9;
+  --sidebar-ring: #C2185B;
+
+  /* Tipografia — Playfair Display (serif display) + Outfit (clean sans) + Dancing Script (acento) */
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-script: "Dancing Script", cursive;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Radios — se conserva 2rem para pills (regla 12/14) */
   --radius: 2rem;
-  --shadow-x: 0px;
-  --shadow-y: 0px;
-  --shadow-blur: 0px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 1.0;
-  --shadow-color: #000000;
-  --shadow-2xs: none;
-  --shadow-xs: none;
-  --shadow-sm: none;
-  --shadow: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+
+  /* === Sombras suaves (reemplazo de sombras duras neo-brutalistas) === */
+  --shadow-color: rgba(194, 24, 91, 0.08);
+  --shadow-color-neutral: rgba(0, 0, 0, 0.05);
+
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px rgba(194, 24, 91, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 4px 8px rgba(194, 24, 91, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 6px 16px rgba(194, 24, 91, 0.10), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px rgba(194, 24, 91, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-xl: 0 20px 48px rgba(194, 24, 91, 0.14), 0 8px 16px rgba(0, 0, 0, 0.08);
+  --shadow-2xl: 0 32px 64px rgba(194, 24, 91, 0.16), 0 16px 32px rgba(0, 0, 0, 0.10);
+
   --tracking-normal: -0.01em;
   --spacing: 0.25rem;
 }
 
 .dark {
-  --background: oklch(0.1822 0 0);
-  --foreground: oklch(0.9559 0.0146 102.4588);
-  --card: oklch(0.2393 0 0);
-  --card-foreground: oklch(0.9559 0.0146 102.4588);
-  --popover: oklch(0.2393 0 0);
-  --popover-foreground: oklch(0.9559 0.0146 102.4588);
-  --primary: oklch(0.6862 0.2061 357.3956);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.2850 0 0);
-  --secondary-foreground: oklch(0.9559 0.0146 102.4588);
-  --muted: oklch(0.2850 0 0);
-  --muted-foreground: oklch(0.7058 0 0);
-  --accent: oklch(0.6862 0.2061 357.3956);
-  --accent-foreground: oklch(1.0000 0 0);
-  --destructive: oklch(0.3767 0.1546 29.2339);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.3211 0 0);
-  --input: oklch(0.2393 0 0);
-  --ring: oklch(0.6862 0.2061 357.3956);
-  --chart-1: oklch(0.6862 0.2061 357.3956);
-  --chart-2: oklch(0.7169 0.1844 41.8853);
-  --chart-3: oklch(1.0000 0 0);
-  --chart-4: oklch(0.5103 0 0);
-  --chart-5: oklch(0.1822 0 0);
-  --sidebar: oklch(0 0 0);
-  --sidebar-foreground: oklch(1.0000 0 0);
-  --sidebar-primary: oklch(0.6862 0.2061 357.3956);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.2393 0 0);
-  --sidebar-accent-foreground: oklch(1.0000 0 0);
-  --sidebar-border: oklch(0.3211 0 0);
-  --sidebar-ring: oklch(0.6862 0.2061 357.3956);
-  --font-sans: Inter, sans-serif;
-  --font-serif: Georgia, serif;
-  --font-mono: JetBrains Mono, monospace;
+  --background: #12060E;
+  --foreground: #F8EEF5;
+  --card: #1E0D18;
+  --card-foreground: #F8EEF5;
+  --popover: #1E0D18;
+  --popover-foreground: #F8EEF5;
+  --primary: #E91E8C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #3D1A2E;
+  --secondary-foreground: #F8BBD9;
+  --muted: #2A1020;
+  --muted-foreground: #B08898;
+  --accent: #AD1457;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF5350;
+  --destructive-foreground: #FFFFFF;
+  --border: #3D1A2E;
+  --input: #1E0D18;
+  --ring: #E91E8C;
+  --sidebar: #0E0409;
+  --sidebar-foreground: #F8EEF5;
+  --sidebar-primary: #E91E8C;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1E0D18;
+  --sidebar-accent-foreground: #F8EEF5;
+  --sidebar-border: #3D1A2E;
+  --sidebar-ring: #E91E8C;
+  --font-sans: "Outfit", system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-script: "Dancing Script", cursive;
+  --font-mono: "JetBrains Mono", monospace;
   --radius: 2rem;
-  --shadow-x: 0px;
-  --shadow-y: 0px;
-  --shadow-blur: 0px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 1.0;
-  --shadow-color: #000000;
-  --shadow-2xs: none;
-  --shadow-xs: none;
-  --shadow-sm: none;
-  --shadow: none;
-  --shadow-md: none;
-  --shadow-lg: none;
-  --shadow-xl: none;
-  --shadow-2xl: none;
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.6);
+  --shadow-2xl: 0 32px 64px rgba(0, 0, 0, 0.7);
 }
 
 @theme inline {
@@ -148,10 +162,10 @@
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 1.5rem);
+  --radius-md: calc(var(--radius) - 1rem);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 0.5rem);
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
@@ -176,6 +190,41 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
     letter-spacing: var(--tracking-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+  }
+}
+
+/* === Utilidades de marca globales === */
+@layer utilities {
+  .font-display {
+    font-family: var(--font-serif);
+  }
+  .font-body {
+    font-family: var(--font-sans);
+  }
+
+  /* Gradiente de marca: magenta → deep wine */
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, #C2185B 0%, #880E4F 100%);
+  }
+  .text-brand-gradient {
+    background: linear-gradient(135deg, #C2185B 0%, #880E4F 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Sombra card elegante */
+  .shadow-elegant {
+    box-shadow: 0 4px 20px rgba(194, 24, 91, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  .shadow-elegant-lg {
+    box-shadow: 0 8px 40px rgba(194, 24, 91, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 }

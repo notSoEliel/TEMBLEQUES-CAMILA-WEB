@@ -132,14 +132,14 @@ export default function Profile() {
       {errorModal}
 
       {/* Profile Info Header */}
-      <Card className="mb-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white">
+      <Card className="mb-8">
         <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary shrink-0">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shrink-0">
               <User className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
                 ¡Hola, {user?.name.split(' ')[0]}!
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-1.5 text-sm mt-1">
@@ -149,24 +149,24 @@ export default function Profile() {
             </div>
           </div>
           
-          <div className="flex gap-4 sm:gap-8 border-t md:border-t-0 md:border-l-2 border-black/10 pt-6 md:pt-0 md:pl-8">
+          <div className="flex gap-4 sm:gap-8 border-t md:border-t-0 md:border-l border-border/40 pt-6 md:pt-0 md:pl-8">
             <div className="text-center md:text-left">
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
                 {currentView === "active" ? "Alquileres Activos" : "Alquileres Cancelados"}
               </p>
-              <p className="text-3xl font-black">{pagination?.total || 0}</p>
+              <p className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{pagination?.total || 0}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Navigation Tabs */}
-      <div className="flex gap-2 mb-8 p-1 bg-muted/50 rounded-2xl border-2 border-black max-w-sm">
+      <div className="flex gap-2 mb-8 p-1 bg-muted/50 rounded-2xl border border-border/40 max-w-sm">
         <button
           onClick={() => handleViewChange("active")}
           className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all ${
             currentView === "active" 
-              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]" 
+              ? "bg-primary text-primary-foreground shadow-sm" 
               : "hover:bg-black/5"
           }`}
         >
@@ -177,7 +177,7 @@ export default function Profile() {
           onClick={() => handleViewChange("cancelled")}
           className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all ${
             currentView === "cancelled" 
-              ? "bg-black text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,0.2)]" 
+              ? "bg-primary text-primary-foreground shadow-sm" 
               : "hover:bg-black/5"
           }`}
         >
@@ -223,13 +223,13 @@ export default function Profile() {
             return (
               <Card 
                 key={groupId} 
-                className={`border-2 border-black transition-all ${
+                className={`transition-all ${
                   isCancelled 
-                    ? "grayscale opacity-60 shadow-none border-dashed" 
-                    : "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+                    ? "grayscale opacity-60 shadow-none" 
+                    : ""
                 }`}
               >
-                <CardHeader className="pb-3 border-b-2 border-border bg-muted/20">
+                <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -244,8 +244,8 @@ export default function Profile() {
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-xl text-primary">${groupTotal.toFixed(2)}</span>
-                      <Badge variant={STATUS_COLORS[groupItems[0].status] || "outline"} className="border-2 border-black font-bold uppercase tracking-wider text-[10px]">
+                      <span className="font-bold text-xl text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>${groupTotal.toFixed(2)}</span>
+                      <Badge variant={STATUS_COLORS[groupItems[0].status] || "outline"}>
                         {STATUS_LABELS[groupItems[0].status] || groupItems[0].status}
                       </Badge>
                     </div>
@@ -257,13 +257,13 @@ export default function Profile() {
                       <div key={rental._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
                         <div className="flex items-center gap-4">
                           {rental.product_id?.images?.[0] && (
-                            <img src={rental.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded-lg border-2 border-black" />
+                            <img src={rental.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded-xl border border-border/60" />
                           )}
                           <div>
                             <h3 className="font-bold text-base leading-tight">{rental.product_id?.name || "Producto"}</h3>
                             <div className="flex gap-2 mt-1">
                               {rental.selected_size && (
-                                <span className="text-[10px] bg-black text-white px-1.5 py-0.5 rounded font-black uppercase">Talla: {rental.selected_size}</span>
+                                <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-medium text-muted-foreground">Talla: {rental.selected_size}</span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 font-medium">
@@ -280,7 +280,7 @@ export default function Profile() {
                   </div>
 
                   {!isCancelled && (
-                    <div className="p-4 border-t-2 border-border bg-muted/10 flex flex-wrap items-center justify-between gap-3">
+                    <div className="p-4 border-t border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex-1">
                         {isPaidOrReserved && (
                           <p className="text-[11px] text-muted-foreground font-medium italic">
@@ -299,13 +299,13 @@ export default function Profile() {
                               description="Esta acción liberará las prendas para otros usuarios. No se puede deshacer."
                               onConfirm={() => groupItems.filter(r => r.status === "pending").forEach(r => handleCancelRental(r._id))}
                             >
-                              <Button variant="outline" size="sm" className="border-2 border-black font-bold h-9">
+                              <Button variant="outline" size="sm" className="h-9">
                                 Cancelar Pedido
                               </Button>
                             </ConfirmModal>
                             <Button
                               size="sm"
-                              className="font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-0.5 hover:shadow-none transition-all h-9"
+                              className="h-9"
                               onClick={() => navigate(`/checkout/review?orderGroupId=${groupId}`)}
                             >
                               Pagar Pedido Completo
