@@ -12,12 +12,12 @@ Para asegurar una interfaz coherente y premium, el uso de componentes de UI y es
 - **Variables CSS**: Se utiliza **OKLCH** para los colores, lo que permite una mayor precisión y consistencia en el brillo y matiz.
 - **Sincronización**: Al crear o modificar el frontend, asegúrate de que `index.css` esté importado en el punto de entrada principal (ej. `main.tsx` o `App.tsx`).
 
-## 3. Estética Neobrutalista Premium
-El tema definido en `index.css` tiene una inclinación Neobrutalista refinada que debe respetarse:
-- **Diseño Plano (Flat)**: No usar sombras (suaves o sólidas) en contenedores. El diseño debe ser plano, confiando en los bordes negros (`border-2 border-black`) para definir la jerarquía visual.
+## 3. Estética Visual Premium
+El sistema de diseño debe seguir una estética refinada y coherente:
+- **Diseño Limpio**: Mantener un equilibrio visual con espacios adecuados y jerarquía clara.
 - **Bordes y Radios**:
-  - El radio por defecto (`--radius`) es de `2rem`, lo que da un aspecto muy redondeado/pill-shaped.
-  - Los bordes deben usar la variable `--border` (actualmente negro sólido).
+  - El radio por defecto (`--radius`) es de `2rem`, lo que da un aspecto redondeado y moderno.
+  - Los bordes deben ser consistentes con el diseño de la interfaz.
 - **Tipografía**:
   - `font-sans`: Inter (para lectura general).
   - `font-serif`: Georgia (para títulos elegantes o acentos premium).

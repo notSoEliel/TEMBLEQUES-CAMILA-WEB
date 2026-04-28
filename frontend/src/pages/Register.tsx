@@ -3,7 +3,7 @@ import { SignUp } from "@clerk/clerk-react";
 
 /**
  * Clerk SignUp component with appearance customized to match
- * the platform's neobrutalista OKLCH theme.
+ * the platform's OKLCH theme.
  */
 export default function Register() {
   return (

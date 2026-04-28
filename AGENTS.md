@@ -13,7 +13,7 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **Frontend**: React 19 + Vite + TypeScript + React Router v7.
 - **Backend**: Bun + Hono + TypeScript + MongoDB (Mongoose).
 - **Estilos**: Tailwind CSS v4 + Lucide React.
-- **Componentes**: Radix UI (Headless) + Diseño Neobrutalista propio.
+- **Componentes**: Radix UI (Headless).
 - **Servicios**: Clerk (Auth) + Stripe (Pagos) + Svix (Webhooks).
 
 ---
@@ -38,9 +38,7 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **Emojis**: Prohibido el uso de emojis en mensajes de commit, comentarios de código o logs de consola, a menos que sea para diferenciar estados visuales en la UI.
 - **Idioma**: Español impecable en UI, errores y mensajes. Cero Spanglish.
 
-### [RULE] Estética y UI Neobrutalista Flat (12, 14)
-- **Bordes**: Siempre `border-2 border-black` en contenedores principales.
-- **Sombras**: **PROHIBIDO** el uso de sombras sólidas o relieves. El diseño debe ser plano (flat) con bordes definidos.
+### [RULE] Estética y UI (12, 14)
 - **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
 - **Radios**: El radio por defecto (`--radius`) es de `2rem` (estilo pill-shaped).
 
