@@ -75,6 +75,11 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **E2E**: Playwright para flujos críticos (Reserva, Login, Admin).
 - **Clean Code**: Seguir principios DRY y SOLID.
 
+### [RULE] Documentación Modular (18)
+- Toda la documentación técnica debe residir en la carpeta `docs/`.
+- El `README.md` principal debe actuar únicamente como un portal de navegación hipervinculado.
+- Queda prohibido el uso de emojis en los documentos técnicos de la carpeta `docs/`.
+
 ---
 
 ## 3. Arquitectura y Estructura (04, 05, 09, 11)
@@ -100,5 +105,5 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 1. **Check Folder**: Verifica si estás en `/frontend` o `/backend`.
 2. **Reutiliza UI**: Revisa `components/ui` antes de crear nuevos estilos.
 3. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
-4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E, Docker o documentación (Architecture, Dependency Map, Setup, Design Decisions, Contributor Guide, Documentation Modularizer).
+4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E, Docker o documentación técnica (Architecture Overview Generator, Contributor Guide Writer, Documentation Modularizer, Environment Setup Documenter, Key Design Decision Explainer, Module Dependency Mapper).
 5. **Rules**: Consulta siempre `.agents/rules/` para detalles técnicos profundos de cada módulo.
