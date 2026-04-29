@@ -103,4 +103,18 @@ Este endpoint no solo devuelve los datos del usuario, sino que actúa como un **
 
 ---
 
+## 7. Experiencia de Carga y Mitigación de FOUC (UX)
+
+Para garantizar una experiencia **Premium**, hemos implementado una capa de mitigación contra el **FOUC (Flash of Unauthenticated Content)**.
+
+### El Problema
+Debido a la naturaleza asíncrona de la hidratación de Clerk y la posterior consulta del perfil en MongoDB, existe un lapso de tiempo donde la aplicación no sabe si el usuario está autenticado o no. Sin mitigación, la UI renderizaba brevemente el estado "Invitado" (botones de Login/Registro) antes de saltar al estado "Usuario".
+
+### La Solución: GlobalAuthLoader
+Implementamos un interceptor global en el punto de entrada de la aplicación (`App.tsx`) que:
+1.  **Bloquea el Renderizado**: No monta las rutas ni los layouts hasta que `isLoaded` (Clerk) e `isLoading` (Profile Sync) son finales.
+2.  **SplashScreen Premium**: Muestra una pantalla de carga elegante (Silent Luxury) con animaciones suaves que actúan como un puente visual mientras se resuelven las credenciales.
+
+---
+
 Este diseño de SecOps asegura que Tembleques Camila cumpla con estándares modernos de privacidad y seguridad, eliminando la responsabilidad de gestionar credenciales críticas en nuestra infraestructura.

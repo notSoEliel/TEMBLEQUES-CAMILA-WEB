@@ -60,5 +60,13 @@ La interfaz debe sentirse viva pero sutil. Las animaciones no deben distraer, si
 - **Configuración**: El sistema debe operar bajo el locale `es-PA` (Español - Panamá) y mostrar siempre la moneda en **Balboas (PAB)**.
 - **Visualización**: En la UI, el símbolo puede aparecer como "$" pero el formateo debe seguir las reglas de moneda panameña (punto decimal, coma de miles).
 
+## 7. Estados de Carga y SplashScreen
+
+La primera impresión es crítica. Para mantener la percepción de velocidad y elegancia, el sistema de carga debe ser impecable.
+
+- **SplashScreen**: Se utiliza un componente centralizado (`SplashScreen.tsx`) que bloquea el renderizado inicial hasta que la sesión sea estable.
+- **Estética Silent Luxury**: El SplashScreen debe usar un fondo limpio (`bg-background`), el logo de la marca con animaciones de pulso sutiles y transiciones de salida mediante *fade-out* no menores a 500ms.
+- **Skeletons**: Para cargas parciales (ej. cambio de filtros en el catálogo), se deben usar componentes `Skeleton` que imiten la geometría del contenido final para evitar saltos bruscos de layout.
+
 > [!CAUTION]
 > Cualquier incumplimiento de estas normas estéticas resultará en el rechazo inmediato del código en la fase de revisión técnica. No hay espacio para la mediocridad visual en Tembleques Camila.

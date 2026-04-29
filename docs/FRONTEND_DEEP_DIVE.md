@@ -163,4 +163,15 @@ Seguimos una política estricta de **Mobile First**.
 
 ---
 
+## 9. Mitigación de FOUC y Experiencia de Carga
+
+Para evitar el parpadeo de contenido no autenticado (**Flash of Unauthenticated Content**), la aplicación implementa una estrategia de bloqueo preventivo.
+
+### GlobalAuthLoader & SplashScreen
+En lugar de permitir que los layouts se monten con un estado de usuario parcial, el componente `GlobalAuthLoader` envuelve toda la jerarquía de rutas.
+- **Efecto Visual**: Se muestra el `SplashScreen` (ubicado en `components/ui/SplashScreen.tsx`) el cual utiliza `framer-motion` para una salida suave (*fade-out*).
+- **Control de Flujo**: Las rutas reales (`<BrowserRouter>`) solo se montan una vez que el hook `useAuth` reporta que la carga ha terminado. Esto asegura que el Navbar aparezca directamente con el estado correcto (ya sea con el perfil de usuario o con los botones de acceso), eliminando saltos visuales incómodos.
+
+---
+
 Este documento es la guía definitiva para entender cómo el frontend de Tembleques Camila interactúa con el usuario y el servidor. La coherencia entre la URL y la UI es lo que define nuestra calidad de ingeniería.

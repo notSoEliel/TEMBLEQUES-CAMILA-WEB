@@ -80,105 +80,130 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 import { CartProvider } from "@/hooks/useCart";
 import ScrollToTop from "@/components/ui/ScrollToTop";
+import SplashScreen from "@/components/ui/SplashScreen";
+import { AnimatePresence } from "framer-motion";
+
+/**
+ * Handles the global authentication loading state.
+ * Shows a premium splash screen until both Clerk and MongoDB profiles are ready.
+ */
+function GlobalAuthLoader({ children }: { children: React.ReactNode }) {
+  const { isLoading } = useAuth();
+
+  return (
+    <>
+      <AnimatePresence mode="wait">
+        {isLoading && <SplashScreen key="splash" />}
+      </AnimatePresence>
+      {/* 
+        We keep the children always mounted but hidden if loading? 
+        Actually, rendering them only when !isLoading is safer against FOUC.
+      */}
+      {!isLoading && children}
+    </>
+  );
+}
 
 export default function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            {/* Client Routes */}
-            <Route element={<ClientLayout />}>
-              <Route path="/" element={<Landing />} />
-              <Route path="/catalog" element={<Catalog />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              {/* Clerk handles the full auth UI — routing="path" must match these paths */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/login/*" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/register/*" element={<Register />} />
-              <Route
-                path="/checkout/:productId"
-                element={
-                  <ProtectedRoute>
-                    <Checkout />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/checkout/review"
-                element={
-                  <ProtectedRoute>
-                    <OrderReview />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/confirmation"
-                element={
-                  <ProtectedRoute>
-                    <Confirmation />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile/orders"
-                element={
-                  <ProtectedRoute>
-                    <Orders />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/contacto"
-                element={<Contact />}
-              />
-              <Route
-                path="/cart"
-                element={
-                  <ProtectedRoute>
-                    <Cart />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/historia" element={<History />} />
-              <Route path="/credencial" element={<ArtisanCredential />} />
-              <Route path="/mision-vision" element={<MissionVision />} />
-              <Route path="/faq" element={<FAQ />} />
+      <GlobalAuthLoader>
+        <CartProvider>
+          <BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              {/* Client Routes */}
+              <Route element={<ClientLayout />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                {/* Clerk handles the full auth UI — routing="path" must match these paths */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/login/*" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/register/*" element={<Register />} />
+                <Route
+                  path="/checkout/:productId"
+                  element={
+                    <ProtectedRoute>
+                      <Checkout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/checkout/review"
+                  element={
+                    <ProtectedRoute>
+                      <OrderReview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/confirmation"
+                  element={
+                    <ProtectedRoute>
+                      <Confirmation />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile/orders"
+                  element={
+                    <ProtectedRoute>
+                      <Orders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/contacto"
+                  element={<Contact />}
+                />
+                <Route
+                  path="/cart"
+                  element={
+                    <ProtectedRoute>
+                      <Cart />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/historia" element={<History />} />
+                <Route path="/credencial" element={<ArtisanCredential />} />
+                <Route path="/mision-vision" element={<MissionVision />} />
+                <Route path="/faq" element={<FAQ />} />
 
 
-              {/* 404 Catch-all — must be last inside ClientLayout */}
-              <Route path="*" element={<ErrorPage variant="not-found" />} />
-            </Route>
+                {/* 404 Catch-all — must be last inside ClientLayout */}
+                <Route path="*" element={<ErrorPage variant="not-found" />} />
+              </Route>
 
-            {/* Admin Routes */}
-            <Route
-              element={
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              }
-            >
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/inventory" element={<AdminInventory />} />
-              <Route path="/admin/reservations" element={<AdminReservations />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
-              <Route path="/admin/settings" element={<AdminSettings />} />
-              <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </CartProvider>
+              {/* Admin Routes */}
+              <Route
+                element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }
+              >
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/inventory" element={<AdminInventory />} />
+                <Route path="/admin/reservations" element={<AdminReservations />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/admin/settings" element={<AdminSettings />} />
+                <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </CartProvider>
+      </GlobalAuthLoader>
     </AuthProvider>
   );
 }
