@@ -130,9 +130,10 @@ bun test --coverage
 - La lógica de servicios en `backend/src/services` debe tener una cobertura mínima del **80%**.
 - Los componentes críticos del frontend (Checkout, Calendario) deben tener tests de integración.
 
-### Linting y Formateo
-- Ejecuta `bun run lint` antes de cada commit.
-- El proyecto utiliza Prettier para mantener un estilo visual consistente. No subas código mal formateado.
+### Linting, Formateo y Verificación de Tipos
+- **Tipado Estricto (Frontend)**: Es obligatorio ejecutar `cd frontend && bun x tsc --noEmit` antes de realizar cualquier commit. Si este comando devuelve errores, el código no será aceptado.
+- **Linting**: Ejecuta `bun run lint` antes de cada commit.
+- **Formateo**: El proyecto utiliza Prettier para mantener un estilo visual consistente. No subas código mal formateado.
 
 ---
 
@@ -146,7 +147,7 @@ bun test --coverage
    - Adjunta capturas de pantalla si hay cambios en la UI.
 3. **Checklist Pre-vuelo**:
    - [ ] He ejecutado `bun test` y todos pasan.
-   - [ ] He verificado el tipado estricto (sin `any`).
+   - [ ] He verificado el tipado estricto (`bun x tsc --noEmit` sin errores).
    - [ ] No he usado emojis en mis commits.
    - [ ] He documentado cualquier nueva variable de entorno en `.env.example`.
 

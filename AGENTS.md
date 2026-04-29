@@ -38,9 +38,21 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **Emojis**: Prohibido el uso de emojis en mensajes de commit, comentarios de código o logs de consola, a menos que sea para diferenciar estados visuales en la UI.
 - **Idioma**: Español impecable en UI, errores y mensajes. Cero Spanglish.
 
-### [RULE] Estética y UI (12, 14)
-- **No Placeholders**: Prohibido usar imágenes rotas o placeholders genéricos. Usar iconos de Lucide o colores de marca.
-- **Radios**: El radio por defecto (`--radius`) es de `2rem` (estilo pill-shaped).
+### [RULE] Estética y Diseño Premium (12, 14, 20)
+- **Evolución Visual**: Queda formalmente prohibido el estilo Neobrutalista. No se permiten bordes negros gruesos ni diseños "crudos". La nueva identidad es **Premium, Elegante y Limpia**.
+- **Geometría de Radios**: El radio por defecto (`--radius`) es de **2rem**. Esto crea un aspecto "pill-shaped" obligatorio en todos los botones, tarjetas e inputs.
+- **Sistema de Color OKLCH**: Uso exclusivo de `oklch()` en el CSS. Prohibido el uso de HEX/RGB/HSL en cualquier parte del código frontend.
+- **Profundidad y Sombras**: Uso mandatorio de la utilidad `shadow-elegant` para sustituir la definición de bordes. Los elementos flotantes deben usar `shadow-elegant-lg`.
+- **Componentes**: Prohibida la creación de UI manual. Todo componente debe ser una instancia de `shadcn/ui` y `Radix UI`.
+- **Animaciones e Interacción**: 
+    - Toda transición debe durar entre **200ms y 400ms**.
+    - Uso obligatorio de animaciones de entrada/salida para componentes interactivos (Acordeones, Popovers).
+    - Los estados hover deben ser sutiles (ej. elevación de 2px o cambio suave de opacidad).
+
+### [RULE] Localización y Moneda (21)
+- **Moneda Nacional**: Uso inquebrantable del **Balboa (PAB)**. El símbolo es `$`. Prohibido mostrar "USD".
+- **Formateo**: Uso obligatorio de la utilidad `formatCurrency(amount)` ubicada en `@/lib/utils`. Nunca formatear montos manualmente.
+- **Región**: Configuración regional `es-PA` para fechas, números y moneda. El idioma es español impecable (cero Spanglish).
 
 ### [RULE] Accesibilidad Móvil y Hover (17)
 - **No dependencia de Hover**: Prohibido ocultar acciones críticas detrás de un estado hover. En móviles, todo debe ser visible o accesible vía tap.
@@ -78,6 +90,10 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - El `README.md` principal debe actuar únicamente como un portal de navegación hipervinculado.
 - Queda prohibido el uso de emojis en los documentos técnicos de la carpeta `docs/`.
 
+### [RULE] Verificación de Tipos (19)
+- **Mandatorio**: Ejecutar `cd frontend && bun x tsc --noEmit` después de cada cambio en `.ts` o `.tsx`.
+- **Bloqueo**: Prohibido presentar código o dar por terminada una tarea si existen errores de tipos.
+
 ---
 
 ## 3. Arquitectura y Estructura (04, 05, 09, 11)
@@ -101,7 +117,8 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 ## 4. Instrucciones para la IA (Operativa)
 
 1. **Check Folder**: Verifica si estás en `/frontend` o `/backend`.
-2. **Reutiliza UI**: Revisa `components/ui` antes de crear nuevos estilos.
-3. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
-4. **Skills**: Consulta `.agents/skills/` para Stripe, E2E, Docker o documentación técnica (Architecture Overview Generator, Contributor Guide Writer, Documentation Modularizer, Environment Setup Documenter, Key Design Decision Explainer, Module Dependency Mapper).
-5. **Rules**: Consulta siempre `.agents/rules/` para detalles técnicos profundos de cada módulo.
+2. **Type Check [CRITICAL]**: Si modificaste el frontend, ejecuta `cd frontend && bun x tsc --noEmit`. No respondas hasta que no haya errores.
+3. **Reutiliza UI**: Revisa `components/ui` (shadcn) antes de crear nuevos estilos. Prohibida la UI manual.
+4. **Manejo de Errores**: Usa `AppError` en backend e interceptalo con modales en frontend.
+5. **Skills**: Consulta `.agents/skills/` para Stripe, E2E, Docker o documentación técnica.
+6. **Rules**: Consulta siempre `.agents/rules/` para detalles técnicos profundos.
