@@ -434,9 +434,17 @@ export default function Catalog() {
                       )}
                     </div>
                     <CardContent className="p-4 space-y-2 flex-1 flex flex-col">
-                      <Badge variant="outline" className="text-[10px] w-fit border-black uppercase font-bold tracking-wider">
-                        {categories.find(c => c.id === product.category)?.label || product.category}
-                      </Badge>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {Array.isArray(product.category) ? product.category.map(catId => (
+                            <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
+                              {categories.find(c => c.id === catId)?.label || catId}
+                            </Badge>
+                          )) : (
+                            <Badge variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
+                              {categories.find(c => c.id === product.category)?.label || product.category}
+                            </Badge>
+                          )}
+                        </div>
                       <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{product.name}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] flex-1">
                         {product.description}

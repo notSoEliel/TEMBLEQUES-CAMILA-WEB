@@ -99,7 +99,6 @@ export default function AdminSettings() {
   };
 
   const removeCategory = (indexInCategories: number) => {
-    if (!confirm("¿Seguro que deseas eliminar esta categoría? Los productos existentes mantendrán el ID internamente pero no aparecerán en los filtros.")) return;
     setCategories(categories.filter((_, i) => i !== indexInCategories));
   };
 
@@ -118,7 +117,6 @@ export default function AdminSettings() {
   };
 
   const removeSizeGroup = (indexInGroups: number) => {
-    if (!confirm("¿Seguro que deseas eliminar este grupo de tallas?")) return;
     setSizeGroups(sizeGroups.filter((_, i) => i !== indexInGroups));
   };
 
@@ -301,9 +299,17 @@ export default function AdminSettings() {
                         </div>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeCategory(globalIndex)} className="mt-6 text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <ConfirmModal
+                      title="Eliminar Categoría"
+                      description="¿Seguro que deseas eliminar esta categoría? Los productos existentes mantendrán el ID internamente pero no aparecerán en los filtros."
+                      confirmText="Eliminar"
+                      variant="destructive"
+                      onConfirm={() => removeCategory(globalIndex)}
+                    >
+                      <Button variant="ghost" size="icon" className="mt-6 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmModal>
                   </div>
                 );
               })}
@@ -424,9 +430,17 @@ export default function AdminSettings() {
                         />
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => removeSizeGroup(globalIndex)} className="mt-6 text-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <ConfirmModal
+                      title="Eliminar Grupo de Tallas"
+                      description="¿Seguro que deseas eliminar este grupo de tallas?"
+                      confirmText="Eliminar"
+                      variant="destructive"
+                      onConfirm={() => removeSizeGroup(globalIndex)}
+                    >
+                      <Button variant="ghost" size="icon" className="mt-6 text-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmModal>
                   </div>
                 );
               })}

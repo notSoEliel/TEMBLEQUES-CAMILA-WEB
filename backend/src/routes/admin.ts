@@ -122,10 +122,9 @@ const sizeVariantSchema = z.object({
 
 const productSchema = z.object({
   name: z.string().min(1, "El nombre del producto es requerido"),
-  category: z.enum(
-    ["pollera", "vestuario_masculino", "infantil", "tembleques", "accesorios", "paquete_completo"],
-    { errorMap: () => ({ message: "Categoría inválida" }) },
-  ),
+  category: z.array(
+    z.enum(["pollera", "vestuario_masculino", "infantil", "tembleques", "accesorios", "paquete_completo"])
+  ).min(1, "Al menos una categoría es requerida"),
   description: z.string().min(1, "La descripción es requerida"),
   rental_price: z.number().min(0, "El precio no puede ser negativo"),
   variants: z.array(sizeVariantSchema).min(1, "Debe haber al menos una talla/variante"),
