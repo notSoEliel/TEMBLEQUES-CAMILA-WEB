@@ -9,6 +9,7 @@ import { Calendar, RefreshCw } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 import { useSearchParams } from "react-router-dom";
 import { LayoutGrid, List, ArrowDownAz, ArrowUpAz } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -221,7 +222,7 @@ export default function AdminReservations() {
                       <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground font-bold uppercase">
                         <Calendar className="h-3 w-3" />
                         {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
-                        <span className="font-black text-primary ml-2">Total: ${r.total}</span>
+                        <span className="font-black text-primary ml-2">Total: {formatCurrency(r.total)}</span>
                       </div>
                     </div>
                   </div>
@@ -280,7 +281,7 @@ export default function AdminReservations() {
             <OrderCard
               key={gid}
               orderGroupId={gid}
-              rentals={group}
+              rentals={group as any[]}
               onStatusChange={handleStatusChange}
               onBulkStatusChange={handleBulkStatusChange}
               statusLabels={STATUS_LABELS}

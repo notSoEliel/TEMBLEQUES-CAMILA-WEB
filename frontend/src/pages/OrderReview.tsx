@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { rentalsApi, stripeApi } from "@/services/api";
+import { rentalsApi, stripeApi, productsApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -155,7 +155,7 @@ export default function OrderReview() {
     );
   }
 
-  if (rentals.length === 0) return <ErrorPage variant="generic" />;
+  if (rentals.length === 0) return <ErrorPage variant="not-found" />;
 
   const subtotal = rentals.reduce((acc, r) => acc + (r.total || 0), 0);
   const itbms = subtotal * 0.07;
@@ -210,14 +210,15 @@ export default function OrderReview() {
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {/* Group rentals by product and size to show quantity */}
-                {Object.values(rentals.reduce((acc, r) => {
+                {Object.values(rentals.reduce((acc: Record<string, any[]>, r: any) => {
                   const key = `${r.product_id._id}-${r.selected_size}-${r.start_date}-${r.end_date}`;
                   if (!acc[key]) acc[key] = [];
                   acc[key].push(r);
                   return acc;
-                }, {} as Record<string, any[]>)).map((group: any[]) => {
-                  const r = group[0];
-                  const qty = group.length;
+                }, {})).map((group) => {
+                  const items = group as any[];
+                  const r = items[0];
+                  const qty = items.length;
                   return (
                     <div key={r._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 gap-4">
                       <div className="flex items-center gap-4">
@@ -265,12 +266,12 @@ export default function OrderReview() {
                           <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Total Item</p>
                           <p className="font-black text-xl text-primary">{formatCurrency(r.total * qty)}</p>
                         </div>
-
+ 
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           className="text-destructive hover:bg-destructive/10 -mt-4 sm:mt-0"
-                          onClick={() => handleRemoveGroup(group)}
+                          onClick={() => handleRemoveGroup(items)}
                           disabled={submitting}
                         >
                           <Trash2 className="w-5 h-5" />

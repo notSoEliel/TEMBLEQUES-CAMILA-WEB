@@ -65,7 +65,7 @@ export default function OrderCard({
               {rentals.length} {rentals.length === 1 ? "Artículo" : "Artículos"}
             </Badge>
           </div>
-          <h3 className="font-black text-lg uppercase leading-tight">{first.user_id?.name || "Usuario Desconocido"}</h3>
+          <h3 className="font-black text-lg uppercase leading-tight font-serif">{first.user_id?.name || "Usuario Desconocido"}</h3>
           <p className="text-xs text-muted-foreground font-medium">{first.user_id?.email}</p>
         </div>
         <div className="text-right flex flex-col items-end">
@@ -183,30 +183,12 @@ export default function OrderCard({
                 {/* Individual Action Dropdown/Modal */}
                 <ConfirmModal
                   title="Gestionar Artículo"
-                  description="Cambia el estado de este artículo individualmente."
+                  description="Cambia el estado de este artículo individualmente. Elige una acción de las opciones disponibles (esto es informativo, usa las acciones masivas si es posible)."
                   onConfirm={() => {}} 
-                  trigger={
+                >
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0 border-2 border-transparent hover:border-black hover:bg-muted rounded-lg transition-all">
                       <RefreshCw className="h-3.5 w-3.5" />
                     </Button>
-                  }
-                >
-                  <div className="grid grid-cols-1 gap-2 pt-2">
-                    {transitions[r.status]?.map((s) => {
-                      const isDestructive = s === "cancelled" || s === "damaged";
-                      return (
-                        <Button
-                          key={s}
-                          variant={isDestructive ? "destructive" : "outline"}
-                          size="sm"
-                          className="text-xs font-black border border-border/60 shadow-sm active:shadow-none active:translate-y-0.5 transition-all"
-                          onClick={() => onStatusChange(r._id, s)}
-                        >
-                          {actionLabels[s] || s}
-                        </Button>
-                      );
-                    })}
-                  </div>
                 </ConfirmModal>
               </div>
             </div>

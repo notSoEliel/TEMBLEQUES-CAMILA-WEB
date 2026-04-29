@@ -1,11 +1,15 @@
+import { 
+  IProduct, 
+  ISettings, 
+  ICategoryConfig, 
+  ISizeGroupConfig, 
+  PaginationMetadata, 
+  ApiResponse 
+} from "@/types";
+
 const API_URL = "/api";
 
-export interface PaginationMetadata {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type { PaginationMetadata };
 
 export interface PaginatedResponse<T> {
   data: T[];
@@ -91,24 +95,24 @@ export const productsApi = {
       });
     }
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    return api<PaginatedResponse<any>>(`/products${query}`);
+    return api<PaginatedResponse<IProduct>>(`/products${query}`);
   },
 
   get: (id: string) =>
-    api<{ product: any }>(`/products/${id}`),
+    api<{ product: IProduct }>(`/products/${id}`),
 
   availability: (id: string, from?: string, to?: string) => {
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     const query = params.toString() ? `?${params.toString()}` : "";
-    return api<{ booked: Array<{ start: string; end: string }> }>(`/products/${id}/availability${query}`);
+    return api<{ booked: Array<{ start: string; end: string; size: string }> }>(`/products/${id}/availability${query}`);
   },
 };
 
 // Rentals
 export const rentalsApi = {
-  create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean; orderGroupId?: string }, token: string) =>
+  create: (data: { productId: string; selectedSize: string; startDate: string; endDate: string; termsAccepted: boolean; orderGroupId?: string; paymentType?: "reservation" | "full" }, token: string) =>
     api<{ rental: any }>("/rentals", { method: "POST", body: data, token }),
 
   bulkCreate: (items: any[], token: string) =>
@@ -138,6 +142,7 @@ export const stripeApi = {
       mode?: string;
       message?: string;
       rental?: any;
+      sessionId?: string;
       deposit?: { required: boolean; amount: number; status: string };
     }>("/stripe/create-checkout-session", {
       method: "POST",
@@ -151,6 +156,7 @@ export const stripeApi = {
       mode?: string;
       message?: string;
       rentals?: any[];
+      sessionId?: string;
     }>("/stripe/create-checkout-session", {
       method: "POST",
       body: { rentalIds, orderGroupId, paymentType },
@@ -167,10 +173,10 @@ export const adminApi = {
 
   // Products CRUD
   createProduct: (data: any, token: string) =>
-    api<{ product: any }>("/admin/products", { method: "POST", body: data, token }),
+    api<{ product: IProduct }>("/admin/products", { method: "POST", body: data, token }),
 
   updateProduct: (id: string, data: any, token: string) =>
-    api<{ product: any }>(`/admin/products/${id}`, { method: "PUT", body: data, token }),
+    api<{ product: IProduct }>(`/admin/products/${id}`, { method: "PUT", body: data, token }),
 
   deleteProduct: (id: string, token: string) =>
     api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
@@ -217,7 +223,7 @@ export const adminApi = {
 
 // Settings
 export const settingsApi = {
-  get: () => api<{ settings: any }>("/settings"),
-  update: (data: any, token: string) =>
-    api<{ settings: any }>("/settings", { method: "PUT", body: data, token }),
+  get: () => api<{ settings: ISettings }>("/settings"),
+  update: (data: ISettings, token: string) =>
+    api<{ settings: ISettings }>("/settings", { method: "PUT", body: data, token }),
 };

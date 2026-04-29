@@ -299,8 +299,7 @@ export default function Checkout() {
       </Button>
 
       <h1
-        className="text-3xl font-bold mb-6"
-        style={{ fontFamily: "'Playfair Display', serif" }}
+        className="text-3xl font-bold mb-6 font-serif"
       >
         Finalizar Reserva
       </h1>

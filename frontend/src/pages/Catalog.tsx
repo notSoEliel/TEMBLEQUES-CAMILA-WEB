@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { productsApi, type PaginationMetadata } from "@/services/api";
+import { productsApi } from "@/services/api";
+import { 
+  IProduct, 
+  ICategoryConfig, 
+  ISizeGroupConfig, 
+  PaginationMetadata,
+  ISizeVariant 
+} from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +26,7 @@ function formatCurrency(amount: number): string {
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get("search") || "");
@@ -43,8 +50,8 @@ export default function Catalog() {
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
-  const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
-  const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
+  const [categories, setCategories] = useState<ICategoryConfig[]>([]);
+  const [sizeGroups, setSizeGroups] = useState<ISizeGroupConfig[]>([]);
 
   useEffect(() => {
     loadSettings();
@@ -52,9 +59,9 @@ export default function Catalog() {
 
   const loadSettings = async () => {
     try {
-      const { settings } = await settingsApi.get();
-      setCategories(settings.categories || []);
-      setSizeGroups(settings.size_groups || []);
+      const response = await settingsApi.get();
+      setCategories(response.settings.categories || []);
+      setSizeGroups(response.settings.size_groups || []);
     } catch (err) {
       console.error("Error loading settings:", err);
     }
@@ -74,7 +81,7 @@ export default function Catalog() {
 
     setLoading(true);
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, string | string[] | number> = {
         page,
         limit
       };
@@ -86,7 +93,7 @@ export default function Catalog() {
       
       const response = await productsApi.list(params);
       setProducts(response.data);
-      setPagination(response.pagination);
+      setPagination(response.pagination || null);
     } catch (err) {
       console.error("Error loading products:", err);
     }
@@ -171,32 +178,32 @@ export default function Catalog() {
     setSearchParams(newParams);
   };
 
-  function getProductPriceInfo(product: any) {
+  function getProductPriceInfo(product: IProduct) {
     const variants = product.variants || [];
     if (variants.length === 0) return { min: product.rental_price, max: product.rental_price, hasRange: false };
-    const prices = variants.map((v: any) => v.price_override ?? product.rental_price);
+    const prices = variants.map((v: ISizeVariant) => v.price_override ?? product.rental_price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     return { min, max, hasRange: min !== max };
   }
 
-  function getAvailableSizes(product: any): string[] {
+  function getAvailableSizes(product: IProduct): string[] {
     const variants = product.variants || [];
     return variants
-      .filter((v: any) => !v.in_maintenance && v.stock > 0)
-      .map((v: any) => v.size);
+      .filter((v: ISizeVariant) => !v.in_maintenance && v.stock > 0)
+      .map((v: ISizeVariant) => v.size);
   }
 
-  function isProductAvailable(product: any): boolean {
+  function isProductAvailable(product: IProduct): boolean {
     const variants = product.variants || [];
-    return variants.some((v: any) => !v.in_maintenance && v.stock > 0);
+    return variants.some((v: ISizeVariant) => !v.in_maintenance && v.stock > 0);
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2 font-serif">
           Catálogo
         </h1>
         <p className="text-muted-foreground">Explora nuestra colección de vestimenta típica panameña.</p>

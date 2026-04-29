@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { formatCurrency } from "@/lib/utils";
 
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -139,7 +140,7 @@ export default function Profile() {
               <User className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-3xl font-bold font-serif">
                 ¡Hola, {user?.name.split(' ')[0]}!
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-1.5 text-sm mt-1">
@@ -154,7 +155,7 @@ export default function Profile() {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
                 {currentView === "active" ? "Alquileres Activos" : "Alquileres Cancelados"}
               </p>
-              <p className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{pagination?.total || 0}</p>
+              <p className="text-3xl font-bold font-serif">{pagination?.total || 0}</p>
             </div>
           </div>
         </CardContent>
@@ -208,17 +209,18 @@ export default function Profile() {
       ) : (
         <div className="space-y-6">
           {Object.entries(
-            rentals.reduce((acc, r) => {
+            rentals.reduce((acc: Record<string, any[]>, r: any) => {
               const groupId = r.order_group_id || r._id;
               if (!acc[groupId]) acc[groupId] = [];
               acc[groupId].push(r);
               return acc;
-            }, {} as Record<string, any[]>)
-          ).map(([groupId, groupItems]: [string, any[]]) => {
-            const isPending = groupItems.some(r => r.status === "pending");
-            const isPaidOrReserved = groupItems.some(r => r.status === "paid" || r.status === "reserved" || r.status === "confirmed");
-            const groupTotal = groupItems.reduce((sum, r) => sum + r.total, 0);
-            const isCancelled = groupItems.every(r => r.status === "cancelled");
+            }, {})
+          ).map(([groupId, groupItems]) => {
+            const items = groupItems as any[];
+            const isPending = items.some((r: any) => r.status === "pending");
+            const isPaidOrReserved = items.some((r: any) => r.status === "paid" || r.status === "reserved" || r.status === "confirmed");
+            const groupTotal = items.reduce((sum: number, r: any) => sum + r.total, 0);
+            const isCancelled = items.every((r: any) => r.status === "cancelled");
 
             return (
               <Card 
@@ -236,24 +238,24 @@ export default function Profile() {
                         <Package className="w-4 h-4" />
                         Pedido #{groupId.slice(-6).toUpperCase()}
                       </CardTitle>
-                      {isCancelled && groupItems[0].updatedAt && (
+                      {isCancelled && items[0].updatedAt && (
                         <p className="text-[10px] font-bold text-destructive mt-1 flex items-center gap-1">
                           <XCircle className="w-3 h-3" />
-                          Cancelado el {new Date(groupItems[0].updatedAt).toLocaleDateString("es-PA")}
+                          Cancelado el {new Date(items[0].updatedAt).toLocaleDateString("es-PA")}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-xl text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>${groupTotal.toFixed(2)}</span>
-                      <Badge variant={STATUS_COLORS[groupItems[0].status] || "outline"}>
-                        {STATUS_LABELS[groupItems[0].status] || groupItems[0].status}
+                      <span className="font-bold text-xl text-primary font-serif">{formatCurrency(groupTotal)}</span>
+                      <Badge variant={STATUS_COLORS[items[0].status] || "outline"}>
+                        {STATUS_LABELS[items[0].status] || items[0].status}
                       </Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
-                    {groupItems.map((rental) => (
+                    {items.map((rental) => (
                       <div key={rental._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
                         <div className="flex items-center gap-4">
                           {rental.product_id?.images?.[0] && (
@@ -273,7 +275,7 @@ export default function Profile() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-sm text-muted-foreground">${rental.total.toFixed(2)}</span>
+                          <span className="font-bold text-sm text-muted-foreground">{formatCurrency(rental.total)}</span>
                         </div>
                       </div>
                     ))}
@@ -297,7 +299,7 @@ export default function Profile() {
                             <ConfirmModal
                               title="¿Cancelar Pedido?"
                               description="Esta acción liberará las prendas para otros usuarios. No se puede deshacer."
-                              onConfirm={() => groupItems.filter(r => r.status === "pending").forEach(r => handleCancelRental(r._id))}
+                              onConfirm={() => items.filter((r: any) => r.status === "pending").forEach((r: any) => handleCancelRental(r._id))}
                             >
                               <Button variant="outline" size="sm" className="h-9">
                                 Cancelar Pedido
