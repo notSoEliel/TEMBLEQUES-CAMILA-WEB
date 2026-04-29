@@ -22,7 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
 }
 
 export default function ProductDetail() {

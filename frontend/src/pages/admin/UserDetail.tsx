@@ -33,7 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("es-PA", {
     style: "currency",
-    currency: "USD",
+    currency: "PAB",
   }).format(amount);
 }
 

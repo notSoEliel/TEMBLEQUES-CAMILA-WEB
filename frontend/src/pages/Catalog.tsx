@@ -21,7 +21,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { settingsApi } from "@/services/api";
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
 }
 
 export default function Catalog() {

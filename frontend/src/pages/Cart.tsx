@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Trash2, ArrowLeft, ShoppingBag, CreditCard, Info, Plus, Minus } from "lucide-react";
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
 }
 
 export default function Cart() {
