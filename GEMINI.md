@@ -39,10 +39,11 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 - **Idioma**: Español impecable en UI, errores y mensajes. Cero Spanglish.
 
 ### [RULE] Estética y Diseño Premium (12, 14, 20)
-- **Evolución Visual**: Queda formalmente prohibido el estilo Neobrutalista. No se permiten bordes negros gruesos ni diseños "crudos". La nueva identidad es **Premium, Elegante y Limpia**.
+- **Evolución Visual**: Queda formalmente prohibido el estilo Neobrutalista y el uso excesivo de degradados saturados. La nueva identidad es **Lujo Silencioso: Premium, Elegante y Limpia**.
 - **Geometría de Radios**: El radio por defecto (`--radius`) es de **2rem**. Esto crea un aspecto "pill-shaped" obligatorio en todos los botones, tarjetas e inputs.
-- **Sistema de Color OKLCH**: Uso exclusivo de `oklch()` en el CSS. Prohibido el uso de HEX/RGB/HSL en cualquier parte del código frontend.
-- **Profundidad y Sombras**: Uso mandatorio de la utilidad `shadow-elegant` para sustituir la definición de bordes. Los elementos flotantes deben usar `shadow-elegant-lg`.
+- **Sistema de Color OKLCH**: Uso exclusivo de `oklch()` en el CSS. Prohibido el uso de HEX/RGB/HSL. Se priorizan los tonos suaves y acentos de Primary sobre los degradados intensos.
+- **Profundidad y Sombras**: Uso mandatorio de la utilidad `shadow-elegant`. Los elementos flotantes deben usar `shadow-elegant-lg`.
+- **Diseño Editorial**: Uso de tipografía Serif para títulos y narrativa, con énfasis en itálicas para conceptos clave. Sans para datos técnicos.
 - **Componentes**: Prohibida la creación de UI manual. Todo componente debe ser una instancia de `shadcn/ui` y `Radix UI`.
 - **Animaciones e Interacción**: 
     - Toda transición debe durar entre **200ms y 400ms**.
@@ -69,7 +70,7 @@ Este archivo sirve como el documento de contexto principal (System Prompt/Projec
 
 ### [RULE] Paginación y Listados (16)
 - **Backend**: Parámetros `page` y `limit` obligatorios en queries. Respuesta debe incluir objeto `pagination`.
-- **Frontend**: Sincronización obligatoria con `URLSearchParams`. 
+- **Frontend**: Sincronización obligatoria con `URLSearchParams`. Los controles de paginación deben ser visibles siempre (aunque estén deshabilitados) para consistencia visual.
 - **UX**: Scroll suave al inicio al cambiar de página.
 
 ### [RULE] Lógica de Reserva y Checkout (07, 08)

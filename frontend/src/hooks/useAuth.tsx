@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: "client" | "admin";
   phone?: string;
+  avatarUrl?: string;
   createdAt?: string;
 }
 
@@ -53,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (res.ok) {
             const data = await res.json();
-            setUser(data.user);
+            setUser({ ...data.user, avatarUrl: clerkUser.imageUrl });
           } else {
             // Token valid in Clerk but no MongoDB profile yet — build minimal user
             // from Clerk data. The upsert in the middleware will create it on next protected call.
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: clerkUser.fullName ?? primaryEmail,
               email: primaryEmail,
               role,
+              avatarUrl: clerkUser.imageUrl,
             });
           }
         }

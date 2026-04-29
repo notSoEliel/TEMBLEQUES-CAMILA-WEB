@@ -2,12 +2,11 @@
 
 Este documento establece la gobernanza técnica y estética obligatoria para el desarrollo del frontend de Tembleques Camila. Es una norma inquebrantable que debe ser seguida por cualquier desarrollador o agente de IA que trabaje en el proyecto.
 
-## 1. Evolución Estética: El Fin del Neobrutalismo
-
-Queda formalmente declarado el abandono del estilo Neobrutalista que caracterizó las fases iniciales del proyecto. La nueva identidad visual es **Premium, Elegante y Limpia**.
+Queda formalmente declarado el abandono del estilo Neobrutalista y del uso excesivo de degradados saturados. La nueva identidad visual es **Lujo Silencioso: Premium, Elegante y Limpia**.
 
 ### Reglas de Aplicación Visual
 - **Prohibición de Bordes Gruesos**: Queda estrictamente prohibido el uso de bordes negros sólidos superiores a 1px para contenedores principales o tarjetas.
+- **Adiós a los Degradados Saturados**: No se permite el uso de `bg-brand-gradient` o similares en grandes superficies, títulos o botones principales. Se debe optar por colores sólidos Primary, acentos sutiles (opacidad) o subrayados decorativos.
 - **Sombras Suaves**: Se autoriza y fomenta el uso de la utilidad `shadow-elegant` y `shadow-elegant-lg` para generar profundidad. No se deben usar sombras "hard" o desplazadas sin difuminado.
 - **Minimalismo Estructural**: Los componentes deben respirar. El uso de espacios en blanco y paddings generosos es obligatorio para mantener la sensación premium.
 
@@ -51,9 +50,10 @@ La interfaz debe sentirse viva pero sutil. Las animaciones no deben distraer, si
 
 ## 6. Tipografía y Localización
 
-### Jerarquía Tipográfica
-- **Serif (Playfair Display)**: Exclusiva para títulos de sección (H1, H2) y elementos que requieran un toque clásico y premium.
-- **Sans (Inter/Outfit)**: Para cuerpo de texto, botones, etiquetas y navegación. Lectura clara y moderna.
+### Jerarquía Tipográfica Editorial
+- **Serif (Playfair Display)**: Exclusiva para títulos de sección (H1, H2) y narrativa de marca. Se fomenta el uso de **Italic** para enfatizar conceptos clave (ej. "Artesano *Elite*").
+- **Sans (Inter/Outfit)**: Para cuerpo de texto, botones, etiquetas, navegación y **datos técnicos**.
+- **Prevención de Recortes**: Es obligatorio el uso de `leading-relaxed` o `py-2` en títulos Serif para evitar el recorte visual de los trazos de la fuente.
 
 ### Localización e Invariantes
 - **Moneda**: Es obligatorio el uso de la utilidad `formatCurrency`. 
