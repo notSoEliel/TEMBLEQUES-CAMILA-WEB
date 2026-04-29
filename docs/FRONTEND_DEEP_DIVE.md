@@ -140,7 +140,22 @@ Aunque seguimos usando `useEffect` para cargas dinámicas en el catálogo, para 
 
 ---
 
-## 7. Estándares de Diseño y UI Premium
+## 7. Arquitectura de Perfil e Historial
+
+Se ha rediseñado el dashboard de usuario para optimizar la carga y la claridad visual, separando la información rápida de la gestión masiva de datos.
+
+### A. Perfil Consolidado (Single Page Tabs)
+El componente `Profile.tsx` utiliza parámetros de búsqueda (`?tab=`) para alternar entre "Mi Cuenta", "Mis Alquileres" y "Ajustes". Esto evita el reinicio del scroll y permite una navegación instantánea.
+- **Resumen Reciente**: Para mantener el dashboard limpio, solo se recupera y renderiza el pedido más reciente (soporta agrupaciones por `order_group_id`).
+
+### B. Historial de Pedidos (Independent View)
+El historial completo reside en `/profile/orders` para permitir una **Paginación Real** gestionada por el servidor.
+- **Paginación Sincronizada**: Se hereda el patrón de "URL as Source of Truth" para manejar las páginas (`?page=`) de forma persistente.
+- **Bundle Support**: La UI agrupa automáticamente los registros que comparten un `order_group_id`, presentando múltiples productos como una sola unidad de pedido para el usuario.
+
+---
+
+## 8. Estándares de Diseño y UI Premium
 
 Seguimos una política estricta de **Mobile First**.
 - **No dependencia de Hover**: Las acciones críticas (como ver el precio total) son visibles o accesibles mediante tap, nunca ocultas tras un hover (Regla 17).

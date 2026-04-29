@@ -72,13 +72,13 @@ export default function ClientLayout() {
                       Catálogo
                     </Link>
                     <Link
-                      to="/history"
+                      to="/historia"
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       Historia
                     </Link>
                     <Link
-                      to="/artisan-credential"
+                      to="/credencial"
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       Credenciales
@@ -145,30 +145,30 @@ export default function ClientLayout() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-[450px] p-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="col-span-1 bg-brand-gradient rounded-[0.75rem] p-5 flex flex-col justify-end min-h-[180px]">
-                            <Flower className="h-8 w-8 text-white/80 mb-4" />
-                            <div className="text-lg font-bold text-white font-display leading-tight mb-2">
+                          <div className="col-span-1 bg-primary/5 border border-primary/10 rounded-[0.75rem] p-5 flex flex-col justify-end min-h-[180px]">
+                            <Flower className="h-8 w-8 text-primary/40 mb-4" />
+                            <div className="text-lg font-bold text-primary font-display leading-tight mb-2">
                               Cultura y Tradición
                             </div>
-                            <p className="text-xs text-white/80 leading-relaxed">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
                               Cada pieza cuenta una historia de artesanos panameños.
                             </p>
                           </div>
                           <div className="col-span-1 flex flex-col gap-1">
                             <DropdownMenuItem asChild>
-                              <Link to="/history" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/historia" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">Historia</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">Nuestros orígenes folclóricos.</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to="/artisan-credential" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/credencial" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">Credencial Artesano</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">Valoramos lo hecho a mano.</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to="/mission-vision" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/mision-vision" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">Misión y Visión</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">Nuestro compromiso cultural.</span>
                               </Link>
@@ -192,7 +192,7 @@ export default function ClientLayout() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link to="/contact" className="w-full flex items-center gap-2 px-3 py-2.5">
+                          <Link to="/contacto" className="w-full flex items-center gap-2 px-3 py-2.5">
                             <span className="font-bold">Contacto</span>
                           </Link>
                         </DropdownMenuItem>
@@ -276,7 +276,7 @@ export default function ClientLayout() {
                         </>
                       )}
                       <DropdownMenuItem asChild>
-                        <Link to="/settings" className="w-full flex items-center gap-2.5">
+                        <Link to="/profile?tab=settings" className="w-full flex items-center gap-2.5">
                           <Settings className="h-4 w-4 opacity-70" />
                           <span>Ajustes</span>
                         </Link>

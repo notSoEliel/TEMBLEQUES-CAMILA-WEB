@@ -13,7 +13,13 @@ import Confirmation from "@/pages/Confirmation";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Profile from "@/pages/Profile";
+import Orders from "@/pages/Orders";
 import Cart from "@/pages/Cart";
+import History from "@/pages/History";
+import ArtisanCredential from "@/pages/ArtisanCredential";
+import MissionVision from "@/pages/MissionVision";
+import FAQ from "@/pages/FAQ";
+import Contact from "@/pages/Contact";
 import ErrorPage from "@/pages/ErrorPage";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminInventory from "@/pages/admin/Inventory";
@@ -125,6 +131,18 @@ export default function App() {
                 }
               />
               <Route
+                path="/profile/orders"
+                element={
+                  <ProtectedRoute>
+                    <Orders />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/contacto"
+                element={<Contact />}
+              />
+              <Route
                 path="/cart"
                 element={
                   <ProtectedRoute>
@@ -132,6 +150,10 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/historia" element={<History />} />
+              <Route path="/credencial" element={<ArtisanCredential />} />
+              <Route path="/mision-vision" element={<MissionVision />} />
+              <Route path="/faq" element={<FAQ />} />
 
 
               {/* 404 Catch-all — must be last inside ClientLayout */}

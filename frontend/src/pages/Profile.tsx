@@ -1,398 +1,397 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { rentalsApi, type PaginationMetadata } from "@/services/api";
+import { rentalsApi } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { User, Calendar, Package, XCircle, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  User, 
+  ShoppingBag, 
+  Settings, 
+  MapPin, 
+  Phone, 
+  ChevronRight, 
+  Package,
+  Calendar,
+  Heart,
+  Clock,
+  Sparkles,
+  CreditCard,
+  ArrowUpRight
+} from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
-
 import { useErrorModal } from "@/components/ErrorModal";
+import { useSearchParams, Link } from "react-router-dom";
 
-const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  paid: "default",
-  confirmed: "default",
-  delivered: "secondary",
-  returned: "secondary",
-  late: "destructive",
-  damaged: "destructive",
-  cancelled: "outline",
+type TabType = "account" | "rentals" | "settings";
+
+const STATUS_COLORS: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-700 border-amber-200",
+  reserved: "bg-blue-50 text-blue-700 border-blue-200",
+  paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  confirmed: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  delivered: "bg-purple-100 text-purple-700 border-purple-200",
+  returned: "bg-slate-100 text-slate-700 border-slate-200",
+  late: "bg-red-100 text-red-700 border-red-200",
+  cancelled: "bg-gray-100 text-gray-400 border-gray-200",
 };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
+  reserved: "Reservado",
   paid: "Pagado",
   confirmed: "Confirmado",
-  delivered: "Entregado",
+  delivered: "En tu poder",
   returned: "Devuelto",
   late: "Atrasado",
-  damaged: "Dañado",
   cancelled: "Cancelado",
 };
 
 export default function Profile() {
   const { user, token } = useAuth();
+  const { errorModal } = useErrorModal();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { errorModal, showError } = useErrorModal();
-  const navigate = useNavigate();
-  const [rentals, setRentals] = useState<any[]>([]);
-  const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
+  
+  const [lastOrder, setLastOrder] = useState<any | null>(null);
+  const [orderItemsCount, setOrderItemsCount] = useState(0);
+  const [totalRentals, setTotalRentals] = useState(0);
   const [loading, setLoading] = useState(true);
   
-  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
-  const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
-  const [currentView, setCurrentView] = useState(searchParams.get("view") || "active");
-
-  useEffect(() => {
-    // Ensure page, limit and view are in the URL
-    if (!searchParams.get("page") || !searchParams.get("limit") || !searchParams.get("view")) {
-      const newParams = new URLSearchParams(searchParams);
-      if (!searchParams.get("page")) newParams.set("page", "1");
-      if (!searchParams.get("limit")) newParams.set("limit", "10");
-      if (!searchParams.get("view")) newParams.set("view", "active");
-      setSearchParams(newParams, { replace: true });
-    }
-  }, []);
+  const activeTab = (searchParams.get("tab") as TabType) || "account";
 
   useEffect(() => {
     if (token) {
-      loadRentals();
+      loadDashboardData();
     }
-  }, [token, searchParams]);
+  }, [token]);
 
-  const loadRentals = async () => {
-    const page = Number(searchParams.get("page")) || 1;
-    const limit = Number(searchParams.get("limit")) || 10;
-    const view = searchParams.get("view") || "active";
-
-    setCurrentPage(page);
-    setCurrentLimit(limit);
-    setCurrentView(view);
-
+  const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await rentalsApi.my(token!, { page, limit, view });
-      setRentals(response.data);
-      setPagination(response.pagination);
+      // Get only the most recent rentals
+      const response = await rentalsApi.my(token!, { page: 1, limit: 10, view: "active" });
+      const rawRentals = response.data;
+      setTotalRentals(response.pagination.total);
+
+      if (rawRentals.length > 0) {
+        // Find all rentals in the same group as the most recent one
+        const latest = rawRentals[0];
+        const gid = latest.order_group_id;
+        
+        if (gid) {
+          const bundle = rawRentals.filter((r: any) => r.order_group_id === gid);
+          setLastOrder({
+            ...latest,
+            items: bundle,
+            isBundle: bundle.length > 1,
+            totalPrice: bundle.reduce((sum: number, r: any) => sum + r.total, 0)
+          });
+          setOrderItemsCount(bundle.length);
+        } else {
+          setLastOrder({
+            ...latest,
+            items: [latest],
+            isBundle: false,
+            totalPrice: latest.total
+          });
+          setOrderItemsCount(1);
+        }
+      }
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
   };
 
-  const handleViewChange = (view: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("view", view);
-    newParams.set("page", "1");
-    setSearchParams(newParams);
+  const handleTabChange = (tab: TabType) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", tab);
+    setSearchParams(params);
   };
 
-  const handlePageChange = (page: number) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("page", String(page));
-    setSearchParams(newParams);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleLimitChange = (limit: number) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("limit", String(limit));
-    newParams.set("page", "1");
-    setSearchParams(newParams);
-  };
-
-  const handleCancelRental = async (rentalId: string) => {
-    try {
-      await rentalsApi.cancel(rentalId, token!);
-      loadRentals();
-    } catch (err: any) {
-      showError(err.message || "No se pudo cancelar el pedido.", "generic");
-    }
-  };
-
-  const formatDateRange = (start: string, end: string) => {
-    try {
-      const s = new Date(start);
-      const e = new Date(end);
-      if (isNaN(s.getTime()) || isNaN(e.getTime())) return "Fecha no disponible";
-      
-      const options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", timeZone: "UTC" };
-      return `${s.toLocaleDateString("es-PA", options)} - ${e.toLocaleDateString("es-PA", options)}`;
-    } catch {
-      return "Fecha inválida";
-    }
-  };
+  const nameParts = user?.name.split(" ") || ["", ""];
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(" ");
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+    <div className="bg-background min-h-screen pt-24 pb-16 px-6">
       {errorModal}
+      <div className="max-w-5xl mx-auto space-y-12">
+        
+        {/* Editorial Header */}
+        <header className={cn("space-y-4 transition-all duration-700", activeTab !== "account" && "opacity-40 scale-95 origin-left")}>
+          <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight leading-tight">
+            {totalRentals > 0 ? (
+              <>Gracias por elegir la <span className="text-primary underline decoration-primary/20 underline-offset-8">excelencia</span>, {firstName}.</>
+            ) : (
+              <>Tu legado folclórico <span className="text-primary underline decoration-primary/20 underline-offset-8">comienza</span> aquí, {firstName}.</>
+            )}
+          </h1>
+          <p className="text-muted-foreground text-lg md:text-xl font-medium leading-relaxed max-w-2xl italic">
+            "Donde la tradición se encuentra con la distinción. Gestiona tus piezas y detalles de cuenta en un entorno de alta costura."
+          </p>
+        </header>
 
-      {/* Profile Info Header */}
-      <Card className="mb-8">
-        <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shrink-0">
-              <User className="h-7 w-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold font-serif">
-                ¡Hola, {user?.name.split(' ')[0]}!
-              </h1>
-              <p className="text-muted-foreground font-medium flex items-center gap-1.5 text-sm mt-1">
-                <Calendar className="h-3.5 w-3.5" />
-                Miembro desde {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("es-PA", { month: 'long', year: 'numeric' }) : "Cargando..."}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex gap-4 sm:gap-8 border-t md:border-t-0 md:border-l border-border/40 pt-6 md:pt-0 md:pl-8">
-            <div className="text-center md:text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
-                {currentView === "active" ? "Alquileres Activos" : "Alquileres Cancelados"}
-              </p>
-              <p className="text-3xl font-bold font-serif">{pagination?.total || 0}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Navigation Tabs */}
-      <div className="flex gap-2 mb-8 p-1 bg-muted/50 rounded-2xl border border-border/40 max-w-sm">
-        <button
-          onClick={() => handleViewChange("active")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all ${
-            currentView === "active" 
-              ? "bg-primary text-primary-foreground shadow-sm" 
-              : "hover:bg-black/5"
-          }`}
-        >
-          <History className="w-4 h-4" />
-          Activos
-        </button>
-        <button
-          onClick={() => handleViewChange("cancelled")}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all ${
-            currentView === "cancelled" 
-              ? "bg-primary text-primary-foreground shadow-sm" 
-              : "hover:bg-black/5"
-          }`}
-        >
-          <XCircle className="w-4 h-4" />
-          Cancelados
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="animate-pulse border-2 border-muted">
-              <CardContent className="p-6">
-                <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                <div className="h-3 bg-muted rounded w-1/2" />
-              </CardContent>
-            </Card>
+        {/* 3-Tab Clean Navigation */}
+        <div className="flex gap-2 p-1 bg-muted/40 rounded-full border border-border/40 w-fit overflow-x-auto no-scrollbar">
+          {[
+            { id: "account", label: "Mi Cuenta", icon: User },
+            { id: "rentals", label: "Mis Alquileres", icon: ShoppingBag },
+            { id: "settings", label: "Ajustes", icon: Settings }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id as TabType)}
+              className={cn(
+                "flex items-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all whitespace-nowrap",
+                activeTab === tab.id 
+                  ? "bg-primary text-white shadow-elegant" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
           ))}
         </div>
-      ) : rentals.length === 0 ? (
-        <Card className="border-2 border-dashed border-black/20">
-          <CardContent className="p-12 text-center">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <p className="text-lg font-bold mb-1">No hay {currentView === "active" ? "alquileres activos" : "pedidos cancelados"}</p>
-            <p className="text-muted-foreground text-sm">Todo el historial se sincroniza automáticamente.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(
-            rentals.reduce((acc: Record<string, any[]>, r: any) => {
-              const groupId = r.order_group_id || r._id;
-              if (!acc[groupId]) acc[groupId] = [];
-              acc[groupId].push(r);
-              return acc;
-            }, {})
-          ).map(([groupId, groupItems]) => {
-            const items = groupItems as any[];
-            const isPending = items.some((r: any) => r.status === "pending");
-            const isPaidOrReserved = items.some((r: any) => r.status === "paid" || r.status === "reserved" || r.status === "confirmed");
-            const groupTotal = items.reduce((sum: number, r: any) => sum + r.total, 0);
-            const isCancelled = items.every((r: any) => r.status === "cancelled");
 
-            return (
-              <Card 
-                key={groupId} 
-                className={`transition-all ${
-                  isCancelled 
-                    ? "grayscale opacity-60 shadow-none" 
-                    : ""
-                }`}
-              >
-                <CardHeader className="pb-3 border-b border-border/60 bg-muted/20">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Package className="w-4 h-4" />
-                        Pedido #{groupId.slice(-6).toUpperCase()}
-                      </CardTitle>
-                      {isCancelled && items[0].updatedAt && (
-                        <p className="text-[10px] font-bold text-destructive mt-1 flex items-center gap-1">
-                          <XCircle className="w-3 h-3" />
-                          Cancelado el {new Date(items[0].updatedAt).toLocaleDateString("es-PA")}
-                        </p>
-                      )}
+        {/* Tab Content */}
+        <main className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          
+          {/* MI CUENTA */}
+          {activeTab === "account" && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <Card className="md:col-span-2 border-none shadow-elegant-lg rounded-[2.5rem] overflow-hidden">
+                <CardHeader className="p-10 pb-4">
+                  <CardTitle className="text-3xl font-display font-bold">Detalles de Identidad</CardTitle>
+                </CardHeader>
+                <CardContent className="p-10 pt-0 space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Primer Nombre</Label>
+                      <Input defaultValue={firstName} className="rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-xl text-primary font-serif">{formatCurrency(groupTotal)}</span>
-                      <Badge variant={STATUS_COLORS[items[0].status] || "outline"}>
-                        {STATUS_LABELS[items[0].status] || items[0].status}
-                      </Badge>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Apellidos</Label>
+                      <Input defaultValue={lastName} className="rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                    </div>
+                    <div className="col-span-1 sm:col-span-2 space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Correo Electrónico Verificado</Label>
+                      <Input defaultValue={user?.email} disabled className="rounded-2xl bg-muted/20 border-border/20 opacity-60 h-12" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Contacto de Enlace</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                        <Input placeholder="+507 0000-0000" className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Dirección Preferida</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                        <Input placeholder="Ciudad de Panamá..." className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                      </div>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="divide-y divide-border">
-                    {items.map((rental) => (
-                      <div key={rental._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
-                        <div className="flex items-center gap-4">
-                          {rental.product_id?.images?.[0] && (
-                            <img src={rental.product_id.images[0]} alt="" className="w-16 h-20 object-cover rounded-xl border border-border/60" />
-                          )}
-                          <div>
-                            <h3 className="font-bold text-base leading-tight">{rental.product_id?.name || "Producto"}</h3>
-                            <div className="flex gap-2 mt-1">
-                              {rental.selected_size && (
-                                <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-medium text-muted-foreground">Talla: {rental.selected_size}</span>
-                              )}
+                  <Separator className="bg-border/20" />
+                  <Button className="rounded-full px-10 h-11 shadow-elegant font-bold">
+                    Guardar Perfil
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              <div className="space-y-8">
+                <Card className="border-none shadow-elegant bg-muted/20 rounded-[2.5rem] p-10 text-center">
+                  <div className="space-y-6">
+                    <div className="h-16 w-16 rounded-3xl bg-primary/5 flex items-center justify-center text-primary mx-auto rotate-6">
+                      <Sparkles className="h-8 w-8" />
+                    </div>
+                    <div className="space-y-2">
+                      <Badge className="bg-primary/5 text-primary border border-primary/20 rounded-full px-4 py-0.5 text-[9px] font-black tracking-widest uppercase">
+                        Próximamente
+                      </Badge>
+                      <h3 className="text-2xl font-display font-black leading-tight text-foreground">Club Tembleques</h3>
+                    </div>
+                    <p className="text-muted-foreground text-xs leading-relaxed italic">
+                      "Accede a preventas exclusivas y eventos culturales."
+                    </p>
+                  </div>
+                </Card>
+                <Card className="border-none shadow-elegant bg-primary/5 rounded-[2.5rem] p-10">
+                  <div className="space-y-4">
+                    <CreditCard className="h-8 w-8 text-primary/40 mx-auto" />
+                    <h3 className="text-lg font-bold text-center">Pagos Seguros</h3>
+                    <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-black">Certificación Stripe</p>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* MIS ALQUILERES (RESUMEN - SOLO EL ÚLTIMO) */}
+          {activeTab === "rentals" && (
+            <div className="space-y-12">
+              {loading ? (
+                <div className="h-64 flex items-center justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+              ) : lastOrder ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-2xl font-display font-bold italic flex items-center gap-3">
+                        <Clock className="h-6 w-6 text-primary" />
+                        Pedido Reciente
+                      </h3>
+                      <Link to="/profile/orders" className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 hover:opacity-70 transition-opacity">
+                        Ver historial completo <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+
+                    <Card className="border-none shadow-elegant-lg rounded-[2.5rem] overflow-hidden group">
+                      <CardContent className="p-0">
+                        <div className="flex flex-col sm:flex-row">
+                          <div className="sm:w-64 h-72 sm:h-auto overflow-hidden relative">
+                            <img 
+                              src={lastOrder.product_id?.images?.[0] || "/placeholder.png"} 
+                              alt="" 
+                              className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                            />
+                            {lastOrder.isBundle && (
+                              <Badge className="absolute top-4 left-4 bg-black/60 text-white border-none rounded-full px-4 font-black text-[9px] uppercase tracking-widest">
+                                Bundle: {orderItemsCount} piezas
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex-1 p-10 space-y-6">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Ref: #{lastOrder._id.slice(-8).toUpperCase()}</p>
+                                <h4 className="text-3xl font-display font-bold leading-tight">
+                                  {lastOrder.isBundle ? "Tu Colección Folclórica" : lastOrder.product_id?.name}
+                                </h4>
+                              </div>
+                              <Badge className={cn("rounded-full px-5 py-1.5 text-[9px] font-black tracking-widest uppercase border", STATUS_COLORS[lastOrder.status])}>
+                                {STATUS_LABELS[lastOrder.status]}
+                              </Badge>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 font-medium">
-                              <Calendar className="h-3.5 w-3.5" />
-                              {formatDateRange(rental.start_date, rental.end_date)}
+                            
+                            <div className="flex items-center gap-8 text-xs font-bold text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-primary/40" />
+                                {new Date(lastOrder.start_date).toLocaleDateString()}
+                              </div>
+                              <ChevronRight className="h-3 w-3 opacity-20" />
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-primary/40" />
+                                {new Date(lastOrder.end_date).toLocaleDateString()}
+                              </div>
+                            </div>
+                            
+                            <Separator className="bg-border/20" />
+                            
+                            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Inversión Cultural</p>
+                                <span className="text-3xl font-display font-black text-primary">{formatCurrency(lastOrder.totalPrice)}</span>
+                              </div>
+                              <Button asChild variant="outline" className="rounded-full px-8 h-10 shadow-sm font-bold border-primary/30 text-primary hover:bg-primary/5">
+                                <Link to="/profile/orders">
+                                  Gestionar Alquiler <ChevronRight className="h-4 w-4 ml-2" />
+                                </Link>
+                              </Button>
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="font-bold text-sm text-muted-foreground">{formatCurrency(rental.total)}</span>
-                        </div>
-                      </div>
-                    ))}
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  {!isCancelled && (
-                    <div className="p-4 border-t border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex-1">
-                        {isPaidOrReserved && (
-                          <p className="text-[11px] text-muted-foreground font-medium italic">
-                            Para cancelaciones de pedidos procesados, contacta a{" "}
-                            <a href="mailto:soporte@temblequescamila.com" className="text-primary underline hover:no-underline">soporte</a> o{" "}
-                            <a href="https://wa.me/50760000000" target="_blank" rel="noreferrer" className="text-primary underline hover:no-underline">WhatsApp</a>.
-                          </p>
-                        )}
+                  <div className="space-y-8">
+                    <h3 className="text-2xl font-display font-bold italic">Resumen</h3>
+                    <Card className="border-none shadow-elegant rounded-[2.5rem] p-10 space-y-10 bg-muted/20">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total de Alquileres</p>
+                        <p className="text-6xl font-display font-black">{totalRentals}</p>
                       </div>
-
-                      <div className="flex gap-3">
-                        {isPending && (
-                          <>
-                            <ConfirmModal
-                              title="¿Cancelar Pedido?"
-                              description="Esta acción liberará las prendas para otros usuarios. No se puede deshacer."
-                              onConfirm={() => items.filter((r: any) => r.status === "pending").forEach((r: any) => handleCancelRental(r._id))}
-                            >
-                              <Button variant="outline" size="sm" className="h-9">
-                                Cancelar Pedido
-                              </Button>
-                            </ConfirmModal>
-                            <Button
-                              size="sm"
-                              className="h-9"
-                              onClick={() => navigate(`/checkout/review?orderGroupId=${groupId}`)}
-                            >
-                              Pagar Pedido Completo
-                            </Button>
-                          </>
-                        )}
+                      <Separator className="bg-border/40" />
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
+                            <Heart className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">Pieza Favorita</p>
+                            <p className="text-xs text-muted-foreground">Tembleques de Perlas</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {pagination && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/40">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span>Ver:</span>
-                  <select
-                    value={currentLimit}
-                    onChange={(e) => handleLimitChange(Number(e.target.value))}
-                    className="h-9 rounded-xl border-2 border-border/40 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  >
-                    {[5, 10, 20, 50].map((l) => (
-                      <option key={l} value={l}>{l}</option>
-                    ))}
-                  </select>
+                    </Card>
+                  </div>
                 </div>
-                <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
-              </div>
-
-              <Pagination className="w-auto mx-0">
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
-                      className={cn("rounded-xl border-2 border-border/40", currentPage <= 1 && "pointer-events-none opacity-50")}
-                    />
-                  </PaginationItem>
-                  
-                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                    .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
-                    .map((p, i, arr) => (
-                      <React.Fragment key={p}>
-                        {i > 0 && p - arr[i-1] > 1 && (
-                          <PaginationItem>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        )}
-                        <PaginationItem>
-                          <PaginationLink
-                            href="#"
-                            isActive={p === currentPage}
-                            onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
-                            className="rounded-xl border-2 border-border/40 font-bold"
-                          >
-                            {p}
-                          </PaginationLink>
-                        </PaginationItem>
-                      </React.Fragment>
-                    ))}
-
-                  <PaginationItem>
-                    <PaginationNext 
-                      href="#" 
-                      onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
-                      className={cn("rounded-xl border-2 border-border/40", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              ) : (
+                <Card className="border-2 border-dashed border-border/40 rounded-[3rem] p-24 text-center space-y-8 bg-muted/5">
+                  <div className="h-24 w-24 rounded-full bg-muted/40 flex items-center justify-center mx-auto text-muted-foreground/20">
+                    <ShoppingBag className="h-12 w-12" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-3xl font-display font-bold italic">Tu armario folclórico está vacío.</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto text-sm">
+                      Descubre piezas únicas diseñadas por artesanos panameños para tus momentos más especiales.
+                    </p>
+                  </div>
+                  <Button className="rounded-full px-12 h-11 shadow-elegant font-bold" onClick={() => window.location.href='/catalog'}>
+                    Explorar Catálogo
+                  </Button>
+                </Card>
+              )}
             </div>
           )}
-        </div>
-      )}
+
+          {/* AJUSTES (PROXIMAMENTE) */}
+          {activeTab === "settings" && (
+            <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+              <div className="space-y-2">
+                <h3 className="text-3xl font-display font-bold">Configuración</h3>
+                <p className="text-sm text-muted-foreground">Gestiona tus preferencias de seguridad y notificaciones.</p>
+              </div>
+              
+              <Card className="border-none shadow-elegant rounded-[2.5rem] p-10 space-y-10">
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between opacity-40">
+                    <div className="space-y-1">
+                      <p className="font-bold">Notificaciones por WhatsApp</p>
+                      <p className="text-xs text-muted-foreground">Alertas de entrega en tiempo real.</p>
+                    </div>
+                    <div className="h-6 w-11 rounded-full bg-muted" />
+                  </div>
+                  <Separator className="bg-border/20" />
+                  <div className="flex items-center justify-between opacity-40">
+                    <div className="space-y-1">
+                      <p className="font-bold">Seguridad (Biometría)</p>
+                      <p className="text-xs text-muted-foreground">Protege tus datos con FaceID o Huella.</p>
+                    </div>
+                    <div className="h-6 w-11 rounded-full bg-muted" />
+                  </div>
+                </div>
+                
+                <div className="pt-6 flex flex-col sm:flex-row gap-4">
+                  <Badge variant="outline" className="border-primary/20 text-primary rounded-full px-6 py-2 text-[10px] font-black uppercase tracking-widest w-fit mx-auto sm:mx-0">
+                    Funciones en Desarrollo
+                  </Badge>
+                  <Button variant="destructive" className="rounded-full px-10 font-bold opacity-80 hover:opacity-100 transition-opacity ml-auto">
+                    Cerrar Sesión
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
