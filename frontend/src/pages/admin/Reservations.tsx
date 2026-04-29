@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import CalendarView from "@/components/admin/CalendarView";
 import { useAuth } from "@/hooks/useAuth";
 import { adminApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,22 +68,26 @@ export default function AdminReservations() {
   const [filter, setFilter] = useState(searchParams.get("status") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
-  const [viewMode, setViewMode] = useState<"items" | "orders">("items");
+  const [viewMode, setViewMode] = useState<"items" | "orders" | "calendar">((searchParams.get("view") as any) || "items");
   const [sortOrder, setSortOrder] = useState(searchParams.get("sort") || "desc");
 
   useEffect(() => {
-    // Ensure page and limit are always in the URL
-    if (!searchParams.get("page") || !searchParams.get("limit")) {
-      const newParams = new URLSearchParams(searchParams);
-      if (!searchParams.get("page")) newParams.set("page", "1");
-      if (!searchParams.get("limit")) newParams.set("limit", "10");
-      setSearchParams(newParams, { replace: true });
+    // Ensure page and limit are always in the URL (except for calendar view)
+    const viewMode = searchParams.get("view") || "items";
+    if (viewMode !== "calendar") {
+      if (!searchParams.get("page") || !searchParams.get("limit")) {
+        const newParams = new URLSearchParams(searchParams);
+        if (!searchParams.get("page")) newParams.set("page", "1");
+        if (!searchParams.get("limit")) newParams.set("limit", "10");
+        setSearchParams(newParams, { replace: true });
+      }
     }
   }, []);
 
   useEffect(() => { loadRentals(); }, [searchParams]);
 
   const loadRentals = async () => {
+    const view = searchParams.get("view") || "items";
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const status = searchParams.get("status") || "";
@@ -93,6 +98,9 @@ export default function AdminReservations() {
     if (limit !== currentLimit) setCurrentLimit(limit);
     if (status !== filter) setFilter(status);
     if (sort !== sortOrder) setSortOrder(sort);
+
+    // Don't load rentals for calendar view - it loads its own data
+    if (view === "calendar") return;
 
     setLoading(true);
     try {
@@ -124,7 +132,6 @@ export default function AdminReservations() {
     const newParams = new URLSearchParams(searchParams);
     newParams.set("page", String(page));
     setSearchParams(newParams);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLimitChange = (limit: number) => {
@@ -143,6 +150,22 @@ export default function AdminReservations() {
     if (f) newParams.set("status", f);
     else newParams.delete("status");
     newParams.set("page", "1");
+    setSearchParams(newParams);
+  };
+
+  const handleViewModeChange = (mode: "items" | "orders" | "calendar") => {
+    setViewMode(mode);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("view", mode);
+    // Remove pagination params in calendar view since calendar doesn't use them
+    if (mode === "calendar") {
+      newParams.delete("page");
+      newParams.delete("limit");
+    } else {
+      // Ensure pagination params when not in calendar view
+      if (!newParams.has("page")) newParams.set("page", "1");
+      if (!newParams.has("limit")) newParams.set("limit", "10");
+    }
     setSearchParams(newParams);
   };
 
@@ -173,7 +196,7 @@ export default function AdminReservations() {
 
       <div className="flex bg-muted/50 p-1 rounded-xl border border-border/60 w-fit">
         <button
-          onClick={() => setViewMode("items")}
+          onClick={() => handleViewModeChange("items")}
           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
             viewMode === "items" 
               ? "bg-primary/8 text-primary shadow-sm" 
@@ -184,7 +207,7 @@ export default function AdminReservations() {
           Individual
         </button>
         <button
-          onClick={() => setViewMode("orders")}
+          onClick={() => handleViewModeChange("orders")}
           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
             viewMode === "orders" 
               ? "bg-primary/8 text-primary shadow-sm" 
@@ -193,6 +216,17 @@ export default function AdminReservations() {
         >
           <LayoutGrid className="w-3.5 h-3.5" />
           Agrupado (Pedidos)
+        </button>
+        <button
+          onClick={() => handleViewModeChange("calendar")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
+            viewMode === "calendar" 
+              ? "bg-primary/8 text-primary shadow-sm" 
+              : "text-muted-foreground hover:text-black"
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          Calendario
         </button>
       </div>
 
@@ -208,8 +242,10 @@ export default function AdminReservations() {
 
       {loading ? (
         <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Card key={i} className="animate-pulse"><CardContent className="p-4"><div className="h-16 bg-muted rounded" /></CardContent></Card>)}</div>
-      ) : rentals.length === 0 ? (
+      ) : rentals.length === 0 && viewMode !== "calendar" ? (
         <Card><CardContent className="p-8 text-center"><Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="font-bold">Sin reservas</p></CardContent></Card>
+      ) : viewMode === "calendar" ? (
+        <CalendarView token={token!} filterStatus={filter} />
       ) : viewMode === "items" ? (
         <>
           <div className="space-y-3">
@@ -302,7 +338,7 @@ export default function AdminReservations() {
         </div>
       )}
 
-      {pagination && pagination.totalPages > 0 && (
+      {viewMode !== "calendar" && pagination && pagination.totalPages > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/40">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
