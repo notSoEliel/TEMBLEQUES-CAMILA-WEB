@@ -6,9 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, RefreshCw } from "lucide-react";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { LayoutGrid, List, ArrowDownAz, ArrowUpAz } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -221,7 +231,7 @@ export default function AdminReservations() {
                       <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground font-bold uppercase">
                         <Calendar className="h-3 w-3" />
                         {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
-                        <span className="font-black text-primary ml-2">Total: ${r.total}</span>
+                        <span className="font-black text-primary ml-2">Total: {formatCurrency(r.total)}</span>
                       </div>
                     </div>
                   </div>
@@ -280,7 +290,7 @@ export default function AdminReservations() {
             <OrderCard
               key={gid}
               orderGroupId={gid}
-              rentals={group}
+              rentals={group as any[]}
               onStatusChange={handleStatusChange}
               onBulkStatusChange={handleBulkStatusChange}
               statusLabels={STATUS_LABELS}
@@ -293,15 +303,64 @@ export default function AdminReservations() {
       )}
 
       {pagination && pagination.totalPages > 0 && (
-        <div className="pt-4 border-t-2 border-black/5">
-          <Pagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            onPageChange={handlePageChange}
-            limit={currentLimit}
-            onLimitChange={handleLimitChange}
-            totalResults={pagination.total}
-          />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/40">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>Ver:</span>
+              <select
+                value={currentLimit}
+                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                className="h-9 rounded-xl border-2 border-border/40 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              >
+                {[5, 10, 20, 50].map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+            <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+          </div>
+
+          <Pagination className="w-auto mx-0">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                  className={cn("rounded-xl border-2 border-border/40", currentPage <= 1 && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
+                .map((p, i, arr) => (
+                  <React.Fragment key={p}>
+                    {i > 0 && p - arr[i-1] > 1 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    <PaginationItem>
+                      <PaginationLink
+                        href="#"
+                        isActive={p === currentPage}
+                        onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
+                        className="rounded-xl border-2 border-border/40 font-bold"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  </React.Fragment>
+                ))}
+
+              <PaginationItem>
+                <PaginationNext 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
+                  className={cn("rounded-xl border-2 border-border/40", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       )}
     </div>

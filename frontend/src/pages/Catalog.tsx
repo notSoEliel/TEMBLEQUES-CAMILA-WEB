@@ -1,25 +1,54 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { productsApi, type PaginationMetadata } from "@/services/api";
+import { productsApi } from "@/services/api";
+import { 
+  IProduct, 
+  ICategoryConfig, 
+  ISizeGroupConfig, 
+  PaginationMetadata,
+  ISizeVariant 
+} from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown, Check } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { settingsApi } from "@/services/api";
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
 }
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get("search") || "");
@@ -43,8 +72,8 @@ export default function Catalog() {
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
-  const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
-  const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
+  const [categories, setCategories] = useState<ICategoryConfig[]>([]);
+  const [sizeGroups, setSizeGroups] = useState<ISizeGroupConfig[]>([]);
 
   useEffect(() => {
     loadSettings();
@@ -52,9 +81,9 @@ export default function Catalog() {
 
   const loadSettings = async () => {
     try {
-      const { settings } = await settingsApi.get();
-      setCategories(settings.categories || []);
-      setSizeGroups(settings.size_groups || []);
+      const response = await settingsApi.get();
+      setCategories(response.settings.categories || []);
+      setSizeGroups(response.settings.size_groups || []);
     } catch (err) {
       console.error("Error loading settings:", err);
     }
@@ -74,7 +103,7 @@ export default function Catalog() {
 
     setLoading(true);
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, string | string[] | number> = {
         page,
         limit
       };
@@ -86,7 +115,7 @@ export default function Catalog() {
       
       const response = await productsApi.list(params);
       setProducts(response.data);
-      setPagination(response.pagination);
+      setPagination(response.pagination || null);
     } catch (err) {
       console.error("Error loading products:", err);
     }
@@ -171,32 +200,32 @@ export default function Catalog() {
     setSearchParams(newParams);
   };
 
-  function getProductPriceInfo(product: any) {
+  function getProductPriceInfo(product: IProduct) {
     const variants = product.variants || [];
     if (variants.length === 0) return { min: product.rental_price, max: product.rental_price, hasRange: false };
-    const prices = variants.map((v: any) => v.price_override ?? product.rental_price);
+    const prices = variants.map((v: ISizeVariant) => v.price_override ?? product.rental_price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     return { min, max, hasRange: min !== max };
   }
 
-  function getAvailableSizes(product: any): string[] {
+  function getAvailableSizes(product: IProduct): string[] {
     const variants = product.variants || [];
     return variants
-      .filter((v: any) => !v.in_maintenance && v.stock > 0)
-      .map((v: any) => v.size);
+      .filter((v: ISizeVariant) => !v.in_maintenance && v.stock > 0)
+      .map((v: ISizeVariant) => v.size);
   }
 
-  function isProductAvailable(product: any): boolean {
+  function isProductAvailable(product: IProduct): boolean {
     const variants = product.variants || [];
-    return variants.some((v: any) => !v.in_maintenance && v.stock > 0);
+    return variants.some((v: ISizeVariant) => !v.in_maintenance && v.stock > 0);
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+        <h1 className="text-3xl lg:text-4xl font-bold mb-2 font-serif">
           Catálogo
         </h1>
         <p className="text-muted-foreground">Explora nuestra colección de vestimenta típica panameña.</p>
@@ -276,42 +305,50 @@ export default function Catalog() {
             
             <div>
               <h3 className="font-bold mb-3">Talla</h3>
-              <div className="relative">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-                  className="w-full justify-between font-normal text-left"
-                  type="button"
-                >
-                  <span className="truncate">
-                    {selectedSizes.length > 0 
-                      ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? 's' : ''} seleccionada${selectedSizes.length > 1 ? 's' : ''}`
-                      : "Seleccionar tallas"}
-                  </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isSizeDropdownOpen ? "rotate-180" : ""}`} />
-                </Button>
-                
-                <div className={`absolute top-full left-0 right-0 z-10 mt-2 bg-card border-2 border-border rounded-lg shadow-elegant overflow-hidden transition-all duration-300 ease-in-out origin-top ${isSizeDropdownOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 pointer-events-none"}`}>
-                  <div className="max-h-56 overflow-y-auto p-2 space-y-3">
-                     {sizeGroups.map((group) => (
-                       <div key={group.label}>
-                          <h4 className="text-[10px] font-bold text-muted-foreground mb-1 px-2 uppercase tracking-wider">{group.label}</h4>
-                          <div className="space-y-1">
-                            {group.sizes.map(s => (
-                              <label key={s} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded transition-colors">
-                                <Checkbox 
-                                  checked={selectedSizes.includes(s)} 
-                                  onCheckedChange={() => toggleSize(s)} 
-                                />
-                                <span className="text-sm font-medium">{s}</span>
-                              </label>
-                            ))}
-                          </div>
-                       </div>
-                     ))}
-                  </div>
-                </div>
-              </div>
+              <Popover open={isSizeDropdownOpen} onOpenChange={setIsSizeDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isSizeDropdownOpen}
+                    className="w-full justify-between font-bold border-2 border-border/60 hover:border-primary/40 transition-all rounded-2xl h-11"
+                  >
+                    <span className="truncate">
+                      {selectedSizes.length > 0
+                        ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? "s" : ""} seleccionada${selectedSizes.length > 1 ? "s" : ""}`
+                        : "Seleccionar tallas"}
+                    </span>
+                    <ChevronDown className={cn("ml-2 h-4 w-4 shrink-0 transition-transform duration-200", isSizeDropdownOpen && "rotate-180")} />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 border-2 border-border shadow-elegant-lg rounded-2xl overflow-hidden" align="start">
+                  <Command className="rounded-none">
+                    <CommandInput placeholder="Buscar talla..." className="h-10 border-none focus:ring-0" />
+                    <CommandList className="max-h-60">
+                      <CommandEmpty>No se encontraron tallas.</CommandEmpty>
+                      {sizeGroups.map((group) => (
+                        <CommandGroup key={group.label} heading={group.label} className="px-2">
+                          {group.sizes.map((s) => (
+                            <CommandItem
+                              key={s}
+                              onSelect={() => toggleSize(s)}
+                              className="flex items-center gap-2 cursor-pointer py-2 px-3 rounded-xl hover:bg-primary/5 transition-colors"
+                            >
+                              <div className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded border border-primary transition-all",
+                                selectedSizes.includes(s) ? "bg-primary text-primary-foreground" : "bg-transparent"
+                              )}>
+                                {selectedSizes.includes(s) && <Check className="h-3 w-3" />}
+                              </div>
+                              <span className="font-medium">{s}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
@@ -440,15 +477,65 @@ export default function Catalog() {
           </div>
           
           {pagination && (
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
-              limit={currentLimit}
-              onLimitChange={handleLimitChange}
-              totalResults={pagination.total}
-              limitOptions={[4, 8, 12, 20]}
-            />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/60">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Ver:</span>
+                  <select
+                    value={currentLimit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    className="h-9 rounded-xl border-2 border-border/60 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {[4, 8, 12, 20].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+              </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      className={cn("rounded-xl border-2 border-border/60", currentPage <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && p - arr[i-1] > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === currentPage}
+                            onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
+                            className="rounded-xl border-2 border-border/60 font-bold"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
+                      className={cn("rounded-xl border-2 border-border/60", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </>
       )}

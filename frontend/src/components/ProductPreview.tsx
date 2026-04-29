@@ -59,7 +59,7 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
     : null;
 
   function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+    return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
   }
 
   return (

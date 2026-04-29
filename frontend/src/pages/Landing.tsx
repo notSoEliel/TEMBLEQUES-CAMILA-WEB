@@ -17,6 +17,12 @@ import {
   Gift,
   Flower,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const CATEGORIES = [
   { name: "Polleras", slug: "pollera", icon: Crown, description: "Vestimenta nacional de gala", gradient: "from-rose-100 to-pink-50", iconColor: "text-rose-500" },
@@ -47,7 +53,6 @@ const FAQS = [
 ];
 
 export default function Landing() {
-  const [openFaq, setOpenFaq] = React.useState<number | null>(null);
 
   return (
     <div className="overflow-hidden">
@@ -84,19 +89,11 @@ export default function Landing() {
           {/* ── Contenido del hero ── */}
           <div className="relative z-20 flex flex-col justify-center h-full px-8 sm:px-12 lg:px-16 py-16 lg:py-24 max-w-xl">
             <h1
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-foreground mb-5"
-              style={{ fontFamily: "var(--font-serif)" }}
+              className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.1] text-foreground mb-5 font-serif"
             >
               La tradición se luce mejor cuando se{" "}
               <span
-                className="block italic"
-                style={{
-                  fontFamily: "var(--font-script)",
-                  color: "#C2185B",
-                  fontSize: "1.2em",
-                  lineHeight: 1.1,
-                  marginTop: "0.2em"
-                }}
+                className="block italic font-script text-primary text-[1.2em] leading-[1.1] mt-[0.2em]"
               >
                 reserva fácil
               </span>
@@ -131,7 +128,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold tracking-widest uppercase text-primary/70 mb-3">Nuestro Catálogo</p>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-4 text-foreground font-serif">
               Catálogo Destacado
             </h2>
             <p className="text-muted-foreground max-w-lg mx-auto leading-relaxed">
@@ -168,7 +165,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-xs font-semibold tracking-widest uppercase text-primary/70 mb-3">Proceso Simple</p>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-4 text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-4 text-foreground font-serif">
               Reserva en Minutos
             </h2>
             <p className="text-muted-foreground">Tres pasos simples para lucir la tradición panameña.</p>
@@ -182,13 +179,13 @@ export default function Landing() {
                 )}
                 <Card className="p-8 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1 relative z-10">
                   <CardContent className="p-0 space-y-5">
-                    <div className="text-6xl font-bold text-primary/8 -mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <div className="text-6xl font-bold text-primary/8 -mb-2 font-serif">
                       {step.number}
                     </div>
                     <div className="w-14 h-14 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:bg-primary/15 transition-colors">
                       <step.icon className="h-6 w-6 text-primary" />
                     </div>
-                    <h3 className="text-xl font-semibold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+                    <h3 className="text-xl font-semibold text-foreground font-serif">
                       {step.title}
                     </h3>
                     <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
@@ -207,7 +204,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold tracking-widest uppercase text-primary/70 mb-3">Clientes Felices</p>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground font-serif">
               Lo Que Dicen de Nosotros
             </h2>
           </div>
@@ -245,33 +242,23 @@ export default function Landing() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <p className="text-xs font-semibold tracking-widest uppercase text-primary/70 mb-3">Preguntas Frecuentes</p>
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground font-serif">
               ¿Tienes Dudas?
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <Accordion type="single" collapsible className="w-full space-y-4">
             {FAQS.map((faq, i) => (
-              <Card
-                key={i}
-                className="overflow-hidden hover:shadow-elegant transition-shadow duration-200 cursor-pointer"
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              >
-                <CardContent className="p-0">
-                  <button className="w-full flex items-center justify-between px-6 py-5 text-left">
-                    <span className="font-semibold text-foreground text-sm pr-4">{faq.q}</span>
-                    <ChevronDown className={`h-4 w-4 text-primary shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} />
-                  </button>
-                  {openFaq === i && (
-                    <div className="px-6 pb-5">
-                      <Separator className="mb-4" />
-                      <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <AccordionItem key={i} value={`item-${i}`} className="border-2 border-border rounded-3xl bg-card px-2 overflow-hidden shadow-elegant hover:shadow-elegant-lg transition-all duration-300">
+                <AccordionTrigger className="px-4 text-left font-bold text-sm hover:no-underline py-5">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-5 pt-0 text-sm text-muted-foreground leading-relaxed border-t border-border/50">
+                  {faq.a}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </section>
 
@@ -282,7 +269,7 @@ export default function Landing() {
             <div className="flex justify-center mb-8 opacity-30">
               <Flower className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold mb-5 text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
+            <h2 className="text-4xl lg:text-5xl font-bold mb-5 text-white font-serif">
               Alquila tradición panameña con elegancia
             </h2>
             <p className="text-lg mb-10 text-white/80 max-w-2xl mx-auto leading-relaxed">

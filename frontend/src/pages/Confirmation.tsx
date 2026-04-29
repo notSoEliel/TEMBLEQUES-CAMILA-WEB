@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Calendar, ArrowRight, Loader2 } from "lucide-react";
 
 function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
 }
 
 const STATUS_LABELS: Record<string, string> = {

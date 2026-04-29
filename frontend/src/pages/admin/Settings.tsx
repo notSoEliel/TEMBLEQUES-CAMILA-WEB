@@ -9,7 +9,16 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, Info, Lock, Unlock } from "lucide-react";
 import { useErrorModal } from "@/components/ErrorModal";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 import { useSearchParams, Link } from "react-router-dom";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
@@ -302,15 +311,65 @@ export default function AdminSettings() {
             {categories.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No hay categorías.</p>}
           </CardContent>
           <div className="px-6 pb-4">
-            <Pagination 
-              currentPage={catPage}
-              totalPages={catTotalPages}
-              onPageChange={handleCatPageChange}
-              limit={catLimit}
-              onLimitChange={handleCatLimitChange}
-              totalResults={categories.length}
-              limitOptions={[5, 10, 20]}
-            />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 py-4 border-t border-border/40">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Ver:</span>
+                  <select
+                    value={catLimit}
+                    onChange={(e) => handleCatLimitChange(Number(e.target.value))}
+                    className="h-8 rounded-xl border-2 border-border/40 bg-background px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {[5, 10, 20].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Total: <span className="font-bold text-foreground">{categories.length}</span></span>
+              </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (catPage > 1) handleCatPageChange(catPage - 1); }}
+                      className={cn("rounded-xl border-2 border-border/40 h-8 text-xs", catPage <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: catTotalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === catTotalPages || Math.abs(p - catPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && p - arr[i-1] > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === catPage}
+                            onClick={(e) => { e.preventDefault(); handleCatPageChange(p); }}
+                            className="rounded-xl border-2 border-border/40 font-bold h-8 w-8 text-xs"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (catPage < catTotalPages) handleCatPageChange(catPage + 1); }}
+                      className={cn("rounded-xl border-2 border-border/40 h-8 text-xs", catPage >= catTotalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         </Card>
 
@@ -375,15 +434,65 @@ export default function AdminSettings() {
             {sizeGroups.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No hay grupos.</p>}
           </CardContent>
           <div className="px-6 pb-4">
-            <Pagination 
-              currentPage={sgPage}
-              totalPages={sgTotalPages}
-              onPageChange={handleSgPageChange}
-              limit={sgLimit}
-              onLimitChange={handleSgLimitChange}
-              totalResults={sizeGroups.length}
-              limitOptions={[5, 10, 20]}
-            />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 py-4 border-t border-border/40">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Ver:</span>
+                  <select
+                    value={sgLimit}
+                    onChange={(e) => handleSgLimitChange(Number(e.target.value))}
+                    className="h-8 rounded-xl border-2 border-border/40 bg-background px-2 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {[5, 10, 20].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Total: <span className="font-bold text-foreground">{sizeGroups.length}</span></span>
+              </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (sgPage > 1) handleSgPageChange(sgPage - 1); }}
+                      className={cn("rounded-xl border-2 border-border/40 h-8 text-xs", sgPage <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: sgTotalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === sgTotalPages || Math.abs(p - sgPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && p - arr[i-1] > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === sgPage}
+                            onClick={(e) => { e.preventDefault(); handleSgPageChange(p); }}
+                            className="rounded-xl border-2 border-border/40 font-bold h-8 w-8 text-xs"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (sgPage < sgTotalPages) handleSgPageChange(sgPage + 1); }}
+                      className={cn("rounded-xl border-2 border-border/40 h-8 text-xs", sgPage >= sgTotalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           </div>
         </Card>
       </div>

@@ -185,7 +185,7 @@ export default function SizeManager({ category, sizeGroups = [], basePrice, vari
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <label className="text-xs text-muted-foreground shrink-0 w-12">Precio</label>
                 <div className="relative w-28">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">$</span>
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-bold">B/.</span>
                   <Input
                     type="number"
                     min={0}

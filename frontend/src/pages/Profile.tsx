@@ -7,8 +7,17 @@ import { Separator } from "@/components/ui/separator";
 import { User, Calendar, Package, XCircle, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { formatCurrency, cn } from "@/lib/utils";
 
 import { useErrorModal } from "@/components/ErrorModal";
 
@@ -139,7 +148,7 @@ export default function Profile() {
               <User className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+              <h1 className="text-3xl font-bold font-serif">
                 ¡Hola, {user?.name.split(' ')[0]}!
               </h1>
               <p className="text-muted-foreground font-medium flex items-center gap-1.5 text-sm mt-1">
@@ -154,7 +163,7 @@ export default function Profile() {
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">
                 {currentView === "active" ? "Alquileres Activos" : "Alquileres Cancelados"}
               </p>
-              <p className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{pagination?.total || 0}</p>
+              <p className="text-3xl font-bold font-serif">{pagination?.total || 0}</p>
             </div>
           </div>
         </CardContent>
@@ -208,17 +217,18 @@ export default function Profile() {
       ) : (
         <div className="space-y-6">
           {Object.entries(
-            rentals.reduce((acc, r) => {
+            rentals.reduce((acc: Record<string, any[]>, r: any) => {
               const groupId = r.order_group_id || r._id;
               if (!acc[groupId]) acc[groupId] = [];
               acc[groupId].push(r);
               return acc;
-            }, {} as Record<string, any[]>)
-          ).map(([groupId, groupItems]: [string, any[]]) => {
-            const isPending = groupItems.some(r => r.status === "pending");
-            const isPaidOrReserved = groupItems.some(r => r.status === "paid" || r.status === "reserved" || r.status === "confirmed");
-            const groupTotal = groupItems.reduce((sum, r) => sum + r.total, 0);
-            const isCancelled = groupItems.every(r => r.status === "cancelled");
+            }, {})
+          ).map(([groupId, groupItems]) => {
+            const items = groupItems as any[];
+            const isPending = items.some((r: any) => r.status === "pending");
+            const isPaidOrReserved = items.some((r: any) => r.status === "paid" || r.status === "reserved" || r.status === "confirmed");
+            const groupTotal = items.reduce((sum: number, r: any) => sum + r.total, 0);
+            const isCancelled = items.every((r: any) => r.status === "cancelled");
 
             return (
               <Card 
@@ -236,24 +246,24 @@ export default function Profile() {
                         <Package className="w-4 h-4" />
                         Pedido #{groupId.slice(-6).toUpperCase()}
                       </CardTitle>
-                      {isCancelled && groupItems[0].updatedAt && (
+                      {isCancelled && items[0].updatedAt && (
                         <p className="text-[10px] font-bold text-destructive mt-1 flex items-center gap-1">
                           <XCircle className="w-3 h-3" />
-                          Cancelado el {new Date(groupItems[0].updatedAt).toLocaleDateString("es-PA")}
+                          Cancelado el {new Date(items[0].updatedAt).toLocaleDateString("es-PA")}
                         </p>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-bold text-xl text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>${groupTotal.toFixed(2)}</span>
-                      <Badge variant={STATUS_COLORS[groupItems[0].status] || "outline"}>
-                        {STATUS_LABELS[groupItems[0].status] || groupItems[0].status}
+                      <span className="font-bold text-xl text-primary font-serif">{formatCurrency(groupTotal)}</span>
+                      <Badge variant={STATUS_COLORS[items[0].status] || "outline"}>
+                        {STATUS_LABELS[items[0].status] || items[0].status}
                       </Badge>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
-                    {groupItems.map((rental) => (
+                    {items.map((rental) => (
                       <div key={rental._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
                         <div className="flex items-center gap-4">
                           {rental.product_id?.images?.[0] && (
@@ -273,7 +283,7 @@ export default function Profile() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-sm text-muted-foreground">${rental.total.toFixed(2)}</span>
+                          <span className="font-bold text-sm text-muted-foreground">{formatCurrency(rental.total)}</span>
                         </div>
                       </div>
                     ))}
@@ -297,7 +307,7 @@ export default function Profile() {
                             <ConfirmModal
                               title="¿Cancelar Pedido?"
                               description="Esta acción liberará las prendas para otros usuarios. No se puede deshacer."
-                              onConfirm={() => groupItems.filter(r => r.status === "pending").forEach(r => handleCancelRental(r._id))}
+                              onConfirm={() => items.filter((r: any) => r.status === "pending").forEach((r: any) => handleCancelRental(r._id))}
                             >
                               <Button variant="outline" size="sm" className="h-9">
                                 Cancelar Pedido
@@ -321,14 +331,65 @@ export default function Profile() {
           })}
 
           {pagination && (
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
-              limit={currentLimit}
-              onLimitChange={handleLimitChange}
-              totalResults={pagination.total}
-            />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/40">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Ver:</span>
+                  <select
+                    value={currentLimit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    className="h-9 rounded-xl border-2 border-border/40 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {[5, 10, 20, 50].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+              </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      className={cn("rounded-xl border-2 border-border/40", currentPage <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && p - arr[i-1] > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === currentPage}
+                            onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
+                            className="rounded-xl border-2 border-border/40 font-bold"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
+                      className={cn("rounded-xl border-2 border-border/40", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </div>
       )}
