@@ -17,6 +17,12 @@ import {
   Gift,
   Flower,
 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const CATEGORIES = [
   { name: "Polleras", slug: "pollera", icon: Crown, description: "Vestimenta nacional de gala", gradient: "from-rose-100 to-pink-50", iconColor: "text-rose-500" },
@@ -47,7 +53,6 @@ const FAQS = [
 ];
 
 export default function Landing() {
-  const [openFaq, setOpenFaq] = React.useState<number | null>(null);
 
   return (
     <div className="overflow-hidden">
@@ -242,28 +247,18 @@ export default function Landing() {
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <Accordion type="single" collapsible className="w-full space-y-4">
             {FAQS.map((faq, i) => (
-              <Card
-                key={i}
-                className="overflow-hidden hover:shadow-elegant transition-shadow duration-200 cursor-pointer"
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              >
-                <CardContent className="p-0">
-                  <button className="w-full flex items-center justify-between px-6 py-5 text-left">
-                    <span className="font-semibold text-foreground text-sm pr-4">{faq.q}</span>
-                    <ChevronDown className={`h-4 w-4 text-primary shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`} />
-                  </button>
-                  {openFaq === i && (
-                    <div className="px-6 pb-5">
-                      <Separator className="mb-4" />
-                      <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <AccordionItem key={i} value={`item-${i}`} className="border-2 border-border rounded-3xl bg-card px-2 overflow-hidden shadow-elegant hover:shadow-elegant-lg transition-all duration-300">
+                <AccordionTrigger className="px-4 text-left font-bold text-sm hover:no-underline py-5">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-5 pt-0 text-sm text-muted-foreground leading-relaxed border-t border-border/50">
+                  {faq.a}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </section>
 

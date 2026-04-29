@@ -73,12 +73,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 import { CartProvider } from "@/hooks/useCart";
+import ScrollToTop from "@/components/ui/ScrollToTop";
 
 export default function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Client Routes */}
             <Route element={<ClientLayout />}>

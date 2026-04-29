@@ -13,10 +13,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown, Check } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { settingsApi } from "@/services/api";
 
@@ -283,42 +305,50 @@ export default function Catalog() {
             
             <div>
               <h3 className="font-bold mb-3">Talla</h3>
-              <div className="relative">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-                  className="w-full justify-between font-normal text-left"
-                  type="button"
-                >
-                  <span className="truncate">
-                    {selectedSizes.length > 0 
-                      ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? 's' : ''} seleccionada${selectedSizes.length > 1 ? 's' : ''}`
-                      : "Seleccionar tallas"}
-                  </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isSizeDropdownOpen ? "rotate-180" : ""}`} />
-                </Button>
-                
-                <div className={`absolute top-full left-0 right-0 z-10 mt-2 bg-card border-2 border-border rounded-lg shadow-elegant overflow-hidden transition-all duration-300 ease-in-out origin-top ${isSizeDropdownOpen ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0 pointer-events-none"}`}>
-                  <div className="max-h-56 overflow-y-auto p-2 space-y-3">
-                     {sizeGroups.map((group) => (
-                       <div key={group.label}>
-                          <h4 className="text-[10px] font-bold text-muted-foreground mb-1 px-2 uppercase tracking-wider">{group.label}</h4>
-                          <div className="space-y-1">
-                            {group.sizes.map(s => (
-                              <label key={s} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-muted rounded transition-colors">
-                                <Checkbox 
-                                  checked={selectedSizes.includes(s)} 
-                                  onCheckedChange={() => toggleSize(s)} 
-                                />
-                                <span className="text-sm font-medium">{s}</span>
-                              </label>
-                            ))}
-                          </div>
-                       </div>
-                     ))}
-                  </div>
-                </div>
-              </div>
+              <Popover open={isSizeDropdownOpen} onOpenChange={setIsSizeDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isSizeDropdownOpen}
+                    className="w-full justify-between font-bold border-2 border-border/60 hover:border-primary/40 transition-all rounded-2xl h-11"
+                  >
+                    <span className="truncate">
+                      {selectedSizes.length > 0
+                        ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? "s" : ""} seleccionada${selectedSizes.length > 1 ? "s" : ""}`
+                        : "Seleccionar tallas"}
+                    </span>
+                    <ChevronDown className={cn("ml-2 h-4 w-4 shrink-0 transition-transform duration-200", isSizeDropdownOpen && "rotate-180")} />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 border-2 border-border shadow-elegant-lg rounded-2xl overflow-hidden" align="start">
+                  <Command className="rounded-none">
+                    <CommandInput placeholder="Buscar talla..." className="h-10 border-none focus:ring-0" />
+                    <CommandList className="max-h-60">
+                      <CommandEmpty>No se encontraron tallas.</CommandEmpty>
+                      {sizeGroups.map((group) => (
+                        <CommandGroup key={group.label} heading={group.label} className="px-2">
+                          {group.sizes.map((s) => (
+                            <CommandItem
+                              key={s}
+                              onSelect={() => toggleSize(s)}
+                              className="flex items-center gap-2 cursor-pointer py-2 px-3 rounded-xl hover:bg-primary/5 transition-colors"
+                            >
+                              <div className={cn(
+                                "flex h-4 w-4 items-center justify-center rounded border border-primary transition-all",
+                                selectedSizes.includes(s) ? "bg-primary text-primary-foreground" : "bg-transparent"
+                              )}>
+                                {selectedSizes.includes(s) && <Check className="h-3 w-3" />}
+                              </div>
+                              <span className="font-medium">{s}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      ))}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </div>
@@ -447,15 +477,65 @@ export default function Catalog() {
           </div>
           
           {pagination && (
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
-              limit={currentLimit}
-              onLimitChange={handleLimitChange}
-              totalResults={pagination.total}
-              limitOptions={[4, 8, 12, 20]}
-            />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/60">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span>Ver:</span>
+                  <select
+                    value={currentLimit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    className="h-9 rounded-xl border-2 border-border/60 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  >
+                    {[4, 8, 12, 20].map((l) => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+              </div>
+
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
+                      className={cn("rounded-xl border-2 border-border/60", currentPage <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, i, arr) => (
+                      <React.Fragment key={p}>
+                        {i > 0 && p - arr[i-1] > 1 && (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <PaginationLink
+                            href="#"
+                            isActive={p === currentPage}
+                            onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
+                            className="rounded-xl border-2 border-border/60 font-bold"
+                          >
+                            {p}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </React.Fragment>
+                    ))}
+
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
+                      className={cn("rounded-xl border-2 border-border/60", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
           )}
         </>
       )}

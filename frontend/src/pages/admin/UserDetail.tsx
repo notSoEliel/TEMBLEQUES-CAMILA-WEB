@@ -16,7 +16,16 @@ import {
   User as UserIcon,
   CalendarCheck
 } from "lucide-react";
-import { Pagination } from "@/components/ui/Pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
@@ -261,14 +270,53 @@ export default function AdminUserDetail() {
       </Card>
 
       {pagination && pagination.totalPages > 1 && (
-        <Pagination
-          currentPage={pagination.page}
-          totalPages={pagination.totalPages}
-          onPageChange={setCurrentPage}
-          limit={10}
-          onLimitChange={() => {}}
-          totalResults={pagination.total}
-        />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/40">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+          </div>
+
+          <Pagination className="w-auto mx-0">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
+                  className={cn("rounded-xl border-2 border-border/40", currentPage <= 1 && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === pagination.totalPages || Math.abs(p - currentPage) <= 1)
+                .map((p, i, arr) => (
+                  <React.Fragment key={p}>
+                    {i > 0 && p - arr[i-1] > 1 && (
+                      <PaginationItem>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    )}
+                    <PaginationItem>
+                      <PaginationLink
+                        href="#"
+                        isActive={p === currentPage}
+                        onClick={(e) => { e.preventDefault(); setCurrentPage(p); }}
+                        className="rounded-xl border-2 border-border/40 font-bold"
+                      >
+                        {p}
+                      </PaginationLink>
+                    </PaginationItem>
+                  </React.Fragment>
+                ))}
+
+              <PaginationItem>
+                <PaginationNext 
+                  href="#" 
+                  onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) setCurrentPage(currentPage + 1); }}
+                  className={cn("rounded-xl border-2 border-border/40", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
     </div>
   );
