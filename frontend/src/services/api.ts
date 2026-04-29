@@ -192,6 +192,13 @@ export const adminApi = {
     return api<PaginatedResponse<any>>(`/admin/rentals${query}`, { token });
   },
 
+  calendarRentals: (token: string, from: string, to: string) => {
+    const params = new URLSearchParams();
+    params.set("from", from);
+    params.set("to", to);
+    return api<{ data: any[] }>(`/admin/rentals/calendar?${params.toString()}`, { token });
+  },
+
   updateRentalStatus: (id: string, status: string, token: string) =>
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
 

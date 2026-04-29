@@ -1,0 +1,115 @@
+/* Custom styles for React Big Calendar to match Silent Luxury */
+.rbc-calendar {
+  font-family: var(--font-sans);
+}
+
+.rbc-header {
+  padding: 0.75rem 0.5rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  color: var(--muted-foreground) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.rbc-month-view {
+  border: none !important;
+}
+
+.rbc-day-bg {
+  border-left: 1px solid var(--border) !important;
+}
+
+.rbc-month-row {
+  border-top: 1px solid var(--border) !important;
+}
+
+.rbc-month-row:last-child {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.rbc-day-bg:last-child {
+  border-right: 1px solid var(--border) !important;
+}
+
+.rbc-off-range-bg {
+  background: var(--muted) !important;
+  opacity: 0.4;
+}
+
+.rbc-today {
+  background: oklch(56.7% 0.207 3.55 / 8%) !important;
+  border-top: 3px solid oklch(56.7% 0.207 3.55) !important;
+}
+
+.rbc-event {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0.5px 4px !important;
+}
+
+.rbc-event:focus {
+  outline: none !important;
+}
+
+.calendar-event-pill {
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-event-pill:hover {
+  transform: translateY(-1px);
+  filter: contrast(1.05) brightness(1.02);
+}
+
+/* Handle multi-day continuity */
+.rbc-event-continues-after .calendar-event-pill {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-right: none !important;
+}
+
+.rbc-event-continues-before .calendar-event-pill {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-left: none !important;
+}
+
+.rbc-show-more {
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  color: var(--primary) !important;
+  background: none !important;
+  padding: 2px 8px !important;
+}
+
+.rbc-date-cell {
+  padding: 8px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--foreground) !important;
+}
+
+.rbc-date-cell.rbc-now {
+  color: var(--primary) !important;
+  font-weight: 900 !important;
+  font-size: 14px !important;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.rbc-button-link {
+  font-family: inherit !important;
+  color: inherit !important;
+}
+
+.rbc-off-range {
+  color: var(--muted-foreground) !important;
+  opacity: 0.3;
+}

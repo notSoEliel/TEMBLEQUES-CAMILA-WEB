@@ -204,6 +204,33 @@ admin.get("/rentals", async (c) => {
   return c.json(createPaginatedResponse(allRentals, total, page, limit));
 });
 
+// GET /api/admin/rentals/calendar
+admin.get("/rentals/calendar", async (c) => {
+  const { from, to } = c.req.query();
+  
+  if (!from || !to) {
+    throw new AppError("Las fechas 'from' y 'to' son requeridas", 400, "VALIDATION_ERROR");
+  }
+
+  const filter = {
+    $or: [
+      { start_date: { $gte: new Date(from), $lte: new Date(to) } },
+      { end_date: { $gte: new Date(from), $lte: new Date(to) } },
+      {
+        start_date: { $lte: new Date(from) },
+        end_date: { $gte: new Date(to) },
+      },
+    ],
+  };
+
+  const rentals = await Rental.find(filter)
+    .populate("user_id", "name email phone")
+    .populate("product_id", "name category images")
+    .sort({ start_date: 1 });
+
+  return c.json({ data: rentals });
+});
+
 // PATCH /api/admin/rentals/:id/status
 admin.patch("/rentals/:id/status", async (c) => {
   const { status } = await c.req.json();
