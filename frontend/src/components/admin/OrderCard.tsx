@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List } from "lucide-react";
+import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface OrderCardProps {
@@ -53,13 +53,13 @@ export default function OrderCard({
   const bulkActions = getBulkActions();
 
   return (
-    <Card className="border border-border/60 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden transition-all hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-elegant-lg">
+    <Card className="border border-border/60 shadow-elegant overflow-hidden transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-elegant-lg">
       {/* Header */}
-      <div className="bg-muted/30 border-b-2 border-black p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-muted/30 border-b border-border/40 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-black uppercase bg-primary/8 text-primary px-2 py-0.5 rounded">
-              Pedido #{orderGroupId.slice(-6).toUpperCase()}
+              Pedido #{orderGroupId.includes('legacy') ? 'LEGACY' : orderGroupId.slice(-6).toUpperCase()}
             </span>
             <Badge variant="outline" className="text-[10px] font-black border border-border/60 bg-muted/50">
               {rentals.length} {rentals.length === 1 ? "Artículo" : "Artículos"}
@@ -80,7 +80,7 @@ export default function OrderCard({
             variant="ghost" 
             size="sm" 
             onClick={() => setShowDetails(!showDetails)}
-            className="mt-2 text-[10px] font-black uppercase hover:bg-black hover:text-white border-2 border-transparent hover:border-black transition-all"
+            className="mt-2 text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
           >
             {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
             {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
@@ -89,7 +89,7 @@ export default function OrderCard({
       </div>
 
       {showDetails && (
-        <div className="bg-muted/10 border-b-2 border-black p-4 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="bg-muted/5 border-b border-border/40 p-4 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="space-y-3">
             <h4 className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-2">
               <List className="w-3 h-3" />
@@ -142,13 +142,13 @@ export default function OrderCard({
 
       {/* Items List */}
       <CardContent className="p-0 bg-white">
-        <div className="divide-y-2 divide-black/5">
+        <div className="divide-y divide-border/30">
           {rentals.map((r) => (
             <div key={r._id} className="p-4 flex items-center justify-between gap-4 group">
               <div className="flex items-center gap-4">
                 <div className="relative shrink-0">
                   {r.product_id?.images?.[0] ? (
-                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded border border-border/60" />
+                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded-xl border border-border/60" />
                   ) : (
                     <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
                       <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
@@ -171,7 +171,7 @@ export default function OrderCard({
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center gap-4 shrink-0">
                 <div className="text-right hidden sm:block">
                   <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
                   <p className="font-black text-sm">{formatCurrency(r.total)}</p>
@@ -179,17 +179,6 @@ export default function OrderCard({
                 <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
                   {statusLabels[r.status]}
                 </Badge>
-                
-                {/* Individual Action Dropdown/Modal */}
-                <ConfirmModal
-                  title="Gestionar Artículo"
-                  description="Cambia el estado de este artículo individualmente. Elige una acción de las opciones disponibles (esto es informativo, usa las acciones masivas si es posible)."
-                  onConfirm={() => {}} 
-                >
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 border-2 border-transparent hover:border-black hover:bg-muted rounded-lg transition-all">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                    </Button>
-                </ConfirmModal>
               </div>
             </div>
           ))}
@@ -197,18 +186,18 @@ export default function OrderCard({
       </CardContent>
 
       {/* Bulk Actions Footer */}
-      <div className="bg-black/5 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t-2 border-black">
+      <div className="bg-muted/20 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-border/40">
         <div className="flex items-center gap-2">
           {isMixed ? (
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 bg-amber-50 border-2 border-amber-200 px-3 py-1 rounded-full">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-200/50 px-3 py-1.5 rounded-full shadow-sm">
               <RefreshCw className="w-3 h-3" />
               Estados Mixtos en el Pedido
             </div>
           ) : (
-            <div className={`flex items-center gap-2 text-[10px] font-black uppercase px-3 py-1 rounded-full border-2 ${
+            <div className={`flex items-center gap-2 text-[10px] font-black uppercase px-3 py-1.5 rounded-full border shadow-sm ${
               currentStatus === "pending" 
-                ? "text-amber-600 bg-amber-50 border-amber-200" 
-                : "text-green-600 bg-green-50 border-green-200"
+                ? "text-amber-600 bg-amber-50 border-amber-200/50" 
+                : "text-green-600 bg-green-50 border-green-200/50"
             }`}>
               <CheckCircle2 className="w-3 h-3" />
               Estado uniforme: {statusLabels[currentStatus]}
@@ -232,8 +221,10 @@ export default function OrderCard({
                 >
                   <Button
                     size="sm"
-                    variant={isDestructive ? "destructive" : isPositive ? "default" : "outline"}
-                    className={`flex-1 sm:flex-none text-[10px] font-black border border-border/60 shadow-elegant active:shadow-none active:translate-y-0.5 transition-all uppercase px-4 py-2 h-auto`}
+                    variant="outline"
+                    className={`flex-1 sm:flex-none text-[10px] font-black border border-border/60 shadow-elegant hover:bg-primary/5 hover:text-primary hover:border-primary/30 active:shadow-none active:translate-y-0.5 transition-all uppercase px-4 py-2 h-auto ${
+                      isDestructive ? 'hover:text-destructive hover:bg-destructive/5 hover:border-destructive/30' : ''
+                    }`}
                   >
                     {isPositive && <CheckCircle2 className="w-3 h-3 mr-2" />}
                     {isDestructive && <Trash2 className="w-3 h-3 mr-2" />}

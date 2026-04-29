@@ -68,15 +68,16 @@ export default function AdminReservations() {
   const [filter, setFilter] = useState(searchParams.get("status") || "");
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
-  const [viewMode, setViewMode] = useState<"items" | "orders" | "calendar">((searchParams.get("view") as any) || "items");
+  const [viewMode, setViewMode] = useState<"orders" | "calendar">((searchParams.get("view") as any) || "orders");
   const [sortOrder, setSortOrder] = useState(searchParams.get("sort") || "desc");
 
   useEffect(() => {
     // Ensure page and limit are always in the URL (except for calendar view)
-    const viewMode = searchParams.get("view") || "items";
+    const viewMode = searchParams.get("view") || "orders";
     if (viewMode !== "calendar") {
-      if (!searchParams.get("page") || !searchParams.get("limit")) {
+      if (!searchParams.get("page") || !searchParams.get("limit") || !searchParams.get("view")) {
         const newParams = new URLSearchParams(searchParams);
+        if (!searchParams.get("view")) newParams.set("view", "orders");
         if (!searchParams.get("page")) newParams.set("page", "1");
         if (!searchParams.get("limit")) newParams.set("limit", "10");
         setSearchParams(newParams, { replace: true });
@@ -87,7 +88,7 @@ export default function AdminReservations() {
   useEffect(() => { loadRentals(); }, [searchParams]);
 
   const loadRentals = async () => {
-    const view = searchParams.get("view") || "items";
+    const view = searchParams.get("view") || "orders";
     const page = Number(searchParams.get("page")) || 1;
     const limit = Number(searchParams.get("limit")) || 10;
     const status = searchParams.get("status") || "";
@@ -153,7 +154,7 @@ export default function AdminReservations() {
     setSearchParams(newParams);
   };
 
-  const handleViewModeChange = (mode: "items" | "orders" | "calendar") => {
+  const handleViewModeChange = (mode: "orders" | "calendar") => {
     setViewMode(mode);
     const newParams = new URLSearchParams(searchParams);
     newParams.set("view", mode);
@@ -196,17 +197,6 @@ export default function AdminReservations() {
 
       <div className="flex bg-muted/50 p-1 rounded-xl border border-border/60 w-fit">
         <button
-          onClick={() => handleViewModeChange("items")}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
-            viewMode === "items" 
-              ? "bg-primary/8 text-primary shadow-sm" 
-              : "text-muted-foreground hover:text-black"
-          }`}
-        >
-          <List className="w-3.5 h-3.5" />
-          Individual
-        </button>
-        <button
           onClick={() => handleViewModeChange("orders")}
           className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-black transition-all ${
             viewMode === "orders" 
@@ -215,7 +205,7 @@ export default function AdminReservations() {
           }`}
         >
           <LayoutGrid className="w-3.5 h-3.5" />
-          Agrupado (Pedidos)
+          Vista Pedidos
         </button>
         <button
           onClick={() => handleViewModeChange("calendar")}
@@ -246,79 +236,10 @@ export default function AdminReservations() {
         <Card><CardContent className="p-8 text-center"><Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" /><p className="font-bold">Sin reservas</p></CardContent></Card>
       ) : viewMode === "calendar" ? (
         <CalendarView token={token!} filterStatus={filter} />
-      ) : viewMode === "items" ? (
-        <>
-          <div className="space-y-3">
-            {rentals.map((r) => (
-              <Card key={r._id} className="border border-border/60 shadow-elegant">
-                <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 flex-1">
-                    {r.product_id?.images?.[0] && <img src={r.product_id.images[0]} alt="" className="w-12 h-16 object-cover rounded-lg border border-border/60 shrink-0" />}
-                    <div>
-                      <h3 className="font-black uppercase text-sm leading-tight">
-                        {r.product_id?.name || "Producto"}
-                        {r.selected_size && (
-                          <span className="ml-2 text-[10px] font-black bg-primary/8 text-primary px-1.5 py-0.5 rounded uppercase">
-                            Talla: {r.selected_size}
-                          </span>
-                        )}
-                      </h3>
-                      <p className="text-xs text-muted-foreground font-medium mt-0.5">{r.user_id?.name} ({r.user_id?.email})</p>
-                      <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground font-bold uppercase">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
-                        <span className="font-black text-primary ml-2">Total: {formatCurrency(r.total)}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={STATUS_COLORS[r.status]} className="text-[10px] font-black uppercase px-3 py-1 border border-border/60 shadow-sm">
-                      {STATUS_LABELS[r.status]}
-                    </Badge>
-                    
-                    {TRANSITIONS[r.status] && TRANSITIONS[r.status].length > 0 && (
-                      <>
-                        <Separator orientation="vertical" className="h-8 mx-2 hidden lg:block bg-black/10" />
-                        <div className="flex flex-wrap items-center gap-2">
-                          {TRANSITIONS[r.status].map((s) => {
-                            const isDestructive = s === "cancelled" || s === "damaged";
-                            const actionLabel = r.status === "reserved" && s === "delivered" ? "Cobrar Saldo y Entregar" : ACTION_LABELS[s] || s;
-                            const btn = (
-                              <Button key={s} size="sm" variant={isDestructive ? "destructive" : "outline"} className="text-[10px] font-black border border-border/60 shadow-sm active:shadow-none active:translate-y-0.5 transition-all" onClick={isDestructive ? undefined : () => handleStatusChange(r._id, s)}>
-                                {actionLabel}
-                              </Button>
-                            );
-
-                            if (isDestructive) {
-                              return (
-                                <ConfirmModal
-                                  key={s}
-                                  title={s === "cancelled" ? "Cancelar Reserva" : "Marcar como Dañado"}
-                                  description={`¿Estás seguro de que deseas cambiar el estado a ${STATUS_LABELS[s]}?`}
-                                  variant="destructive"
-                                  onConfirm={() => handleStatusChange(r._id, s)}
-                                >
-                                  {btn}
-                                </ConfirmModal>
-                              );
-                            }
-                            return btn;
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-
-        </>
       ) : (
         <div className="space-y-6">
           {Object.entries(rentals.reduce((acc, r) => {
-            const gid = r.order_group_id || `legacy-${r.user_id?.email}-${r.start_date}`;
+            const gid = r.order_group_id || `legacy-${r.user_id?._id || 'unknown'}-${new Date(r.createdAt).getTime()}`;
             if (!acc[gid]) acc[gid] = [];
             acc[gid].push(r);
             return acc;
@@ -346,7 +267,7 @@ export default function AdminReservations() {
               <select
                 value={currentLimit}
                 onChange={(e) => handleLimitChange(Number(e.target.value))}
-                className="h-9 rounded-xl border-2 border-border/40 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="h-9 rounded-xl border border-border/40 bg-background px-3 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer hover:border-primary/30"
               >
                 {[5, 10, 20, 50].map((l) => (
                   <option key={l} value={l}>{l}</option>
@@ -362,7 +283,7 @@ export default function AdminReservations() {
                 <PaginationPrevious 
                   href="#" 
                   onClick={(e) => { e.preventDefault(); if (currentPage > 1) handlePageChange(currentPage - 1); }}
-                  className={cn("rounded-xl border-2 border-border/40", currentPage <= 1 && "pointer-events-none opacity-50")}
+                  className={cn("rounded-xl border border-border/40 hover:bg-muted/50 transition-all", currentPage <= 1 && "pointer-events-none opacity-50")}
                 />
               </PaginationItem>
               
@@ -380,7 +301,7 @@ export default function AdminReservations() {
                         href="#"
                         isActive={p === currentPage}
                         onClick={(e) => { e.preventDefault(); handlePageChange(p); }}
-                        className="rounded-xl border-2 border-border/40 font-bold"
+                        className="rounded-xl border border-border/40 font-bold transition-all"
                       >
                         {p}
                       </PaginationLink>
@@ -392,7 +313,7 @@ export default function AdminReservations() {
                 <PaginationNext 
                   href="#" 
                   onClick={(e) => { e.preventDefault(); if (currentPage < pagination.totalPages) handlePageChange(currentPage + 1); }}
-                  className={cn("rounded-xl border-2 border-border/40", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
+                  className={cn("rounded-xl border border-border/40 hover:bg-muted/50 transition-all", currentPage >= pagination.totalPages && "pointer-events-none opacity-50")}
                 />
               </PaginationItem>
             </PaginationContent>
