@@ -42,10 +42,12 @@ export default function MissionVision() {
           </div>
           <div className="md:col-span-7">
             <div className="aspect-[16/9] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg relative group">
-              <div className="w-full h-full bg-primary/5 group-hover:bg-primary/10 transition-colors duration-700" />
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 font-display text-2xl">
-                Compromiso con la Excelencia
-              </div>
+              <img 
+                src="/mision.jpg" 
+                alt="Nuestra Misión" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-primary/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -54,10 +56,12 @@ export default function MissionVision() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center mb-32">
           <div className="md:col-span-7 order-2 md:order-1">
             <div className="aspect-[16/9] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg relative group">
-              <div className="w-full h-full bg-accent/5 group-hover:bg-accent/10 transition-colors duration-700" />
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 font-display text-2xl">
-                Liderazgo Folclórico Digital
-              </div>
+              <img 
+                src="/vision.jpg" 
+                alt="Nuestra Visión" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-accent/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
             </div>
           </div>
           <div className="md:col-span-5 order-1 md:order-2 space-y-8 md:pl-12">

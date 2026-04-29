@@ -41,11 +41,12 @@ export default function History() {
           </div>
           <div className="md:col-span-7">
             <div className="aspect-[16/9] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg group relative">
-              <div className="w-full h-full bg-primary/5 group-hover:bg-primary/10 transition-colors duration-700" />
-              {/* Image Placeholder Context: Representing a traditional workshop with focus on detail */}
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 font-display text-2xl">
-                Artesanía en proceso
-              </div>
+              <img 
+                src="/inicios.JPG" 
+                alt="Artesanía en proceso" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-primary/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -54,11 +55,12 @@ export default function History() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center mb-32">
           <div className="md:col-span-7 order-2 md:order-1">
             <div className="aspect-[3/4] md:aspect-[4/5] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg relative group">
-              <div className="w-full h-full bg-accent/5 group-hover:bg-accent/10 transition-colors duration-700" />
-              {/* Image Placeholder Context: High-end portrait of a woman wearing a pollera and tembleques */}
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 font-display text-2xl text-center px-8">
-                Elegancia Folclórica Premium
-              </div>
+              <img 
+                src="/evolucion.jpg" 
+                alt="Elegancia Folclórica Premium" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-accent/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
             </div>
           </div>
           <div className="md:col-span-5 order-1 md:order-2 space-y-8 md:pl-12">

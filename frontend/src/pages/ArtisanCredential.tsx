@@ -78,13 +78,10 @@ export default function ArtisanCredential() {
                 <div className="pt-4 flex justify-between items-end">
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground/60">Firma Autorizada</p>
-                    <div className="font-script text-2xl text-foreground/70">Camila R.</div>
+                    <div className="font-script text-2xl text-foreground/70">Jacqueline Quiroz</div>
                   </div>
-                  <div className="h-16 w-16 bg-white rounded-xl shadow-sm border border-border/40 flex items-center justify-center p-2">
-                    {/* Placeholder for QR Code */}
-                    <div className="w-full h-full bg-muted/50 rounded flex items-center justify-center text-[8px] text-center font-bold uppercase text-muted-foreground/40">
-                      Verificar <br /> QR
-                    </div>
+                  <div className="h-16 w-16 flex items-center justify-center">
+                    <img src="/qr.png" alt="QR de Verificación" className="w-full h-full object-contain" />
                   </div>
                 </div>
               </div>

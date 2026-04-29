@@ -72,7 +72,7 @@ settings.put("/", authMiddleware, requireAdmin, async (c) => {
           console.log(`Migrating products from category "${oldCat.id}" to "${newCat.id}"...`);
           await Product.updateMany(
             { category: oldCat.id },
-            { $set: { category: newCat.id } }
+            { $set: { "category.$": newCat.id } }
           );
         }
       }

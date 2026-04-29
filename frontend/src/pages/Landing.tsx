@@ -179,7 +179,7 @@ export default function Landing() {
                 )}
                 <Card className="p-8 hover:shadow-elegant-lg transition-all duration-300 hover:-translate-y-1 relative z-10">
                   <CardContent className="p-0 space-y-5">
-                    <div className="text-6xl font-bold text-primary/8 -mb-2 font-serif">
+                    <div className="text-6xl font-bold text-primary/8 mb-3 font-serif">
                       {step.number}
                     </div>
                     <div className="w-14 h-14 mx-auto bg-primary/10 rounded-2xl flex items-center justify-center group-hover:bg-primary/15 transition-colors">

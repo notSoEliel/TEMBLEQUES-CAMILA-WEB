@@ -11,7 +11,7 @@ export interface ISizeVariant {
 
 export interface IProduct extends Document {
   name: string;
-  category: ProductCategory;
+  category: ProductCategory[];
   description: string;
   rental_price: number;
   variants: ISizeVariant[];
@@ -37,10 +37,10 @@ const sizeVariantSchema = new Schema<ISizeVariant>(
 const productSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true, trim: true },
-    category: {
+    category: [{
       type: String,
       required: true,
-    },
+    }],
     description: { type: String, required: true },
     rental_price: { type: Number, required: true, min: 0 },
     variants: { type: [sizeVariantSchema], default: [] },

@@ -22,10 +22,20 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductForm {
   name: string;
-  category: string;
+  category: string[];
   description: string;
   rental_price: number;
   variants: SizeVariant[];
@@ -37,7 +47,7 @@ interface ProductForm {
 }
 
 const emptyForm: ProductForm = {
-  name: "", category: "", description: "", rental_price: 0,
+  name: "", category: [], description: "", rental_price: 0,
   variants: [], images: [],
   deposit_settings: { required: false, overrideAmount: "" },
 };
@@ -84,8 +94,8 @@ export default function AdminInventory() {
       setCategories(settings.categories || []);
       setSizeGroups(settings.size_groups || []);
       if (settings.categories?.length > 0) {
-        emptyForm.category = settings.categories[0].id;
-        setForm(f => f.category === "" ? { ...f, category: settings.categories[0].id } : f);
+        // No longer set a default category as it's an array
+        setForm(f => f.category.length === 0 ? { ...f, category: [] } : f);
       }
     } catch (err) {
       console.error(err);
@@ -125,7 +135,7 @@ export default function AdminInventory() {
   const handleEdit = (product: any) => {
     setForm({
       name: product.name,
-      category: product.category,
+      category: Array.isArray(product.category) ? product.category : [product.category],
       description: product.description,
       rental_price: product.rental_price,
       variants: (product.variants || []).map((v: any) => ({
@@ -175,7 +185,6 @@ export default function AdminInventory() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Eliminar este producto?")) return;
     try {
       await adminApi.deleteProduct(id, token!);
       loadProducts();
@@ -207,7 +216,7 @@ export default function AdminInventory() {
   const openPreviewFromProduct = (product: any) => {
     setPreviewProduct({
       name: product.name,
-      category: product.category,
+      category: Array.isArray(product.category) ? product.category : [product.category],
       description: product.description,
       rental_price: product.rental_price,
       variants: product.variants || [],
@@ -243,137 +252,157 @@ export default function AdminInventory() {
         </Button>
       </div>
 
-      {/* Form */}
-      {showForm && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{editingId ? "Editar Producto" : "Nuevo Producto"}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={resetForm}><X className="h-4 w-4" /></Button>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Form Dialog */}
+      <Dialog open={showForm} onOpenChange={(open) => !open && resetForm()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingId ? "Editar Producto" : "Nuevo Producto"}</DialogTitle>
+            <DialogDescription>
+              Completa la información del producto a continuación.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Nombre</Label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                 </div>
+                
+                <div className="space-y-3">
+                  <Label>Categorías</Label>
+                  <div className="grid grid-cols-2 gap-3 border-2 border-border p-4 rounded-xl bg-muted/20">
+                    {categories.map((c) => (
+                      <div key={c.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`cat-${c.id}`} 
+                          checked={form.category.includes(c.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setForm({ ...form, category: [...form.category, c.id] });
+                            } else {
+                              setForm({ ...form, category: form.category.filter(id => id !== c.id) });
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`cat-${c.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {c.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {form.category.length === 0 && (
+                    <p className="text-[10px] text-destructive font-bold uppercase">Selecciona al menos una categoría</p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
-                  <Label>Categoría</Label>
-                  <select
-                    className="flex h-11 w-full rounded-lg border-2 border-border bg-input px-4 py-2 text-sm"
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  >
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                  </select>
+                  <Label>Descripción</Label>
+                  <textarea
+                    ref={textareaRef}
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    required
+                    rows={3}
+                    className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
+                    placeholder="Describe el producto..."
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Descripción</Label>
-                <textarea
-                  ref={textareaRef}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  required
-                  rows={3}
-                  className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
-                  placeholder="Describe el producto..."
-                />
-              </div>
-
-              <div className="space-y-2 max-w-xs">
-                <Label>Precio base por día ($)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.rental_price}
-                  onChange={(e) => setForm({ ...form, rental_price: Number(e.target.value) })}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Precio por defecto. Puedes ajustarlo por talla abajo.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-border p-4 rounded-lg bg-muted/20">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Reserva Fija</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <input
-                      type="checkbox"
-                      id="deposit-required"
-                      checked={form.deposit_settings.required}
-                      onChange={(e) => setForm({
-                        ...form,
-                        deposit_settings: { ...form.deposit_settings, required: e.target.checked }
-                      })}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <Label htmlFor="deposit-required" className="text-sm font-normal cursor-pointer">
-                      Forzar cobro de reserva
-                    </Label>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Si no está marcado, usará la regla global (&gt;$350).
+                  <Label>Precio base por día ($)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={form.rental_price}
+                    onChange={(e) => setForm({ ...form, rental_price: Number(e.target.value) })}
+                    required
+                  />
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase">
+                    Precio por defecto. Puedes ajustarlo por talla abajo.
                   </p>
                 </div>
-                {form.deposit_settings.required && (
+
+                <div className="grid grid-cols-1 gap-4 border border-border p-4 rounded-lg bg-muted/20">
                   <div className="space-y-2">
-                    <Label>Monto Override ($) (Opcional)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={form.deposit_settings.overrideAmount}
-                      onChange={(e) => setForm({
-                        ...form,
-                        deposit_settings: { ...form.deposit_settings, overrideAmount: e.target.value ? Number(e.target.value) : "" }
-                      })}
-                      placeholder="Ej. 50"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Si lo dejas vacío usará el porcentaje global de reserva.
+                    <Label>Reserva Fija</Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Checkbox
+                        id="deposit-required"
+                        checked={form.deposit_settings.required}
+                        onCheckedChange={(checked) => setForm({
+                          ...form,
+                          deposit_settings: { ...form.deposit_settings, required: !!checked }
+                        })}
+                      />
+                      <Label htmlFor="deposit-required" className="text-sm font-normal cursor-pointer">
+                        Forzar cobro de reserva
+                      </Label>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold mt-1">
+                      Si no está marcado, usará la regla global (&gt;$350).
                     </p>
                   </div>
-                )}
+                  {form.deposit_settings.required && (
+                    <div className="space-y-2">
+                      <Label>Monto Override ($) (Opcional)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={form.deposit_settings.overrideAmount}
+                        onChange={(e) => setForm({
+                          ...form,
+                          deposit_settings: { ...form.deposit_settings, overrideAmount: e.target.value ? Number(e.target.value) : "" }
+                        })}
+                        placeholder="Ej. 50"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              <SizeManager
-                category={form.category}
-                sizeGroups={sizeGroups}
-                basePrice={form.rental_price}
-                variants={form.variants}
-                onChange={(variants) => setForm({ ...form, variants })}
-              />
+            <SizeManager
+              category={form.category[0] || ""}
+              sizeGroups={sizeGroups}
+              basePrice={form.rental_price}
+              variants={form.variants}
+              onChange={(variants) => setForm({ ...form, variants })}
+            />
 
-              <Separator />
+            <Separator />
 
-              <ImageGalleryManager
-                images={form.images}
-                onChange={(images) => setForm({ ...form, images })}
-              />
+            <ImageGalleryManager
+              images={form.images}
+              onChange={(images) => setForm({ ...form, images })}
+            />
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Button type="submit" disabled={saving} className="flex-1 sm:flex-none">
-                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  {editingId ? "Guardar Cambios" : "Crear Producto"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={openPreviewFromForm}
-                  disabled={!form.name}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Vista Previa
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openPreviewFromForm}
+                disabled={!form.name || form.category.length === 0}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Vista Previa
+              </Button>
+              <Button type="submit" disabled={saving || form.category.length === 0}>
+                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {editingId ? "Guardar Cambios" : "Crear Producto"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Separator />
 
@@ -402,17 +431,25 @@ export default function AdminInventory() {
                       />
                       <div>
                         <h3 className="font-bold">{product.name}</h3>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Badge variant="outline" className="text-xs">{categories.find(c => c.id === product.category)?.label || product.category}</Badge>
-                          <span className="text-sm text-primary font-bold">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          {Array.isArray(product.category) ? product.category.map(catId => (
+                            <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
+                              {categories.find(c => c.id === catId)?.label || catId}
+                            </Badge>
+                          )) : (
+                            <Badge variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
+                              {categories.find(c => c.id === product.category)?.label || product.category}
+                            </Badge>
+                          )}
+                          <span className="text-sm text-primary font-bold ml-1">
                             {range.min === range.max
                               ? `$${range.min}/día`
                               : `$${range.min} – $${range.max}/día`}
                           </span>
+                        </div>
                           <span className="text-xs text-muted-foreground">
                             Stock: {stock} · {sizeCount} talla{sizeCount !== 1 ? "s" : ""}
                           </span>
-                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -422,9 +459,17 @@ export default function AdminInventory() {
                       <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />Editar
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(product._id)}>
-                        <Trash2 className="h-3.5 w-3.5 mr-1" />Eliminar
-                      </Button>
+                      <ConfirmModal
+                        title="Eliminar Producto"
+                        description="¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer."
+                        confirmText="Eliminar"
+                        variant="destructive"
+                        onConfirm={() => handleDelete(product._id)}
+                      >
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="h-3.5 w-3.5 mr-1" />Eliminar
+                        </Button>
+                      </ConfirmModal>
                     </div>
                   </CardContent>
                 </Card>
