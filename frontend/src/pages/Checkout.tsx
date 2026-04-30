@@ -45,12 +45,7 @@ function calculateDays(start: string, end: string): number {
   return Math.max(Math.ceil(diff / (1000 * 60 * 60 * 24)), 1);
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", {
-    style: "currency",
-    currency: "PAB",
-  }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
 
 const DEPOSIT_RATE = 0.25;
 
@@ -545,8 +540,8 @@ export default function Checkout() {
               </div>
 
               <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10 flex flex-col items-center justify-center text-center">
-                <span className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-1">Monto a Pagar Hoy</span>
-                <span className="font-black text-3xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
+                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Monto a Pagar Hoy</span>
+                <span className="font-black text-2xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
               </div>
 
               {paymentType === "reservation" && (

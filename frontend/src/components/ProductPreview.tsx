@@ -18,7 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface ProductPreviewData {
   name: string;
-  category: string;
+  category: string[];
   description: string;
   rental_price: number;
   variants: SizeVariant[];
@@ -165,7 +165,11 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                 <div className="space-y-6">
                   <div>
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <Badge variant="outline">{CATEGORY_LABELS[product.category] || product.category}</Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {product.category.map((cat) => (
+                          <Badge key={cat} variant="outline">{CATEGORY_LABELS[cat] || cat}</Badge>
+                        ))}
+                      </div>
                       {availableVariants.length > 0 ? (
                         <Badge variant="default">Disponible</Badge>
                       ) : (

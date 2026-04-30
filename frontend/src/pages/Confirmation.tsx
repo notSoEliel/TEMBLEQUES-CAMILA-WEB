@@ -7,9 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Calendar, ArrowRight, Loader2 } from "lucide-react";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
 
 const STATUS_LABELS: Record<string, string> = {
   paid:      "Pagado",

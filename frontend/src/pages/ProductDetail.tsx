@@ -379,21 +379,6 @@ export default function ProductDetail() {
             </Card>
           </div>
 
-          <Separator />
-
-          {/* Deposit Alert */}
-          <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-4 flex gap-3">
-            <Info className="h-5 w-5 text-amber-600 shrink-0" />
-            <div className="text-sm">
-              <p className="font-bold text-amber-900">Alerta de Reserva</p>
-              <p className="text-amber-800 leading-snug mt-0.5">
-                Cada ítem requiere una reserva de garantía inicial. Este monto se retiene y libera al devolver la prenda sin daños.
-              </p>
-            </div>
-          </div>
-
-          <Separator />
-
           {/* CTA */}
           {isAvailable ? (
             <Button
