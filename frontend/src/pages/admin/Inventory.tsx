@@ -432,7 +432,7 @@ export default function AdminInventory() {
                       <div>
                         <h3 className="font-bold">{product.name}</h3>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                          {Array.isArray(product.category) ? product.category.map(catId => (
+                          {Array.isArray(product.category) ? product.category.map((catId: string) => (
                             <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
                               {categories.find(c => c.id === catId)?.label || catId}
                             </Badge>

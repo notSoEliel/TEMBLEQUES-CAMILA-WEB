@@ -9,12 +9,7 @@ import { ArrowLeft, Loader2, CreditCard, Trash2, Shield, CheckCircle2, Plus, Min
 import ErrorPage from "@/pages/ErrorPage";
 import { useErrorModal } from "@/components/ErrorModal";
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", {
-    style: "currency",
-    currency: "PAB",
-  }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
 
 export default function OrderReview() {
   const navigate = useNavigate();
@@ -356,8 +351,8 @@ export default function OrderReview() {
               </div>
 
               <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 overflow-hidden flex flex-col items-center justify-center text-center">
-                <span className="font-bold text-primary text-xs uppercase tracking-widest mb-1">Monto a pagar hoy</span>
-                <span className="font-black text-3xl text-primary whitespace-nowrap">{formatCurrency(amountToPayNow)}</span>
+                <span className="font-bold text-primary text-[10px] uppercase tracking-widest mb-1">Monto a pagar hoy</span>
+                <span className="font-black text-2xl text-primary whitespace-nowrap">{formatCurrency(amountToPayNow)}</span>
               </div>
 
               {paymentType === "reservation" && (

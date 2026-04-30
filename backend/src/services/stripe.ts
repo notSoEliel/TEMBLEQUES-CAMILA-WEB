@@ -32,7 +32,7 @@ export async function createStripeSession(
 
   const line_items = rentals.map((rental) => ({
     price_data: {
-      currency: "usd",
+      currency: "pab",
       product_data: {
         name: `${rental.payment_type === "full" ? "Pago Completo" : "Reserva (25%)"}: ${rental.product_id.name}`,
         description: `Talla: ${rental.selected_size} | ${rental.start_date.toLocaleDateString("es-PA")} -> ${rental.end_date.toLocaleDateString("es-PA")}`,
@@ -42,10 +42,13 @@ export async function createStripeSession(
     quantity: 1,
   }));
 
+  const expiresAt = Math.floor(Date.now() / 1000) + (30 * 60); // 30 minutes from now
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items,
     mode: "payment",
+    expires_at: expiresAt,
     payment_intent_data: {
       setup_future_usage: "off_session",
     },
@@ -234,7 +237,7 @@ async function createDepositHold(rental: IRental): Promise<void> {
   const stripe = await getStripeClient();
   const intent = await stripe.paymentIntents.create({
     amount: toCents(rental.deposit_amount),
-    currency: "usd",
+    currency: "pab",
     customer: rental.stripe_customer_id!,
     payment_method: rental.stripe_payment_method_id!,
     confirm: true,
@@ -277,7 +280,7 @@ export async function captureDepositForDamage(rental: IRental): Promise<void> {
 
   const intent = await stripe.paymentIntents.create({
     amount: toCents(rental.deposit_amount),
-    currency: "usd",
+    currency: "pab",
     customer: rental.stripe_customer_id!,
     payment_method: rental.stripe_payment_method_id!,
     confirm: true,
@@ -302,7 +305,7 @@ export async function chargeLateFee(rental: IRental): Promise<void> {
   const stripe = await getStripeClient();
   const intent = await stripe.paymentIntents.create({
     amount: toCents(rental.late_fee_amount),
-    currency: "usd",
+    currency: "pab",
     customer: rental.stripe_customer_id!,
     payment_method: rental.stripe_payment_method_id!,
     confirm: true,

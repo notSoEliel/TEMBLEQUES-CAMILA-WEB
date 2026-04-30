@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { productsApi } from "@/services/api";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface BookedRange {
@@ -258,11 +258,11 @@ export default function AvailabilityCalendar({
   return (
     <div className="space-y-4 relative">
       {/* 6 PM Warning Banner */}
-      <div className={`border-2 p-3 text-sm flex gap-3 items-start font-medium shadow-sm ${isPast6pm ? "bg-amber-100 border-amber-900 text-amber-900" : "bg-muted border-black text-foreground"}`}>
-        <span className="text-xs font-black uppercase py-1 px-2 border border-current">Nota</span>
+      <div className={`border p-4 text-sm flex gap-4 items-start font-medium shadow-elegant rounded-[2rem] ${isPast6pm ? "bg-destructive/5 border-destructive/20 text-foreground" : "bg-primary/5 border-primary/20 text-foreground"}`}>
+        <span className={`text-[10px] font-black uppercase py-1 px-2 border rounded-full shrink-0 ${isPast6pm ? "border-destructive text-destructive" : "border-primary text-primary"}`}>Nota</span>
         <p className="leading-snug">
           Las reservas para el día siguiente solo están disponibles hasta las <strong>6:00 PM</strong>.
-          {isPast6pm && <span className="block mt-1 text-destructive font-bold">Como ya pasaron las 6:00 PM, la fecha más próxima para alquilar es pasado mañana.</span>}
+          {isPast6pm && <span className="block mt-2 text-destructive font-bold text-xs uppercase tracking-tight">Como ya pasaron las 6:00 PM, la fecha más próxima para alquilar es pasado mañana.</span>}
         </p>
       </div>
 
@@ -300,7 +300,7 @@ export default function AvailabilityCalendar({
           const isDisabled = state === "past" || state === "booked";
 
           let cellClass =
-            "h-9 w-full flex items-center justify-center text-sm transition-colors select-none rounded-none ";
+            "h-9 w-9 mx-auto flex items-center justify-center text-sm transition-all duration-200 select-none rounded-full ";
 
           switch (state) {
             case "past":
@@ -343,15 +343,15 @@ export default function AvailabilityCalendar({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-none bg-primary inline-block" /> Seleccionado
+          <span className="w-3 h-3 rounded-full bg-primary inline-block" /> Seleccionado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-none bg-primary/15 inline-block" /> Rango
+          <span className="w-3 h-3 rounded-full bg-primary/15 inline-block" /> Rango
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-none bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
+          <span className="w-3 h-3 rounded-full bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
         </span>
       </div>
 
@@ -361,20 +361,22 @@ export default function AvailabilityCalendar({
 
       {/* Range conflict warning */}
       {hasRangeConflict && (
-        <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-none px-3 py-2 font-medium flex items-center gap-2">
-          <span>Error:</span> El rango seleccionado se solapa con una reserva existente. Por favor elige otras fechas.
+        <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-full px-4 py-2 font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+          <AlertTriangle className="h-4 w-4" />
+          <span>Error: El rango seleccionado se solapa con una reserva existente.</span>
         </div>
       )}
 
       {/* Stock indicator */}
       {startDate && endDate && !hasRangeConflict && (
         <div
-          className={`text-sm px-3 py-2 border font-medium flex items-center gap-2 ${
+          className={`text-sm px-4 py-2 border font-medium flex items-center gap-2 rounded-full shadow-sm animate-in fade-in slide-in-from-top-1 ${
             availableUnits > 0
-              ? "bg-muted border-black text-foreground"
-              : "bg-destructive/10 border-destructive/30 text-destructive"
+              ? "bg-primary/5 border-primary/20 text-foreground"
+              : "bg-destructive/5 border-destructive/20 text-destructive"
           }`}
         >
+          {availableUnits > 0 && <CheckCircle2 className="h-4 w-4 text-primary" />}
           {availableUnits > 0
             ? `Confirmado: ${availableUnits} unidad${availableUnits !== 1 ? "es" : ""} disponible${availableUnits !== 1 ? "s" : ""} para este período`
             : "Error: Sin unidades disponibles para las fechas seleccionadas"}

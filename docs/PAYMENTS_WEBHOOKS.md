@@ -58,6 +58,13 @@ sequenceDiagram
     B->>B: Actualiza MongoDB (Status: reserved/paid)
 ```
 
+### Limpieza de Carritos Abandonados (Pedidos Colgados)
+
+Para evitar que los usuarios bloqueen fechas del inventario sin completar el pago, se implementó un sistema de doble protección:
+
+1. **Expiración Estricta en Stripe**: Al crear la sesión de Checkout (`createStripeSession`), se envía el parámetro `expires_at` configurado exactamente a **30 minutos** desde el momento actual. Si el usuario no paga en ese lapso, Stripe invalida el enlace y dispara el webhook `checkout.session.expired`, el cual nuestro backend intercepta para marcar la reserva como `cancelled`.
+2. **Cron Job Local (Red de Seguridad)**: En caso de que el webhook de Stripe falle o el servidor sufra intermitencias, existe una tarea programada (`cron.ts`) que se ejecuta cada 5 minutos. Este script busca reservas en estado `pending` con más de 35 minutos de antigüedad y las cancela directamente en la base de datos.
+
 ---
 
 ## 3. Seguridad y Validación con Svix

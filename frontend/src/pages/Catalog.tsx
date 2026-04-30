@@ -421,7 +421,7 @@ export default function Catalog() {
               return (
                 <Link key={product._id} to={`/product/${product._id}`} className="h-full">
                   <Card className="group overflow-hidden transition-all duration-200 border border-border/60 shadow-elegant hover:translate-x-1  h-full flex flex-col">
-                    <div className="aspect-[3/4] overflow-hidden bg-muted relative border-b-2 border-black">
+                    <div className="aspect-[3/4] overflow-hidden bg-muted relative">
                       <img
                         src={product.images?.[0] || "https://picsum.photos/seed/default/400/500"}
                         alt={product.name}

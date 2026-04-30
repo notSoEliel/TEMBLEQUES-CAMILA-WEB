@@ -163,13 +163,6 @@ export default function Cart() {
                   <span className="font-semibold">{formatCurrency(totalDeposit)}</span>
                 </div>
 
-                {/* Info garantía */}
-                <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex gap-2">
-                  <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-800 leading-relaxed">
-                    La reserva de {formatCurrency(totalDeposit)} se retendrá temporalmente como garantía.
-                  </p>
-                </div>
 
                 <Separator />
 

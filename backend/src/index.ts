@@ -13,6 +13,7 @@ import rentalRoutes from "./routes/rentals.js";
 import adminRoutes from "./routes/admin.js";
 import stripeRoutes from "./routes/stripe.js";
 import settingsRoutes from "./routes/settings.js";
+import { startCronJobs } from "./services/cron.js";
 
 const app = new Hono();
 
@@ -83,6 +84,8 @@ async function start() {
   await connectDB();
   await seedDatabase();
   await migrateToVariants();
+
+  startCronJobs();
 
   console.log(`[Server] Tembleques Camila API running on port ${PORT}`);
 }
