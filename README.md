@@ -16,7 +16,8 @@
 ---
 
 ## Integrantes del Grupo
-* **Angelica Rodriguez** - *Desarrolladora Principal y QA*
+-  *Angelica Rodriguez* - 2-751-41
+-  *Eliel Garcia* - 8-990-1192
 
 ---
 
