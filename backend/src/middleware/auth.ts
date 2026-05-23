@@ -18,6 +18,27 @@ export const authMiddleware = async (c: any, next: () => Promise<void>) => {
 
   const token = authHeader.split(" ")[1];
 
+  // Clerk Mock Auth Bypass for E2E Testing
+  if (token === "mock-admin-token" || token === "mock-client-token") {
+    const role = token === "mock-admin-token" ? "admin" : "client";
+    const email = `${role}@test.com`;
+    const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
+    const clerkId = `mock_${role}_id`;
+
+    let user = await User.findOne({ clerkId });
+    if (!user) {
+      user = await User.create({
+        clerkId,
+        name,
+        email,
+        role,
+      });
+    }
+    c.set("user", user);
+    await next();
+    return;
+  }
+
   let payload: Awaited<ReturnType<typeof verifyToken>>;
   try {
     payload = await verifyToken(token, {

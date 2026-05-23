@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { Settings } from "../models/Settings.js";
+import { Settings, type ICategoryConfig } from "../models/Settings.js";
 import { Product } from "../models/Product.js";
 import { authMiddleware, requireAdmin } from "../middleware/auth.js";
 import { z } from "zod";
@@ -67,7 +67,7 @@ settings.put("/", authMiddleware, requireAdmin, async (c) => {
 
     for (const newCat of newCategories) {
       if (newCat._id) {
-        const oldCat = oldCategories.find(c => (c as any)._id.toString() === newCat._id);
+        const oldCat = oldCategories.find((c: ICategoryConfig) => c._id && c._id.toString() === newCat._id);
         if (oldCat && oldCat.id !== newCat.id) {
           console.log(`Migrating products from category "${oldCat.id}" to "${newCat.id}"...`);
           await Product.updateMany(

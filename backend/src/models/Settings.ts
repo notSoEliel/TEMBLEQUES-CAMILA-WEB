@@ -1,6 +1,7 @@
-import mongoose, { Schema, type Document } from "mongoose";
+import mongoose, { Schema, type Document, type Types } from "mongoose";
 
 export interface ICategoryConfig {
+  _id?: Types.ObjectId;
   id: string;
   label: string;
 }

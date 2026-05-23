@@ -32,6 +32,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const mockToken = localStorage.getItem("mock_auth_token");
+    if (mockToken) {
+      const role = mockToken === "mock-admin-token" ? "admin" : "client";
+      const email = `${role}@test.com`;
+      const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
+      const clerkId = `mock_${role}_id`;
+
+      const fetchMockUser = async () => {
+        try {
+          const res = await fetch("/api/auth/me", {
+            headers: { Authorization: `Bearer ${mockToken}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+            setToken(mockToken);
+          } else {
+            setUser({
+              id: clerkId,
+              clerkId,
+              name,
+              email,
+              role,
+            });
+            setToken(mockToken);
+          }
+        } catch {
+          setUser(null);
+          setToken(null);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchMockUser();
+      return;
+    }
+
     if (!isLoaded) return;
 
     if (!isSignedIn || !clerkUser) {
@@ -90,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    localStorage.removeItem("mock_auth_token");
     signOut();
     setUser(null);
     setToken(null);

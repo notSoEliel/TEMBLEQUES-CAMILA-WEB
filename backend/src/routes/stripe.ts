@@ -4,10 +4,13 @@ import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { checkAvailability } from "../services/availability.js";
 import { AppError } from "../lib/errors.js";
+import { type IProduct } from "../models/Product.js";
+import { type IUser } from "../models/User.js";
 import {
   createStripeSession,
   handleStripeWebhook,
   isStripeConfigured,
+  type IPopulatedRental,
 } from "../services/stripe.js";
 
 const stripe = new Hono<{ Variables: AuthVariables }>();
@@ -22,7 +25,7 @@ const createSessionSchema = z.object({
 
 // ─── POST /api/stripe/create-checkout-session ─────────────────────────────────
 stripe.post("/create-checkout-session", authMiddleware, async (c) => {
-  const user = c.get("user") as any;
+  const user = c.get("user") as IUser;
   const body = await c.req.json();
   const { orderGroupId, rentalIds: inputIds, rentalId: inputId, paymentType } = createSessionSchema.parse(body);
   
@@ -66,8 +69,9 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
 
   // Re-check availability for all
   for (const rental of rentals) {
+    const product = rental.product_id as unknown as IProduct;
     const isAvailable = await checkAvailability(
-      rental.product_id._id.toString(),
+      product._id.toString(),
       rental.start_date,
       rental.end_date,
       rental.selected_size,
@@ -78,7 +82,7 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
       rental.status = "cancelled";
       await rental.save();
       throw new AppError(
-        `El producto "${rental.product_id.name}" ya no está disponible para las fechas seleccionadas.`,
+        `El producto "${product.name}" ya no está disponible para las fechas seleccionadas.`,
         409,
         "PRODUCT_DATES_UNAVAILABLE",
       );
@@ -100,13 +104,14 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     return c.json({
       mode: "demo",
       message: "Pago simulado exitosamente (modo demo).",
+      sessionId: rentals[0].stripe_session_id,
       rentals: rentals.map(r => ({ id: r._id, status: r.status })),
     });
   }
 
   // Real Stripe
   const origin = c.req.header("origin") || "http://localhost:5173";
-  const { url, sessionId } = await createStripeSession(rentals as any, origin);
+  const { url, sessionId } = await createStripeSession(rentals as unknown as IPopulatedRental[], origin);
 
   for (const rental of rentals) {
     rental.stripe_session_id = sessionId;

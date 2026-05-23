@@ -15,6 +15,22 @@
 
 ---
 
+## Integrantes del Grupo
+* **Angelica Rodriguez** - *Desarrolladora Principal y QA*
+
+---
+
+## Entregables del Parcial 2
+Los documentos requeridos para la evaluación se encuentran en la raíz de este repositorio:
+1. **[PRD.md](PRD.md):** Documento de Requisitos de Producto.
+2. **[REQUIREMENTS.md](REQUIREMENTS.md):** Requerimientos Funcionales y No Funcionales explícitos.
+3. **[ARCHITECTURE.md](ARCHITECTURE.md):** Visión arquitectónica, capas y componentes.
+4. **[STARTUP_SHEET.md](STARTUP_SHEET.md):** Guía de arranque rápido y comandos.
+5. **[PITCH.md](PITCH.md):** Pitch comercial corto de valor.
+6. **[README.md](README.md):** Visión general e integrantes del grupo.
+
+---
+
 ## Índice General de Documentación
 
 Navegue rápidamente a través de los diferentes módulos del sistema:

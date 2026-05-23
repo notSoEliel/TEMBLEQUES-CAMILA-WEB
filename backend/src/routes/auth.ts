@@ -17,16 +17,18 @@ auth.get("/me", authMiddleware, async (c) => {
   const user = c.get("user");
 
   // En entorno local los webhooks pueden fallar. Sincronizamos el rol de Clerk al cargar la sesión.
-  try {
-    const clerkUser = await clerkClient.users.getUser(user.clerkId);
-    const role = (clerkUser.publicMetadata?.role as "client" | "admin") ?? "client";
-    
-    if (user.role !== role) {
-      user.role = role;
-      await user.save();
+  if (!user.clerkId.startsWith("mock_")) {
+    try {
+      const clerkUser = await clerkClient.users.getUser(user.clerkId);
+      const role = (clerkUser.publicMetadata?.role as "client" | "admin") ?? "client";
+      
+      if (user.role !== role) {
+        user.role = role;
+        await user.save();
+      }
+    } catch (err) {
+      console.error("[Auth] Error sync role from Clerk on /me:", err);
     }
-  } catch (err) {
-    console.error("[Auth] Error sync role from Clerk on /me:", err);
   }
 
   return c.json({

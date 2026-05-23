@@ -1,5 +1,10 @@
 import { Rental, type IRental } from "../models/Rental.js";
 import { AppError } from "../lib/errors.js";
+import { type IProduct } from "../models/Product.js";
+
+export type IPopulatedRental = Omit<IRental, "product_id"> & {
+  product_id: IProduct;
+};
 
 function toCents(amount: number): number {
   return Math.max(0, Math.round(amount * 100));
@@ -25,7 +30,7 @@ export function isStripeConfigured(): boolean {
 }
 
 export async function createStripeSession(
-  rentals: (IRental & { _id: any; product_id: any })[],
+  rentals: IPopulatedRental[],
   origin: string,
 ): Promise<{ url: string; sessionId: string }> {
   const stripe = await getStripeClient();
@@ -107,7 +112,7 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
       const orderGroupId = session.metadata?.orderGroupId;
       
-      let rentalsToUpdate = [];
+      let rentalsToUpdate: IRental[] = [];
       if (orderGroupId) {
         rentalsToUpdate = await Rental.find({ order_group_id: orderGroupId });
       } else {
@@ -146,7 +151,7 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
       const orderGroupId = session.metadata?.orderGroupId;
       
-      let rentalsToCancel = [];
+      let rentalsToCancel: IRental[] = [];
       if (orderGroupId) {
         rentalsToCancel = await Rental.find({ order_group_id: orderGroupId, status: "pending" });
       } else {
