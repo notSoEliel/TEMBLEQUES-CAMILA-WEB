@@ -231,7 +231,12 @@ export default function Checkout() {
     selectedVariant?.price_override ?? product?.rental_price ?? 0;
   const days = calculateDays(startDate, endDate);
   
-  const subtotal = isMulti ? cartTotal : (days > 0 ? days * pricePerDay : 0);
+  // cartTotal already includes 7% ITBMS from ProductDetail.tsx. We extract it to get the base subtotal.
+  const baseSubtotal = isMulti 
+    ? items.reduce((acc, item) => acc + (item.price / 1.07) * item.quantity, 0)
+    : (days > 0 ? days * pricePerDay : 0);
+
+  const subtotal = baseSubtotal;
   const discount = appliedCoupon ? (appliedCoupon.discount_type === "percentage" ? Math.round(subtotal * (appliedCoupon.value / 100) * 100) / 100 : Math.min(subtotal, appliedCoupon.value)) : 0;
   const netSubtotal = Math.max(0, subtotal - discount);
   const itbms = netSubtotal * 0.07;
