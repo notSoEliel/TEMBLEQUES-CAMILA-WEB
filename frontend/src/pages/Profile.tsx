@@ -40,21 +40,10 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-400 border-gray-200",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente",
-  reserved: "Reservado",
-  paid: "Pagado",
-  confirmed: "Confirmado",
-  delivered: "En tu poder",
-  returned: "Devuelto",
-  late: "Atrasado",
-  cancelled: "Cancelado",
-};
-
 export default function Profile() {
-  const { user, token, updateProfile } = useAuth();
+  const { user, token, updateProfile, logout } = useAuth();
   const { errorModal, showError } = useErrorModal();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [lastOrder, setLastOrder] = useState<any | null>(null);
@@ -70,6 +59,17 @@ export default function Profile() {
   });
   
   const activeTab = (searchParams.get("tab") as TabType) || "account";
+
+  const STATUS_LABELS: Record<string, string> = {
+    pending: t("status.pending"),
+    reserved: t("status.reserved"),
+    paid: t("status.paid"),
+    confirmed: t("status.confirmed"),
+    delivered: t("status.delivered"),
+    returned: t("status.returned"),
+    late: t("status.late"),
+    cancelled: t("status.cancelled"),
+  };
 
   useEffect(() => {
     if (token) {
@@ -91,13 +91,11 @@ export default function Profile() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Get only the most recent rentals
       const response = await rentalsApi.my(token!, { page: 1, limit: 10, view: "active" });
       const rawRentals = response.data;
       setTotalRentals(response.pagination.total);
 
       if (rawRentals.length > 0) {
-        // Find all rentals in the same group as the most recent one
         const latest = rawRentals[0];
         const gid = latest.order_group_id;
         
@@ -158,7 +156,7 @@ export default function Profile() {
 
   const nameParts = user?.name.split(" ") || ["", ""];
   const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ");
+  const locale = language === "en" ? "en-US" : "es-PA";
 
   return (
     <div className="bg-background min-h-screen pt-24 pb-16 px-6">
@@ -284,27 +282,27 @@ export default function Profile() {
                     </div>
                     <div className="space-y-2">
                       <Badge className="bg-primary/5 text-primary border border-primary/20 rounded-full px-4 py-0.5 text-[9px] font-black tracking-widest uppercase">
-                        Próximamente
+                        {t("profile.upcoming")}
                       </Badge>
-                      <h3 className="text-2xl font-display font-black leading-tight text-foreground">Club Tembleques</h3>
+                      <h3 className="text-2xl font-display font-black leading-tight text-foreground">{t("profile.clubTitle")}</h3>
                     </div>
                     <p className="text-muted-foreground text-xs leading-relaxed italic">
-                      "Accede a preventas exclusivas y eventos culturales."
+                      "{t("profile.clubDesc")}"
                     </p>
                   </div>
                 </Card>
                 <Card className="border-none shadow-elegant bg-primary/5 rounded-[2.5rem] p-10">
                   <div className="space-y-4">
                     <CreditCard className="h-8 w-8 text-primary/40 mx-auto" />
-                    <h3 className="text-lg font-bold text-center">Pagos Seguros</h3>
-                    <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-black">Certificación Stripe</p>
+                    <h3 className="text-lg font-bold text-center">{t("profile.securePaymentsTitle")}</h3>
+                    <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-black">{t("profile.securePaymentsDesc")}</p>
                   </div>
                 </Card>
               </div>
             </div>
           )}
 
-          {/* MIS ALQUILERES (RESUMEN - SOLO EL ÚLTIMO) */}
+          {/* MIS ALQUILERES */}
           {activeTab === "rentals" && (
             <div className="space-y-12">
               {loading ? (
@@ -317,10 +315,10 @@ export default function Profile() {
                     <div className="flex items-center justify-between">
                       <h3 className="text-2xl font-display font-bold italic flex items-center gap-3">
                         <Clock className="h-6 w-6 text-primary" />
-                        Pedido Reciente
+                        {t("profile.recentOrderTitle")}
                       </h3>
                       <Link to="/profile/orders" className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2 hover:opacity-70 transition-opacity">
-                        Ver historial completo <ArrowUpRight className="h-4 w-4" />
+                        {t("profile.viewFullHistory")} <ArrowUpRight className="h-4 w-4" />
                       </Link>
                     </div>
 
@@ -335,7 +333,7 @@ export default function Profile() {
                             />
                             {lastOrder.isBundle && (
                               <Badge className="absolute top-4 left-4 bg-black/60 text-white border-none rounded-full px-4 font-black text-[9px] uppercase tracking-widest">
-                                Bundle: {orderItemsCount} piezas
+                                {t("profile.bundle")}: {orderItemsCount} {t("profile.pieces")}
                               </Badge>
                             )}
                           </div>
@@ -344,7 +342,7 @@ export default function Profile() {
                               <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Ref: #{lastOrder._id.slice(-8).toUpperCase()}</p>
                                 <h4 className="text-3xl font-display font-bold leading-tight">
-                                  {lastOrder.isBundle ? "Tu Colección Folclórica" : lastOrder.product_id?.name}
+                                  {lastOrder.isBundle ? t("profile.folkloreCollection") : lastOrder.product_id?.name}
                                 </h4>
                               </div>
                               <Badge className={cn("rounded-full px-5 py-1.5 text-[9px] font-black tracking-widest uppercase border", STATUS_COLORS[lastOrder.status])}>
@@ -355,12 +353,12 @@ export default function Profile() {
                             <div className="flex items-center gap-8 text-xs font-bold text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {new Date(lastOrder.start_date).toLocaleDateString()}
+                                {new Date(lastOrder.start_date + "T12:00:00").toLocaleDateString(locale)}
                               </div>
                               <ChevronRight className="h-3 w-3 opacity-20" />
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {new Date(lastOrder.end_date).toLocaleDateString()}
+                                {new Date(lastOrder.end_date + "T12:00:00").toLocaleDateString(locale)}
                               </div>
                             </div>
                             
@@ -368,12 +366,12 @@ export default function Profile() {
                             
                             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                               <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">Inversión Cultural</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">{t("profile.culturalInvestment")}</p>
                                 <span className="text-3xl font-display font-black text-primary">{formatCurrency(lastOrder.totalPrice)}</span>
                               </div>
                               <Button asChild variant="outline" className="rounded-full px-8 h-10 shadow-sm font-bold border-primary/30 text-primary hover:bg-primary/5">
                                 <Link to="/profile/orders">
-                                  Gestionar Alquiler <ChevronRight className="h-4 w-4 ml-2" />
+                                  {t("profile.manageRental")} <ChevronRight className="h-4 w-4 ml-2" />
                                 </Link>
                               </Button>
                             </div>
@@ -384,10 +382,10 @@ export default function Profile() {
                   </div>
 
                   <div className="space-y-8">
-                    <h3 className="text-2xl font-display font-bold italic">Resumen</h3>
+                    <h3 className="text-2xl font-display font-bold italic">{t("checkout.summaryTitle")}</h3>
                     <Card className="border-none shadow-elegant rounded-[2.5rem] p-10 space-y-10 bg-muted/20">
                       <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total de Alquileres</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("profile.totalRentals")}</p>
                         <p className="text-6xl font-display font-black">{totalRentals}</p>
                       </div>
                       <Separator className="bg-border/40" />
@@ -397,8 +395,8 @@ export default function Profile() {
                             <Heart className="h-6 w-6" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">Pieza Favorita</p>
-                            <p className="text-xs text-muted-foreground">Tembleques de Perlas</p>
+                            <p className="text-sm font-bold">{t("profile.favoritePiece")}</p>
+                            <p className="text-xs text-muted-foreground">{t("profile.favoritePieceVal")}</p>
                           </div>
                         </div>
                       </div>
@@ -411,41 +409,41 @@ export default function Profile() {
                     <ShoppingBag className="h-12 w-12" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-3xl font-display font-bold italic">Tu armario folclórico está vacío.</h3>
+                    <h3 className="text-3xl font-display font-bold italic">{t("profile.emptyArmarioTitle")}</h3>
                     <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-                      Descubre piezas únicas diseñadas por artesanos panameños para tus momentos más especiales.
+                      {t("profile.emptyArmarioDesc")}
                     </p>
                   </div>
                   <Button className="rounded-full px-12 h-11 shadow-elegant font-bold" onClick={() => window.location.href='/catalog'}>
-                    Explorar Catálogo
+                    {t("cart.exploreBtn")}
                   </Button>
                 </Card>
               )}
             </div>
           )}
 
-          {/* AJUSTES (PROXIMAMENTE) */}
+          {/* AJUSTES */}
           {activeTab === "settings" && (
             <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
               <div className="space-y-2">
-                <h3 className="text-3xl font-display font-bold">Configuración</h3>
-                <p className="text-sm text-muted-foreground">Gestiona tus preferencias de seguridad y notificaciones.</p>
+                <h3 className="text-3xl font-display font-bold">{t("profile.settings")}</h3>
+                <p className="text-sm text-muted-foreground">{t("profile.settingsDesc")}</p>
               </div>
               
               <Card className="border-none shadow-elegant rounded-[2.5rem] p-10 space-y-10">
                 <div className="space-y-8">
                   <div className="flex items-center justify-between opacity-40">
                     <div className="space-y-1">
-                      <p className="font-bold">Notificaciones por WhatsApp</p>
-                      <p className="text-xs text-muted-foreground">Alertas de entrega en tiempo real.</p>
+                      <p className="font-bold">{t("profile.whatsappNotifications")}</p>
+                      <p className="text-xs text-muted-foreground">{t("profile.whatsappNotificationsDesc")}</p>
                     </div>
                     <div className="h-6 w-11 rounded-full bg-muted" />
                   </div>
                   <Separator className="bg-border/20" />
                   <div className="flex items-center justify-between opacity-40">
                     <div className="space-y-1">
-                      <p className="font-bold">Seguridad (Biometría)</p>
-                      <p className="text-xs text-muted-foreground">Protege tus datos con FaceID o Huella.</p>
+                      <p className="font-bold">{t("profile.biometricsSecurity")}</p>
+                      <p className="text-xs text-muted-foreground">{t("profile.biometricsSecurityDesc")}</p>
                     </div>
                     <div className="h-6 w-11 rounded-full bg-muted" />
                   </div>
@@ -453,10 +451,10 @@ export default function Profile() {
                 
                 <div className="pt-6 flex flex-col sm:flex-row gap-4">
                   <Badge variant="outline" className="border-primary/20 text-primary rounded-full px-6 py-2 text-[10px] font-black uppercase tracking-widest w-fit mx-auto sm:mx-0">
-                    Funciones en Desarrollo
+                    {t("profile.featuresInDevelopment")}
                   </Badge>
-                  <Button variant="destructive" className="rounded-full px-10 font-bold opacity-80 hover:opacity-100 transition-opacity ml-auto">
-                    Cerrar Sesión
+                  <Button variant="destructive" className="rounded-full px-10 font-bold opacity-80 hover:opacity-100 transition-opacity ml-auto" onClick={logout}>
+                    {t("profile.logoutBtn")}
                   </Button>
                 </div>
               </Card>

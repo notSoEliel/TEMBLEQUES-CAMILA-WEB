@@ -11,24 +11,14 @@ import { useCart } from "@/hooks/useCart";
 import AvailabilityCalendar from "@/components/ui/AvailabilityCalendar";
 import { useErrorModal } from "@/components/ErrorModal";
 import ErrorPage from "@/pages/ErrorPage";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  pollera: "Polleras",
-  vestuario_masculino: "Vestuario Masculino",
-  infantil: "Infantil",
-  tembleques: "Tembleques",
-  accesorios: "Accesorios",
-  paquete_completo: "Paquetes Completos",
-};
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t, language } = useI18n();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -41,6 +31,15 @@ export default function ProductDetail() {
   const { items, addItem, getAvailableStock } = useCart();
   const { errorModal, showError } = useErrorModal();
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const categoryLabels: Record<string, string> = {
+    pollera: t("landing.catPolleras"),
+    vestuario_masculino: t("landing.catMen"),
+    infantil: t("landing.catKids"),
+    tembleques: t("landing.catTembleques"),
+    accesorios: t("landing.catAccesorios"),
+    paquete_completo: t("landing.catCombos"),
+  };
 
   useEffect(() => {
     if (id) {
@@ -93,15 +92,15 @@ export default function ProductDetail() {
       return;
     }
     if (!selectedSize) {
-      showError("Por favor selecciona una talla.", "validation");
+      showError(t("product.selectSizeError"), "validation");
       return;
     }
     if (!startDate || !endDate) {
-      showError("Por favor selecciona las fechas de alquiler.", "validation");
+      showError(t("product.selectDatesError"), "validation");
       return;
     }
     if (calendarConflict) {
-      showError("Las fechas seleccionadas tienen un conflicto de disponibilidad.", "validation");
+      showError(t("product.datesConflictError"), "validation");
       return;
     }
 
@@ -112,15 +111,12 @@ export default function ProductDetail() {
     const itbms = subtotal * 0.07;
     const totalPrice = subtotal + itbms;
     
-    // Deposit calculation logic (mirroring Checkout.tsx for now)
     const DEPOSIT_RATE = 0.25;
     const depositAmount = totalPrice * DEPOSIT_RATE;
-    
-
 
     const maxAvailable = getAvailableStock(product._id, selectedSize, selectedVariant.stock);
     if (quantity > maxAvailable) {
-      showError(`Solo puedes añadir ${maxAvailable} unidades más al carrito.`, "validation");
+      showError(t("product.maxSessionStockError").replace("{count}", String(maxAvailable)), "validation");
       return;
     }
 
@@ -147,7 +143,7 @@ export default function ProductDetail() {
       {/* Back */}
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate("/catalog")}>
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver al Catálogo
+        {t("product.backBtn")}
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -207,11 +203,11 @@ export default function ProductDetail() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <Badge variant="outline">{CATEGORY_LABELS[product.category]}</Badge>
+              <Badge variant="outline">{categoryLabels[product.category]}</Badge>
               {isAvailable ? (
-                <Badge variant="default">Disponible</Badge>
+                <Badge variant="default">{t("product.statusAvailable")}</Badge>
               ) : (
-                <Badge variant="destructive">No Disponible</Badge>
+                <Badge variant="destructive">{t("product.statusUnavailable")}</Badge>
               )}
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -221,17 +217,17 @@ export default function ProductDetail() {
             {/* Price — show range or specific */}
             {selectedSize && displayPrice != null ? (
               <p className="text-3xl font-bold text-primary">
-                {formatCurrency(displayPrice)} <span className="text-base font-normal text-muted-foreground">/ día</span>
+                {formatCurrency(displayPrice)} <span className="text-base font-normal text-muted-foreground">{t("catalog.perDay")}</span>
               </p>
             ) : hasPriceRange ? (
               <p className="text-3xl font-bold text-primary">
-                <span className="text-lg font-normal text-muted-foreground">Desde </span>
+                <span className="text-lg font-normal text-muted-foreground">{t("product.priceFrom")} </span>
                 {formatCurrency(minPrice)} – {formatCurrency(maxPrice)}
-                <span className="text-base font-normal text-muted-foreground"> / día</span>
+                <span className="text-base font-normal text-muted-foreground"> {t("catalog.perDay")}</span>
               </p>
             ) : (
               <p className="text-3xl font-bold text-primary">
-                {formatCurrency(product.rental_price)} <span className="text-base font-normal text-muted-foreground">/ día</span>
+                {formatCurrency(product.rental_price)} <span className="text-base font-normal text-muted-foreground">{t("catalog.perDay")}</span>
               </p>
             )}
           </div>
@@ -239,13 +235,14 @@ export default function ProductDetail() {
           <Separator />
 
           <div>
-            <h3 className="font-bold mb-2">Descripción</h3>
+            <h3 className="font-bold mb-2">{t("product.descriptionTitle")}</h3>
             <p className="text-muted-foreground leading-relaxed">{product.description}</p>
           </div>
-                   {/* Size Selector */}
+
+          {/* Size Selector */}
           {variants.length > 0 && (
             <div>
-              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Selecciona tu talla</h3>
+              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">{t("product.selectSizeTitle")}</h3>
               <div className="flex flex-wrap gap-2">
                 {variants.map((v: any) => {
                   const isDisabled = v.in_maintenance || v.stock <= 0;
@@ -275,7 +272,7 @@ export default function ProductDetail() {
               </div>
               {selectedSize && selectedVariant && (
                 <p className="mt-3 text-xs font-medium text-muted-foreground">
-                  ✓ {selectedVariant.stock} disponible{selectedVariant.stock !== 1 ? "s" : ""} en talla {selectedSize}
+                  ✓ {selectedVariant.stock} {selectedVariant.stock !== 1 ? t("product.availablePlural") : t("product.availableSingular")} {t("product.inSize")} {selectedSize}
                 </p>
               )}
             </div>
@@ -284,7 +281,7 @@ export default function ProductDetail() {
           {/* Date Selector */}
           {selectedSize ? (
             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Fechas de Alquiler</h3>
+              <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">{t("product.rentalDatesTitle")}</h3>
               <AvailabilityCalendar
                 productId={product._id}
                 selectedSize={selectedSize}
@@ -304,15 +301,15 @@ export default function ProductDetail() {
             <div className="p-6 border-2 border-dashed border-black/10 rounded-2xl bg-muted/20 flex flex-col items-center text-center gap-3">
               <Calendar className="h-8 w-8 text-muted-foreground/40" />
               <div className="space-y-1">
-                <p className="font-bold text-sm">Disponibilidad</p>
-                <p className="text-xs text-muted-foreground">Selecciona una talla primero para ver las fechas disponibles en el calendario.</p>
+                <p className="font-bold text-sm">{t("product.availabilityTitle")}</p>
+                <p className="text-xs text-muted-foreground">{t("product.availabilityDesc")}</p>
               </div>
             </div>
           )}
 
           {/* Quantity Selector */}
           <div>
-            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">Cantidad</h3>
+            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">{t("review.quantity")}</h3>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1">
@@ -346,13 +343,13 @@ export default function ProductDetail() {
                 </div>
                 {selectedVariant && (
                   <span className="text-xs text-muted-foreground">
-                    Disponibles: {getAvailableStock(product._id, selectedSize!, selectedVariant.stock)} unidades
+                    {t("product.availableStockCount").replace("{count}", String(getAvailableStock(product._id, selectedSize!, selectedVariant.stock)))}
                   </span>
                 )}
               </div>
               {selectedVariant && getAvailableStock(product._id, selectedSize!, selectedVariant.stock) === 0 && (
                 <p className="text-[10px] text-destructive font-bold animate-pulse">
-                  * Has agotado el stock disponible para esta sesión (ya en carrito).
+                  {t("product.noSessionStockLeft")}
                 </p>
               )}
             </div>
@@ -363,8 +360,8 @@ export default function ProductDetail() {
               <CardContent className="p-0 flex items-center gap-3">
                 <ShoppingBag className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Stock Total</p>
-                  <p className="font-bold">{totalStock} disponible{totalStock !== 1 ? "s" : ""}</p>
+                  <p className="text-xs text-muted-foreground">{t("product.totalStock")}</p>
+                  <p className="font-bold">{totalStock} {totalStock !== 1 ? t("product.availablePlural") : t("product.availableSingular")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -372,8 +369,8 @@ export default function ProductDetail() {
               <CardContent className="p-0 flex items-center gap-3">
                 <Package className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-xs text-muted-foreground">Tallas</p>
-                  <p className="font-bold">{availableVariants.length} disponible{availableVariants.length !== 1 ? "s" : ""}</p>
+                  <p className="text-xs text-muted-foreground">{t("product.sizes")}</p>
+                  <p className="font-bold">{availableVariants.length} {availableVariants.length !== 1 ? t("product.availablePlural") : t("product.availableSingular")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -388,17 +385,17 @@ export default function ProductDetail() {
               onClick={handleAddToCart}
             >
               <ShoppingBag className="h-5 w-5 mr-2" />
-              {!selectedSize ? "Selecciona talla" : !startDate || !endDate ? "Selecciona fechas" : "Añadir al Carrito"}
+              {!selectedSize ? t("product.ctaSelectSize") : !startDate || !endDate ? t("product.ctaSelectDates") : t("product.ctaAddToCart")}
             </Button>
           ) : (
             <Button size="lg" className="w-full grayscale" disabled>
-              Agotado Temporalmente
+              {t("product.ctaOutOfStock")}
             </Button>
           )}
 
           {!user && (
             <p className="text-sm text-muted-foreground text-center">
-              Debes iniciar sesión para reservar.
+              {t("product.loginRequired")}
             </p>
           )}
         </div>
@@ -418,17 +415,17 @@ export default function ProductDetail() {
                 <CheckCircle2 className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h3 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>¡Añadido exitosamente!</h3>
+                <h3 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{t("product.addedSuccessTitle")}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Tu reserva ha sido agregada al carrito.
+                  {t("product.addedSuccessDesc")}
                 </p>
               </div>
               <div className="flex flex-col gap-2 pt-2">
                 <Button className="w-full" onClick={() => navigate("/cart")}>
-                  Ir al Carrito
+                  {t("product.goCartBtn")}
                 </Button>
                 <Button variant="outline" className="w-full" onClick={() => setShowAddModal(false)}>
-                  Seguir Comprando
+                  {t("confirmation.continueBtn")}
                 </Button>
               </div>
             </div>

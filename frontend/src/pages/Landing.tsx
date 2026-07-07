@@ -25,21 +25,21 @@ import {
 } from "@/components/ui/accordion";
 import { useI18n } from "@/i18n";
 
-const TESTIMONIALS = [
-  { name: "Ana García", role: "Cliente frecuente", text: "El proceso de reserva fue increíblemente fácil. La pollera estaba en condiciones impecables.", rating: 5, initial: "A" },
-  { name: "Carlos Mendoza", role: "Evento corporativo", text: "Alquilé el traje típico masculino para el desfile. Excelente calidad y atención al detalle.", rating: 5, initial: "C" },
-  { name: "María Fernández", role: "Madre de familia", text: "Los tembleques eran hermosos. Sin duda volveré a alquilar para el próximo evento cultural.", rating: 4, initial: "M" },
-];
-
-const FAQS = [
-  { q: "¿Cómo funciona el alquiler?", a: "Seleccionas el producto, eliges las fechas, aceptas los términos y pagas en línea. Así de fácil." },
-  { q: "¿Qué pasa si se daña la prenda?", a: "El cliente asume la responsabilidad total del costo de reparación o reposición según los términos aceptados." },
-  { q: "¿Cuánto tiempo dura el alquiler?", a: "Tú eliges las fechas. El precio se calcula por día de alquiler." },
-  { q: "¿Puedo cancelar mi reserva?", a: "Las reservas pueden cancelarse antes de la entrega. Consulta los términos para detalles sobre reembolsos." },
-];
-
 export default function Landing() {
   const { t } = useI18n();
+
+  const testimonials = [
+    { name: "Ana García", role: t("landing.testimonial1Role"), text: t("landing.testimonial1Text"), rating: 5, initial: "A" },
+    { name: "Carlos Mendoza", role: t("landing.testimonial2Role"), text: t("landing.testimonial2Text"), rating: 5, initial: "C" },
+    { name: "María Fernández", role: t("landing.testimonial3Role"), text: t("landing.testimonial3Text"), rating: 4, initial: "M" },
+  ];
+
+  const faqs = [
+    { q: t("landing.faqQ1"), a: t("landing.faqA1") },
+    { q: t("landing.faqQ2"), a: t("landing.faqA2") },
+    { q: t("landing.faqQ3"), a: t("landing.faqA3") },
+    { q: t("landing.faqQ4"), a: t("landing.faqA4") },
+  ];
   const categories = [
     { name: t("landing.catPolleras"), slug: "pollera", icon: Crown, description: t("landing.catPollerasText"), gradient: "from-rose-100 to-pink-50", iconColor: "text-rose-500" },
     { name: t("landing.catMen"), slug: "vestuario_masculino", icon: Shirt, description: t("landing.catMenText"), gradient: "from-fuchsia-100 to-purple-50", iconColor: "text-fuchsia-600" },
@@ -210,7 +210,7 @@ export default function Landing() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
+            {testimonials.map((t, i) => (
               <Card key={i} className="p-7 hover:shadow-elegant-lg transition-all duration-200">
                 <CardContent className="p-0 space-y-5">
                   <div className="flex gap-1">
@@ -248,7 +248,7 @@ export default function Landing() {
           </div>
 
           <Accordion type="single" collapsible className="w-full space-y-4">
-            {FAQS.map((faq, i) => (
+            {faqs.map((faq, i) => (
               <AccordionItem key={i} value={`item-${i}`} className="border-2 border-border rounded-3xl bg-card px-2 overflow-hidden shadow-elegant hover:shadow-elegant-lg transition-all duration-300">
                 <AccordionTrigger className="px-4 text-left font-bold text-sm hover:no-underline py-5">
                   {faq.q}

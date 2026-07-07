@@ -1,19 +1,21 @@
 import { Separator } from "@/components/ui/separator";
+import { useI18n } from "@/i18n";
 
 export default function History() {
+  const { t } = useI18n();
+
   return (
     <div className="bg-background min-h-screen">
       {/* Hero Section */}
       <section className="max-w-5xl mx-auto px-6 pt-24 pb-16 text-center">
         <span className="text-primary font-black uppercase tracking-[0.3em] text-xs mb-6 block animate-in fade-in slide-in-from-bottom-4 duration-700">
-          Nuestra Esencia
+          {t("history.badge")}
         </span>
         <h1 className="text-5xl md:text-7xl font-display font-black text-foreground tracking-tight leading-[0.9] mb-8 animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
-          Un legado tejido <br /> con el <span className="text-primary italic">corazón.</span>
+          {t("history.title")} <br /> {t("language.label") === "Idioma" ? "con el" : "with"} <span className="text-primary italic">{t("history.titleAccent")}</span>
         </h1>
         <p className="max-w-2xl mx-auto text-muted-foreground text-lg md:text-xl font-medium leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-400">
-          Tembleques Camila nació de la necesidad de preservar la belleza de nuestro folklore, 
-          llevando la tradición panameña a una nueva era de elegancia y sofisticación.
+          {t("history.subtitle")}
         </p>
       </section>
 
@@ -24,18 +26,14 @@ export default function History() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center mb-32">
           <div className="md:col-span-5 space-y-8">
             <h2 className="text-4xl font-display font-black tracking-tighter leading-tight">
-              El origen de la <br /> delicadeza.
+              {t("history.sec1Title")} <br /> {t("history.sec1TitleAccent")}
             </h2>
             <div className="space-y-6 text-muted-foreground leading-relaxed">
               <p>
-                Todo comenzó en un pequeño taller familiar, donde la pasión por el detalle 
-                y el respeto por los artesanos locales se convirtieron en nuestra brújula. 
-                Vimos en el tembleque no solo un adorno, sino una corona de identidad.
+                {t("history.sec1Text1")}
               </p>
               <p>
-                Nuestra misión ha sido democratizar el acceso a piezas de calidad premium, 
-                permitiendo que cada mujer panameña brille con la autenticidad que merece 
-                en sus momentos más especiales.
+                {t("history.sec1Text2")}
               </p>
             </div>
           </div>
@@ -65,21 +63,17 @@ export default function History() {
           </div>
           <div className="md:col-span-5 order-1 md:order-2 space-y-8 md:pl-12">
             <h2 className="text-4xl font-display font-black tracking-tighter leading-tight">
-              Evolución y <br /> Compromiso.
+              {t("history.sec2Title")} <br /> {t("history.sec2TitleAccent")}
             </h2>
             <div className="space-y-6 text-muted-foreground leading-relaxed">
               <p>
-                Hoy, Tembleques Camila es más que una tienda de alquiler. Es un puente 
-                entre el pasado glorioso de Panamá y un futuro donde la cultura se vive 
-                con orgullo y modernidad.
+                {t("history.sec2Text1")}
               </p>
               <p className="font-serif italic text-xl text-primary">
-                "La tradición no es la adoración de las cenizas, sino la preservación del fuego."
+                {t("history.sec2Quote")}
               </p>
               <p>
-                Cada pieza en nuestro catálogo ha sido seleccionada y mantenida con 
-                estándares de excelencia, asegurando que la historia continúe en cada 
-                evento, en cada baile y en cada sonrisa.
+                {t("history.sec2Text2")}
               </p>
             </div>
           </div>
@@ -90,14 +84,14 @@ export default function History() {
         {/* Closing Quote */}
         <section className="text-center max-w-3xl mx-auto pb-24">
           <h3 className="text-3xl font-display italic mb-8 text-foreground/80">
-            Continuamos escribiendo esta historia junto a ti.
+            {t("history.closingQuote")}
           </h3>
           <div className="inline-flex items-center gap-4 text-primary font-bold tracking-widest text-sm uppercase">
-            <span>Tradición</span>
+            <span>{t("history.tag1")}</span>
             <div className="w-8 h-px bg-primary/30" />
-            <span>Innovación</span>
+            <span>{t("history.tag2")}</span>
             <div className="w-8 h-px bg-primary/30" />
-            <span>Panamá</span>
+            <span>{t("history.tag3")}</span>
           </div>
         </section>
       </div>

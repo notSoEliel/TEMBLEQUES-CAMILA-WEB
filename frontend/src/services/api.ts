@@ -117,7 +117,7 @@ export const productsApi = {
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    const query = params.toString() ? `?${searchParams.toString()}` : "";
+    const query = params.toString() ? `?${params.toString()}` : "";
     return api<{ booked: Array<{ start: string; end: string; size: string }> }>(`/products/${id}/availability${query}`);
   },
 };
