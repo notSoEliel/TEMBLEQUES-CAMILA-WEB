@@ -265,7 +265,7 @@ function getInitialLanguage(): Language {
   if (typeof window === "undefined") return "es";
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === "es" || stored === "en") return stored;
-  return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "es";
+  return "es";
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {

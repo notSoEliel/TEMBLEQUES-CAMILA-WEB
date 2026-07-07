@@ -35,11 +35,11 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     
     // Buscar un producto específico
     const searchInput = page.locator('input[placeholder="Buscar productos..."]');
-    await searchInput.fill("Congo");
+    await searchInput.fill("Pollera");
     await page.getByRole("button", { name: "Buscar" }).click();
     
     // Verificar resultados
-    await expect(page.getByRole("heading", { name: "Vestuario congo", exact: false })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pollera Santeñena Clásica", exact: false })).toBeVisible();
   });
 
   // Test 3: Checkout and Terms & Conditions (Negative & Positive cases)
@@ -52,7 +52,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     
     // Ir al detalle del producto
     await page.goto("/catalog");
-    await page.getByRole("heading", { name: "Vestuario congo", exact: false }).first().click();
+    await page.getByRole("heading", { name: "Pollera Santeñena Clásica", exact: false }).first().click();
     
     // Seleccionar talla
     await page.getByRole("button", { name: "S", exact: true }).click();

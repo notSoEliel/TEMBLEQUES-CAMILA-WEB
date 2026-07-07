@@ -24,7 +24,84 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+const isMockClerkMode = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.includes("your_clerk_publishable_key");
+
+function MockAuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadMockUser = async () => {
+    const mockToken = localStorage.getItem("mock_auth_token");
+    if (!mockToken) {
+      setUser(null);
+      setToken(null);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${mockToken}` },
+      });
+      if (!res.ok) throw new Error("No se pudo cargar el usuario de prueba.");
+      const data = await res.json();
+      setUser(data.user);
+      setToken(mockToken);
+    } catch {
+      setUser(null);
+      setToken(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMockUser();
+  }, []);
+
+  const getToken = async () => {
+    const mockToken = localStorage.getItem("mock_auth_token");
+    setToken(mockToken);
+    return mockToken;
+  };
+
+  const updateProfile = async (data: { name: string; phone?: string; preferredAddress?: string }) => {
+    const currentToken = token ?? await getToken();
+    if (!currentToken) {
+      throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
+    }
+
+    const res = await fetch("/api/auth/me", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${currentToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const payload = await res.json();
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo guardar el perfil.");
+    }
+    setUser(payload.user);
+    return payload.user;
+  };
+
+  const logout = () => {
+    localStorage.removeItem("mock_auth_token");
+    setUser(null);
+    setToken(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, getToken, updateProfile, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user: clerkUser } = useUser();
   const { getToken: clerkGetToken } = useClerkAuth();
   const { signOut } = useClerk();
@@ -165,6 +242,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  if (isMockClerkMode) {
+    return <MockAuthProvider>{children}</MockAuthProvider>;
+  }
+
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
 }
 
 export function useAuth() {
