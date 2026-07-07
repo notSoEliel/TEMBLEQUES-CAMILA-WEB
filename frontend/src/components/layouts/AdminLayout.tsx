@@ -8,6 +8,7 @@ import {
   Package,
   CalendarCheck,
   Users,
+  Mail,
   ArrowLeft,
   LogOut,
   Menu,
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/admin/inventory", label: "Inventario", icon: Package },
   { href: "/admin/reservations", label: "Reservas", icon: CalendarCheck },
   { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/contacts", label: "Mensajes", icon: Mail },
   { href: "/admin/business-rules", label: "Info y Reglas", icon: Info },
   { href: "/admin/settings", label: "Ajustes", icon: Settings },
 ];

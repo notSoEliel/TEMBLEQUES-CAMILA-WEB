@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,8 @@ import { MapPin, Mail, Phone, ExternalLink, Send } from "lucide-react";
 import { MapContainer, TileLayer, Marker, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { contactApi } from "@/services/api";
+import { useErrorModal } from "@/components/ErrorModal";
 
 // Fix Leaflet icon issue
 const customIcon = L.divIcon({
@@ -19,13 +21,32 @@ const customIcon = L.divIcon({
 
 export default function Contact() {
   const position: [number, number] = [8.9525, -79.5342]; // Centered in Casco Viejo
+  const { errorModal, showError } = useErrorModal();
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const handleOpenMaps = () => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${position[0]},${position[1]}`, "_blank");
   };
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      const response = await contactApi.submit(form);
+      setForm({ name: "", email: "", message: "" });
+      showError(response.message, "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";
+      showError(message, "validation");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="bg-background min-h-screen py-24 px-6">
+      {errorModal}
       <div className="max-w-7xl mx-auto space-y-16">
         {/* Header */}
         <div className="text-center space-y-4">
@@ -62,26 +83,52 @@ export default function Contact() {
               </div>
             </div>
 
-            <form className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <form className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" onSubmit={handleSubmit}>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest pl-4">Nombre Completo</Label>
-                    <Input id="name" placeholder="Ej. Ana Pérez" className="h-14 px-6 border-border/40 focus:border-primary/20" />
+                    <Input
+                      id="name"
+                      value={form.name}
+                      onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                      placeholder="Ej. Ana Pérez"
+                      autoComplete="name"
+                      required
+                      minLength={2}
+                      className="h-14 px-6 border-border/40 focus:border-primary/20"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest pl-4">Correo Electrónico</Label>
-                    <Input id="email" type="email" placeholder="ana@ejemplo.com" className="h-14 px-6 border-border/40 focus:border-primary/20" />
+                    <Input
+                      id="email"
+                      value={form.email}
+                      onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                      type="email"
+                      placeholder="ana@ejemplo.com"
+                      autoComplete="email"
+                      required
+                      className="h-14 px-6 border-border/40 focus:border-primary/20"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="message" className="text-xs font-black uppercase tracking-widest pl-4">Tu Mensaje</Label>
-                  <Textarea id="message" placeholder="¿En qué podemos ayudarte hoy?" className="min-h-[160px] px-6 py-4 border-border/40 focus:border-primary/20" />
+                  <Textarea
+                    id="message"
+                    value={form.message}
+                    onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))}
+                    placeholder="¿En qué podemos ayudarte hoy?"
+                    required
+                    minLength={10}
+                    className="min-h-[160px] px-6 py-4 border-border/40 focus:border-primary/20"
+                  />
                 </div>
               </div>
 
-              <Button type="button" className="w-full h-14 rounded-full font-bold text-lg shadow-elegant group">
-                Enviar Mensaje
+              <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full font-bold text-lg shadow-elegant group">
+                {submitting ? "Enviando..." : "Enviar Mensaje"}
                 <Send className="h-5 w-5 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
             </form>

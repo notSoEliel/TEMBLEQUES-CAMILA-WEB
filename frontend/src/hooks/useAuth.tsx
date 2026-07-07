@@ -8,6 +8,7 @@ interface User {
   email: string;
   role: "client" | "admin";
   phone?: string;
+  preferredAddress?: string;
   avatarUrl?: string;
   createdAt?: string;
 }
@@ -16,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   getToken: () => Promise<string | null>;
+  updateProfile: (data: { name: string; phone?: string; preferredAddress?: string }) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -126,6 +128,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return t;
   };
 
+  const updateProfile = async (data: { name: string; phone?: string; preferredAddress?: string }) => {
+    const currentToken = token ?? await getToken();
+    if (!currentToken) {
+      throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
+    }
+
+    const res = await fetch("/api/auth/me", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${currentToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    const payload = await res.json();
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo guardar el perfil.");
+    }
+
+    const updatedUser = { ...payload.user, avatarUrl: user?.avatarUrl };
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   const logout = () => {
     localStorage.removeItem("mock_auth_token");
     signOut();
@@ -134,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, getToken, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, getToken, updateProfile, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
