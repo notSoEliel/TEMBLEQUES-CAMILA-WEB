@@ -136,6 +136,7 @@ export default function ProductDetail() {
       startDate,
       endDate,
       stock: selectedVariant.stock,
+      category: product.category,
     });
 
     setShowAddModal(true);

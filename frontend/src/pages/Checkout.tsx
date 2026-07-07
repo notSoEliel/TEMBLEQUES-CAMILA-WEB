@@ -159,7 +159,7 @@ export default function Checkout() {
       setValidatingCoupon(true);
       setCouponError("");
       
-      const categories = items.flatMap(i => Array.isArray(i.product.category) ? i.product.category : [i.product.category]);
+      const categories = items.flatMap(i => i.category ? (Array.isArray(i.category) ? i.category : [i.category]) : []);
       const res = await couponsApi.validate(couponCode.trim(), cartTotal, categories, token);
       
       if (res.valid) {

@@ -13,6 +13,7 @@ export interface CartItem {
   startDate: string;
   endDate: string;
   stock: number;
+  category: string;
 }
 
 interface CartContextType {
