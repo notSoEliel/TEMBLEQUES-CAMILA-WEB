@@ -157,42 +157,69 @@ export default function OrderCard({
       <CardContent className="p-0 bg-white">
         <div className="divide-y divide-border/30">
           {rentals.map((r) => (
-            <div key={r._id} className="p-4 flex items-center justify-between gap-4 group">
-              <div className="flex items-center gap-4">
-                <div className="relative shrink-0">
-                  {r.product_id?.images?.[0] ? (
-                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded-xl border border-border/60" />
-                  ) : (
-                    <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-bold text-sm leading-tight uppercase group-hover:text-primary transition-colors">
-                    {r.product_id?.name || "Producto"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">
-                      Talla: {r.selected_size}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
-                    </span>
+            <div key={r._id} className="p-4 flex flex-col gap-3 group">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    {r.product_id?.images?.[0] ? (
+                      <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded-xl border border-border/60" />
+                    ) : (
+                      <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
+                        <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
+                  <div>
+                    <p className="font-bold text-sm leading-tight uppercase group-hover:text-primary transition-colors">
+                      {r.product_id?.name || "Producto"}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">
+                        Talla: {r.selected_size}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
+                    <p className="font-black text-sm">{formatCurrency(r.total)}</p>
+                  </div>
+                  <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
+                    {statusLabels[r.status]}
+                  </Badge>
                 </div>
               </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
-                  <p className="font-black text-sm">{formatCurrency(r.total)}</p>
+              {/* Status history timeline */}
+              {r.status_history && r.status_history.length > 0 && (
+                <div className="mt-1 p-3 bg-muted/30 rounded-xl border border-border/60 text-xs space-y-2">
+                  <p className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Historial de Estados</p>
+                  <div className="relative border-l-2 border-primary/20 pl-4 ml-1.5 space-y-2.5">
+                    {r.status_history.map((h: any, hIdx: number) => (
+                      <div key={hIdx} className="relative">
+                        <div className="absolute -left-[21px] top-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <span className="font-semibold text-foreground uppercase text-[10px]">
+                              {statusLabels[h.status] || h.status}
+                            </span>
+                            {h.notes && <p className="text-[10px] text-muted-foreground mt-0.5">{h.notes}</p>}
+                          </div>
+                          <span className="text-[9px] text-muted-foreground font-mono font-semibold whitespace-nowrap">
+                            {new Date(h.timestamp).toLocaleDateString("es-PA")} {new Date(h.timestamp).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
-                  {statusLabels[r.status]}
-                </Badge>
-              </div>
+              )}
             </div>
           ))}
         </div>

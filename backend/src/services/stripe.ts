@@ -42,7 +42,11 @@ export async function createStripeSession(
         name: `${rental.payment_type === "full" ? "Pago Completo" : "Reserva (25%)"}: ${rental.product_id.name}`,
         description: `Talla: ${rental.selected_size} | ${rental.start_date.toLocaleDateString("es-PA")} -> ${rental.end_date.toLocaleDateString("es-PA")}`,
       },
-      unit_amount: toCents(rental.payment_type === "full" ? rental.total : rental.deposit_amount), // Charge based on payment_type
+      unit_amount: toCents(
+        rental.payment_type === "full"
+          ? Math.max(0, rental.total - (rental.discount_amount ?? 0))
+          : rental.deposit_amount
+      ), // Charge based on payment_type and discounts
     },
     quantity: 1,
   }));

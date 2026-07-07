@@ -48,6 +48,14 @@ export interface IRental extends Document {
   late_fee_amount: number;
   late_fee_status: FeeStatus;
   late_fee_failure_reason?: string;
+  coupon_code?: string;
+  discount_amount?: number;
+  status_history: Array<{
+    status: RentalStatus;
+    timestamp: Date;
+    notes?: string;
+    updated_by?: string;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -96,9 +104,34 @@ const rentalSchema = new Schema<IRental>(
       default: "not_applicable",
     },
     late_fee_failure_reason: { type: String },
+    coupon_code: { type: String },
+    discount_amount: { type: Number, default: 0 },
+    status_history: [
+      {
+        status: { type: String, required: true },
+        timestamp: { type: Date, required: true, default: Date.now },
+        notes: { type: String },
+        updated_by: { type: String },
+      },
+    ],
   },
   { timestamps: true }
 );
+
+rentalSchema.pre("save", function (next) {
+  if (this.isNew || this.isModified("status")) {
+    const statusVal = this.status;
+    const alreadyExists = this.status_history.some(h => h.status === statusVal);
+    if (!alreadyExists) {
+      this.status_history.push({
+        status: statusVal,
+        timestamp: new Date(),
+        notes: `Estado de la reserva actualizado a: ${statusVal}`,
+      });
+    }
+  }
+  next();
+});
 
 rentalSchema.index({ product_id: 1, start_date: 1, end_date: 1 });
 rentalSchema.index({ user_id: 1 });

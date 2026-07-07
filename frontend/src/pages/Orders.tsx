@@ -274,17 +274,43 @@ export default function Orders() {
                   <h5 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Piezas Incluidas</h5>
                   <div className="grid gap-4">
                     {selectedOrder.rentals.map((item) => (
-                      <div key={item._id} className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-muted/20 border border-border/10 group hover:bg-muted/30 transition-all duration-300">
-                        <div className="h-16 w-16 rounded-xl overflow-hidden bg-white shadow-sm shrink-0">
-                          <img src={item.product_id?.images?.[0] || "/placeholder.png"} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div key={item._id} className="flex flex-col gap-3 p-5 rounded-[1.5rem] bg-muted/20 border border-border/10 group hover:bg-muted/30 transition-all duration-300">
+                        <div className="flex items-center gap-4">
+                          <div className="h-16 w-16 rounded-xl overflow-hidden bg-white shadow-sm shrink-0">
+                            <img src={item.product_id?.images?.[0] || "/placeholder.png"} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                          </div>
+                          <div className="flex-1 space-y-0.5">
+                            <p className="font-bold text-foreground">{item.product_id?.name}</p>
+                            <p className="text-xs text-muted-foreground">Talla: {item.selected_size} • {formatCurrency(item.total)}</p>
+                          </div>
+                          <Badge className={cn("rounded-full px-3 py-0.5 text-[8px] font-black tracking-widest uppercase border", STATUS_COLORS[item.status])}>
+                            {STATUS_LABELS[item.status]}
+                          </Badge>
                         </div>
-                        <div className="flex-1 space-y-0.5">
-                          <p className="font-bold text-foreground">{item.product_id?.name}</p>
-                          <p className="text-xs text-muted-foreground">Talla: {item.selected_size} • {formatCurrency(item.total)}</p>
-                        </div>
-                        <Badge className={cn("rounded-full px-3 py-0.5 text-[8px] font-black tracking-widest uppercase border", STATUS_COLORS[item.status])}>
-                          {STATUS_LABELS[item.status]}
-                        </Badge>
+
+                        {item.status_history && item.status_history.length > 0 && (
+                          <div className="mt-1 p-3 bg-white/60 rounded-xl border border-border/10 text-xs space-y-1.5">
+                            <p className="font-bold text-[8px] uppercase tracking-wider text-muted-foreground">Progreso del Alquiler</p>
+                            <div className="relative border-l border-primary/20 pl-3 ml-1 space-y-2">
+                              {item.status_history.map((h: any, hIdx: number) => (
+                                <div key={hIdx} className="relative">
+                                  <div className="absolute -left-[15.5px] top-1.5 w-1 h-1 rounded-full bg-primary" />
+                                  <div className="flex justify-between items-start gap-4">
+                                    <div>
+                                      <span className="font-semibold text-foreground uppercase text-[9px]">
+                                        {STATUS_LABELS[h.status] || h.status}
+                                      </span>
+                                      {h.notes && <p className="text-[9px] text-muted-foreground mt-0.5">{h.notes}</p>}
+                                    </div>
+                                    <span className="text-[8px] text-muted-foreground font-mono">
+                                      {new Date(h.timestamp).toLocaleDateString("es-PA")}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

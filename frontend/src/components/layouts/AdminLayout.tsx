@@ -15,12 +15,16 @@ import {
   X,
   Settings,
   Info,
+  Ticket,
+  BarChart3,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/inventory", label: "Inventario", icon: Package },
   { href: "/admin/reservations", label: "Reservas", icon: CalendarCheck },
+  { href: "/admin/coupons", label: "Cupones", icon: Ticket },
+  { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
   { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/contacts", label: "Mensajes", icon: Mail },
   { href: "/admin/business-rules", label: "Info y Reglas", icon: Info },
