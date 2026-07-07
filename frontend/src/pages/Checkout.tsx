@@ -5,7 +5,7 @@ import {
   useSearchParams,
   useLocation,
 } from "react-router-dom";
-import { productsApi, rentalsApi, stripeApi } from "@/services/api";
+import { productsApi, rentalsApi, stripeApi, couponsApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   Shield,
@@ -21,6 +22,7 @@ import {
   Loader2,
   Package,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 import ErrorPage from "@/pages/ErrorPage";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -128,6 +130,56 @@ export default function Checkout() {
     (location.state as any)?.selectedSize || "",
   );
 
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  const [timeLeft, setTimeLeft] = useState(2100);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (loading || authLoading || cartLoading) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading, authLoading, cartLoading]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !token) return;
+    try {
+      setValidatingCoupon(true);
+      setCouponError("");
+      
+      const categories = items.flatMap(i => Array.isArray(i.product.category) ? i.product.category : [i.product.category]);
+      const res = await couponsApi.validate(couponCode.trim(), cartTotal, categories, token);
+      
+      if (res.valid) {
+        setAppliedCoupon(res.coupon);
+      } else {
+        setCouponError("Cupón inválido.");
+      }
+    } catch (err: any) {
+      setCouponError(err?.message || "Error al validar el cupón.");
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
   useEffect(() => {
     if (authLoading || cartLoading) return;
 
@@ -178,9 +230,11 @@ export default function Checkout() {
   const days = calculateDays(startDate, endDate);
   
   const subtotal = isMulti ? cartTotal : (days > 0 ? days * pricePerDay : 0);
-  const itbms = subtotal * 0.07;
-  const finalTotal = subtotal + itbms;
-  const finalDeposit = isMulti ? cartTotalDeposit : estimateDeposit(finalTotal, product?.deposit_settings).amount;
+  const discount = appliedCoupon ? (appliedCoupon.discount_type === "percentage" ? Math.round(subtotal * (appliedCoupon.value / 100) * 100) / 100 : Math.min(subtotal, appliedCoupon.value)) : 0;
+  const netSubtotal = Math.max(0, subtotal - discount);
+  const itbms = netSubtotal * 0.07;
+  const finalTotal = netSubtotal + itbms;
+  const finalDeposit = isMulti ? Math.max(0, cartTotalDeposit - (discount * 0.25)) : estimateDeposit(finalTotal, product?.deposit_settings).amount;
   const depositRequired = isMulti ? cartTotalDeposit > 0 : estimateDeposit(finalTotal, product?.deposit_settings).required;
 
   function goToStep(step: number) {
@@ -246,6 +300,9 @@ export default function Checkout() {
       const paymentResult = await stripeApi.createBulkCheckoutSession(
         rentalIds,
         token!,
+        undefined,
+        paymentType,
+        appliedCoupon?.code
       );
 
       if (isMulti) clearCart();
@@ -279,6 +336,28 @@ export default function Checkout() {
 
   const steps = isMulti ? STEPS_MULTI : STEPS_SINGLE;
 
+  if (isExpired) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
+        <div className="h-16 w-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto border-2 border-destructive/20 animate-bounce">
+          <Clock className="h-8 w-8" />
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Tiempo Expirado
+        </h2>
+        <p className="text-muted-foreground">
+          Por motivos de alta demanda y logística de disponibilidad, el tiempo límite de 35 minutos para reservar estas piezas ha expirado. Las prendas han sido liberadas para otros clientes.
+        </p>
+        <Button
+          onClick={() => navigate(isMulti ? "/cart" : "/catalog")}
+          className="rounded-[2rem] h-11 bg-primary text-primary-foreground font-semibold px-6 shadow-elegant"
+        >
+          Volver a iniciar
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       {errorModal}
@@ -300,6 +379,14 @@ export default function Checkout() {
       </h1>
 
       <Stepper current={currentStep} steps={steps} />
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 bg-primary/5 p-4 rounded-xl border border-primary/10">
+        <div className="flex items-center gap-2 text-primary font-medium">
+          <Clock className="h-5 w-5 animate-pulse" />
+          <span className="text-sm">Tiempo restante para completar la reserva:</span>
+        </div>
+        <span className="text-lg font-bold text-primary font-mono">{formatTime(timeLeft)}</span>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* ── Main column ── */}
@@ -528,6 +615,12 @@ export default function Checkout() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-bold">{formatCurrency(subtotal)}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                    <span>Descuento ({appliedCoupon.code})</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">ITBMS (7%)</span>
                   <span className="font-bold">{formatCurrency(itbms)}</span>
@@ -537,6 +630,48 @@ export default function Checkout() {
                   <span className="font-bold">Total Alquiler</span>
                   <span className="font-black text-2xl text-primary">{formatCurrency(finalTotal)}</span>
                 </div>
+              </div>
+
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/60">
+                <Label htmlFor="coupon" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">¿Tienes un cupón?</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="coupon"
+                    type="text"
+                    placeholder="CÓDIGO"
+                    value={couponCode}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError("");
+                    }}
+                    disabled={!!appliedCoupon}
+                    className="rounded-[2rem] border border-border/80 h-9 px-3 text-sm flex-1 bg-background"
+                  />
+                  {appliedCoupon ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        setAppliedCoupon(null);
+                        setCouponCode("");
+                      }}
+                      className="rounded-[2rem] h-9 px-3 text-xs"
+                    >
+                      Remover
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleApplyCoupon}
+                      disabled={validatingCoupon || !couponCode}
+                      className="rounded-[2rem] h-9 px-3 border-border/60 text-xs"
+                    >
+                      {validatingCoupon ? <Loader2 className="h-3 w-3 animate-spin" /> : "Aplicar"}
+                    </Button>
+                  )}
+                </div>
+                {couponError && <p className="text-xs text-destructive font-medium">{couponError}</p>}
               </div>
 
               <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10 flex flex-col items-center justify-center text-center">

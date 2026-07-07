@@ -28,6 +28,8 @@ import AdminUsers from "@/pages/admin/Users";
 import AdminUserDetail from "@/pages/admin/UserDetail";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
+import AdminCoupons from "@/pages/admin/CouponsAdmin";
+import AdminReports from "@/pages/admin/Reports";
 
 /**
  * Guards a route that requires the user to be logged in.
@@ -195,6 +197,8 @@ export default function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/inventory" element={<AdminInventory />} />
                 <Route path="/admin/reservations" element={<AdminReservations />} />
+                <Route path="/admin/coupons" element={<AdminCoupons />} />
+                <Route path="/admin/reports" element={<AdminReports />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />

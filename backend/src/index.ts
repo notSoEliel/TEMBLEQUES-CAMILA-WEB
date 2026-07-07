@@ -13,6 +13,9 @@ import rentalRoutes from "./routes/rentals.js";
 import adminRoutes from "./routes/admin.js";
 import stripeRoutes from "./routes/stripe.js";
 import settingsRoutes from "./routes/settings.js";
+import couponRoutes from "./routes/coupons.js";
+import maintenanceRoutes from "./routes/maintenance.js";
+import reportRoutes from "./routes/reports.js";
 import { startCronJobs } from "./services/cron.js";
 
 const app = new Hono();
@@ -76,6 +79,9 @@ app.route("/api/rentals", rentalRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/stripe", stripeRoutes);
 app.route("/api/settings", settingsRoutes);
+app.route("/api/coupons", couponRoutes);
+app.route("/api/admin/maintenance", maintenanceRoutes);
+app.route("/api/admin/reports", reportRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;

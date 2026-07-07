@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
+import { Coupon } from "../models/Coupon.js";
 import { checkAvailability } from "../services/availability.js";
 import { AppError } from "../lib/errors.js";
 import { type IProduct } from "../models/Product.js";
@@ -21,13 +22,14 @@ const createSessionSchema = z.object({
   rentalIds: z.array(z.string()).min(1, "Al menos un ID de reserva es requerido").optional(),
   rentalId: z.string().optional(), // Fallback for backward compatibility
   paymentType: z.enum(["reservation", "full"]).optional(),
+  couponCode: z.string().optional(),
 });
 
 // ─── POST /api/stripe/create-checkout-session ─────────────────────────────────
 stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   const user = c.get("user") as IUser;
   const body = await c.req.json();
-  const { orderGroupId, rentalIds: inputIds, rentalId: inputId, paymentType } = createSessionSchema.parse(body);
+  const { orderGroupId, rentalIds: inputIds, rentalId: inputId, paymentType, couponCode } = createSessionSchema.parse(body);
   
   let rentals = [];
 
@@ -65,6 +67,60 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
       rental.payment_type = paymentType;
       await rental.save();
     }
+  }
+
+  // Apply Coupon if provided
+  let discountPerRental: Record<string, number> = {};
+  if (couponCode) {
+    const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), is_active: true });
+    if (!coupon) {
+      throw new AppError("El cupón no es válido o ha expirado.", 400, "COUPON_INVALID");
+    }
+
+    if (coupon.expires_at && new Date() > coupon.expires_at) {
+      throw new AppError("El cupón ha expirado.", 400, "COUPON_EXPIRED");
+    }
+
+    if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
+      throw new AppError("El cupón ha alcanzado el límite máximo de usos.", 400, "COUPON_LIMIT_REACHED");
+    }
+
+    if (coupon.discount_type === "percentage") {
+      for (const rental of rentals) {
+        discountPerRental[rental._id.toString()] = Math.round(rental.total * (coupon.value / 100) * 100) / 100;
+      }
+    } else if (coupon.discount_type === "fixed") {
+      const overallTotal = rentals.reduce((sum, r) => sum + r.total, 0);
+      let remainingDiscount = coupon.value;
+      for (let i = 0; i < rentals.length; i++) {
+        const rental = rentals[i];
+        if (i === rentals.length - 1) {
+          discountPerRental[rental._id.toString()] = Math.min(rental.total, Math.round(remainingDiscount * 100) / 100);
+        } else {
+          const share = rental.total / overallTotal;
+          const discountShare = Math.min(rental.total, Math.round(coupon.value * share * 100) / 100);
+          discountPerRental[rental._id.toString()] = discountShare;
+          remainingDiscount -= discountShare;
+        }
+      }
+    }
+
+    coupon.used_count += 1;
+    await coupon.save();
+  }
+
+  // Update discount fields on rentals
+  for (const rental of rentals) {
+    const discount = discountPerRental[rental._id.toString()] || 0;
+    rental.coupon_code = couponCode ? couponCode.toUpperCase() : undefined;
+    rental.discount_amount = discount;
+
+    const discountedTotal = Math.max(0, rental.total - discount);
+    const depositAmount = rental.deposit_required ? Math.round(discountedTotal * 0.25 * 100) / 100 : 0;
+
+    rental.deposit_amount = depositAmount;
+    rental.balance_due = rental.payment_type === "full" ? 0 : discountedTotal - depositAmount;
+    await rental.save();
   }
 
   // Re-check availability for all

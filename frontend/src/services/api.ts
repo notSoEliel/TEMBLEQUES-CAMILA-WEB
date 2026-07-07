@@ -136,7 +136,7 @@ export const rentalsApi = {
 
 // Stripe
 export const stripeApi = {
-  createCheckoutSession: (rentalId: string, token: string) =>
+  createCheckoutSession: (rentalId: string, token: string, couponCode?: string) =>
     api<{
       url?: string;
       mode?: string;
@@ -146,11 +146,11 @@ export const stripeApi = {
       deposit?: { required: boolean; amount: number; status: string };
     }>("/stripe/create-checkout-session", {
       method: "POST",
-      body: { rentalId },
+      body: { rentalId, couponCode },
       token,
     }),
 
-  createBulkCheckoutSession: (rentalIds: string[], token: string, orderGroupId?: string, paymentType?: "reservation" | "full") =>
+  createBulkCheckoutSession: (rentalIds: string[], token: string, orderGroupId?: string, paymentType?: "reservation" | "full", couponCode?: string) =>
     api<{
       url?: string;
       mode?: string;
@@ -159,7 +159,7 @@ export const stripeApi = {
       sessionId?: string;
     }>("/stripe/create-checkout-session", {
       method: "POST",
-      body: { rentalIds, orderGroupId, paymentType },
+      body: { rentalIds, orderGroupId, paymentType, couponCode },
       token,
     }),
   verifySession: (sessionId: string, token: string) =>
@@ -226,6 +226,50 @@ export const adminApi = {
 
   userStats: (userId: string, token: string) =>
     api<{ stats: { completed: number; cancelled: number; pending: number } }>(`/admin/users/${userId}/stats`, { token }),
+
+  // Maintenance Blocks
+  listMaintenance: (token: string) =>
+    api<{ blocks: any[] }>("/admin/maintenance", { token }),
+
+  createMaintenance: (data: any, token: string) =>
+    api<{ block: any }>("/admin/maintenance", { method: "POST", body: data, token }),
+
+  deleteMaintenance: (id: string, token: string) =>
+    api<{ message: string; block: any }>(`/admin/maintenance/${id}`, { method: "DELETE", token }),
+
+  // Reports
+  getInventoryStats: (token: string) =>
+    api<{ stats: any[] }>("/admin/reports/inventory-stats", { token }),
+
+  exportCsv: async (token: string): Promise<string> => {
+    const freshToken = typeof window !== "undefined" && (window as any).Clerk?.session
+      ? await (window as any).Clerk.session.getToken()
+      : token;
+    
+    const res = await fetch("/api/admin/reports/export-csv", {
+      headers: { Authorization: `Bearer ${freshToken || token}` }
+    });
+    if (!res.ok) throw new Error("Error al exportar reporte");
+    return res.text();
+  },
+};
+
+// Coupons
+export const couponsApi = {
+  validate: (code: string, subtotal: number, categories: string[], token: string) =>
+    api<{ valid: boolean; coupon: { code: string; discount_type: string; value: number } }>("/coupons/validate", {
+      method: "POST",
+      body: { code, subtotal, categories },
+      token,
+    }),
+  list: (token: string) =>
+    api<{ coupons: any[] }>("/coupons", { token }),
+  create: (data: any, token: string) =>
+    api<{ coupon: any }>("/coupons", { method: "POST", body: data, token }),
+  update: (id: string, data: any, token: string) =>
+    api<{ coupon: any }>(`/coupons/${id}`, { method: "PUT", body: data, token }),
+  delete: (id: string, token: string) =>
+    api<{ message: string; coupon: any }>(`/coupons/${id}`, { method: "DELETE", token }),
 };
 
 // Settings

@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import SizeManager, { type SizeVariant } from "@/components/SizeManager";
 import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
-import { Plus, Pencil, Trash2, X, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, Eye, Calendar } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -64,6 +64,72 @@ export default function AdminInventory() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
+
+  const [maintenanceProduct, setMaintenanceProduct] = useState<any>(null);
+  const [maintenanceBlocks, setMaintenanceBlocks] = useState<any[]>([]);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [maintenanceSize, setMaintenanceSize] = useState("");
+  const [maintenanceStart, setMaintenanceStart] = useState("");
+  const [maintenanceEnd, setMaintenanceEnd] = useState("");
+  const [maintenanceReason, setMaintenanceReason] = useState("");
+  const [creatingMaintenance, setCreatingMaintenance] = useState(false);
+
+  const openMaintenance = async (product: any) => {
+    setMaintenanceProduct(product);
+    setMaintenanceSize(product.variants?.[0]?.size || "");
+    setMaintenanceStart("");
+    setMaintenanceEnd("");
+    setMaintenanceReason("");
+    if (token) {
+      try {
+        setLoadingMaintenance(true);
+        const res = await adminApi.listMaintenance(token);
+        setMaintenanceBlocks(res.blocks || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingMaintenance(false);
+      }
+    }
+  };
+
+  const handleCreateMaintenance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !maintenanceProduct) return;
+    try {
+      setCreatingMaintenance(true);
+      await adminApi.createMaintenance({
+        productId: maintenanceProduct._id,
+        selectedSize: maintenanceSize,
+        startDate: maintenanceStart,
+        endDate: maintenanceEnd,
+        reason: maintenanceReason,
+      }, token);
+      
+      setMaintenanceStart("");
+      setMaintenanceEnd("");
+      setMaintenanceReason("");
+      
+      const res = await adminApi.listMaintenance(token);
+      setMaintenanceBlocks(res.blocks || []);
+    } catch (err: any) {
+      alert(err.message || "Error al programar mantenimiento");
+    } finally {
+      setCreatingMaintenance(false);
+    }
+  };
+
+  const handleDeleteMaintenance = async (blockId: string) => {
+    if (!token) return;
+    if (!window.confirm("¿Seguro que deseas eliminar este bloqueo de mantenimiento?")) return;
+    try {
+      await adminApi.deleteMaintenance(blockId, token);
+      const res = await adminApi.listMaintenance(token);
+      setMaintenanceBlocks(res.blocks || []);
+    } catch (err: any) {
+      alert(err.message || "Error al eliminar mantenimiento");
+    }
+  };
   
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
@@ -456,6 +522,9 @@ export default function AdminInventory() {
                       <Button variant="outline" size="sm" onClick={() => openPreviewFromProduct(product)}>
                         <Eye className="h-3.5 w-3.5 mr-1" />Vista Previa
                       </Button>
+                      <Button variant="outline" size="sm" onClick={() => openMaintenance(product)}>
+                        <Calendar className="h-3.5 w-3.5 mr-1" />Mantenimiento
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />Editar
                       </Button>
@@ -549,6 +618,117 @@ export default function AdminInventory() {
           onClose={() => { setPreviewOpen(false); setPreviewProduct(null); }}
         />
       )}
+
+      {/* Maintenance Dialog */}
+      <Dialog open={!!maintenanceProduct} onOpenChange={(open) => !open && setMaintenanceProduct(null)}>
+        <DialogContent className="max-w-xl rounded-[2rem] p-6 bg-background">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-serif">Mantenimiento de Prendas</DialogTitle>
+            <DialogDescription>
+              Programa un rango de fechas para mantenimiento artesanal en {maintenanceProduct?.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateMaintenance} className="space-y-4 my-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="maint-size" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Talla</Label>
+                <select
+                  id="maint-size"
+                  value={maintenanceSize}
+                  onChange={(e) => setMaintenanceSize(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-sm"
+                  required
+                >
+                  {maintenanceProduct?.variants?.map((v: any) => (
+                    <option key={v.size} value={v.size}>{v.size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="maint-reason" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Razón</Label>
+                <Input
+                  id="maint-reason"
+                  type="text"
+                  placeholder="E.g. Costura de encajes"
+                  value={maintenanceReason}
+                  onChange={(e) => setMaintenanceReason(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="maint-start" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Fecha Inicio</Label>
+                <Input
+                  id="maint-start"
+                  type="date"
+                  value={maintenanceStart}
+                  onChange={(e) => setMaintenanceStart(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="maint-end" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Fecha Fin</Label>
+                <Input
+                  id="maint-end"
+                  type="date"
+                  value={maintenanceEnd}
+                  onChange={(e) => setMaintenanceEnd(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={creatingMaintenance}
+              className="w-full rounded-[2rem] h-10 bg-primary font-semibold"
+            >
+              {creatingMaintenance ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bloquear Fechas"}
+            </Button>
+          </form>
+
+          <Separator />
+
+          <div className="mt-4 space-y-3">
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bloqueos Programados</h4>
+            {loadingMaintenance ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 text-primary animate-spin" /></div>
+            ) : maintenanceBlocks.filter(b => b.product_id?._id === maintenanceProduct?._id).length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No hay bloqueos de mantenimiento activos para esta prenda.</p>
+            ) : (
+              <div className="max-h-40 overflow-y-auto space-y-2 no-scrollbar">
+                {maintenanceBlocks
+                  .filter(b => b.product_id?._id === maintenanceProduct?._id)
+                  .map((b) => (
+                    <div key={b._id} className="flex justify-between items-center bg-muted/30 p-2.5 rounded-xl border border-border/40 text-xs">
+                      <div>
+                        <p className="font-semibold">Talla: {b.selected_size} {b.reason && `• ${b.reason}`}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {new Date(b.start_date).toLocaleDateString("es-PA")} al {new Date(b.end_date).toLocaleDateString("es-PA")}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteMaintenance(b._id)}
+                        className="text-destructive hover:bg-destructive/8 rounded-full h-8 w-8"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
