@@ -24,6 +24,60 @@ export interface IProduct {
   is_available?: boolean;
 }
 
+export interface IUserProfile {
+  id: string;
+  clerkId: string;
+  name: string;
+  email: string;
+  role: "client" | "admin";
+  phone?: string;
+  preferredAddress?: string;
+  createdAt?: string;
+}
+
+export type ContactStatus = "unread" | "read" | "archived";
+
+export interface IContactMessage {
+  _id: string;
+  name: string;
+  email: string;
+  message: string;
+  status: ContactStatus;
+  ipAddress: string;
+  userAgent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CustomerTrustLevel = "alto" | "medio" | "requiere_revision";
+
+export interface IUserAudit {
+  totalRentals: number;
+  completed: number;
+  active: number;
+  pending: number;
+  cancelled: number;
+  late: number;
+  damaged: number;
+  incidents: number;
+  termsAccepted: number;
+  totalSpent: number;
+  outstandingBalance: number;
+  trustLevel: CustomerTrustLevel;
+  lastRental?: {
+    _id: string;
+    status: string;
+    total: number;
+    createdAt: string;
+    product_id?: {
+      name?: string;
+      category?: string[];
+      images?: string[];
+    };
+  } | null;
+  statusBreakdown: Record<string, number>;
+}
+
 export interface ICategoryConfig {
   id: string;
   label: string;

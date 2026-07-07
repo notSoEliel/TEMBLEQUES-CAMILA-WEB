@@ -26,6 +26,7 @@ import AdminInventory from "@/pages/admin/Inventory";
 import AdminReservations from "@/pages/admin/Reservations";
 import AdminUsers from "@/pages/admin/Users";
 import AdminUserDetail from "@/pages/admin/UserDetail";
+import AdminContacts from "@/pages/admin/Contacts";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
 import AdminCoupons from "@/pages/admin/CouponsAdmin";
@@ -201,6 +202,7 @@ export default function App() {
                 <Route path="/admin/reports" element={<AdminReports />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/admin/contacts" element={<AdminContacts />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
               </Route>

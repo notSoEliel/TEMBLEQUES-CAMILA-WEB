@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List } from "lucide-react";
+import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List, FileText } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface OrderCardProps {
@@ -11,6 +11,7 @@ interface OrderCardProps {
   rentals: any[];
   onStatusChange: (id: string, status: string) => Promise<void>;
   onBulkStatusChange: (ids: string[], status: string) => Promise<void>;
+  onDownloadContract: (id: string) => Promise<void>;
   statusLabels: Record<string, string>;
   statusColors: Record<string, any>;
   actionLabels: Record<string, string>;
@@ -29,6 +30,7 @@ export default function OrderCard({
   rentals,
   onStatusChange,
   onBulkStatusChange,
+  onDownloadContract,
   statusLabels,
   statusColors,
   actionLabels,
@@ -76,15 +78,26 @@ export default function OrderCard({
               Deuda: {formatCurrency(balanceDue)}
             </p>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowDetails(!showDetails)}
-            className="mt-2 text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
-          >
-            {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-            {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
-          </Button>
+          <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadContract(first._id)}
+              className="text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
+            >
+              <FileText className="w-3 h-3 mr-1" />
+              Contrato PDF
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
+            >
+              {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+              {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
+            </Button>
+          </div>
         </div>
       </div>
 

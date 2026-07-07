@@ -25,6 +25,7 @@ import {
 import { formatCurrency, cn } from "@/lib/utils";
 import { useErrorModal } from "@/components/ErrorModal";
 import { useSearchParams, Link } from "react-router-dom";
+import { useI18n } from "@/i18n";
 
 type TabType = "account" | "rentals" | "settings";
 
@@ -51,14 +52,22 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function Profile() {
-  const { user, token } = useAuth();
-  const { errorModal } = useErrorModal();
+  const { user, token, updateProfile } = useAuth();
+  const { errorModal, showError } = useErrorModal();
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [lastOrder, setLastOrder] = useState<any | null>(null);
   const [orderItemsCount, setOrderItemsCount] = useState(0);
   const [totalRentals, setTotalRentals] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    preferredAddress: "",
+  });
   
   const activeTab = (searchParams.get("tab") as TabType) || "account";
 
@@ -67,6 +76,17 @@ export default function Profile() {
       loadDashboardData();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!user) return;
+    const parts = user.name.split(" ");
+    setProfileForm({
+      firstName: parts[0] ?? "",
+      lastName: parts.slice(1).join(" "),
+      phone: user.phone ?? "",
+      preferredAddress: user.preferredAddress ?? "",
+    });
+  }, [user]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -112,6 +132,30 @@ export default function Profile() {
     setSearchParams(params);
   };
 
+  const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const fullName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
+    if (fullName.length < 2) {
+      showError(t("profile.emptyName"), "validation");
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      await updateProfile({
+        name: fullName,
+        phone: profileForm.phone,
+        preferredAddress: profileForm.preferredAddress,
+      });
+      showError(t("profile.saved"), "success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudo guardar el perfil.";
+      showError(message, "generic");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const nameParts = user?.name.split(" ") || ["", ""];
   const firstName = nameParts[0];
   const lastName = nameParts.slice(1).join(" ");
@@ -125,22 +169,22 @@ export default function Profile() {
         <header className={cn("space-y-4 transition-all duration-700", activeTab !== "account" && "opacity-40 scale-95 origin-left")}>
           <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight leading-tight">
             {totalRentals > 0 ? (
-              <>Gracias por elegir la <span className="text-primary underline decoration-primary/20 underline-offset-8">excelencia</span>, {firstName}.</>
+              <>{t("profile.thanks")}, {firstName}.</>
             ) : (
-              <>Tu legado folclórico <span className="text-primary underline decoration-primary/20 underline-offset-8">comienza</span> aquí, {firstName}.</>
+              <>{t("profile.starts")}, {firstName}.</>
             )}
           </h1>
           <p className="text-muted-foreground text-lg md:text-xl font-medium leading-relaxed max-w-2xl italic">
-            "Donde la tradición se encuentra con la distinción. Gestiona tus piezas y detalles de cuenta en un entorno de alta costura."
+            "{t("profile.subtitle")}"
           </p>
         </header>
 
         {/* 3-Tab Clean Navigation */}
         <div className="flex gap-2 p-1 bg-muted/40 rounded-full border border-border/40 w-fit overflow-x-auto no-scrollbar">
           {[
-            { id: "account", label: "Mi Cuenta", icon: User },
-            { id: "rentals", label: "Mis Alquileres", icon: ShoppingBag },
-            { id: "settings", label: "Ajustes", icon: Settings }
+            { id: "account", label: t("profile.account"), icon: User },
+            { id: "rentals", label: t("profile.rentals"), icon: ShoppingBag },
+            { id: "settings", label: t("profile.settings"), icon: Settings }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -166,41 +210,69 @@ export default function Profile() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="md:col-span-2 border-none shadow-elegant-lg rounded-[2.5rem] overflow-hidden">
                 <CardHeader className="p-10 pb-4">
-                  <CardTitle className="text-3xl font-display font-bold">Detalles de Identidad</CardTitle>
+                  <CardTitle className="text-3xl font-display font-bold">{t("profile.identity")}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-10 pt-0 space-y-8">
+                  <form className="space-y-8" onSubmit={handleProfileSubmit}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Primer Nombre</Label>
-                      <Input defaultValue={firstName} className="rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                      <Label htmlFor="profile-first-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.firstName")}</Label>
+                      <Input
+                        id="profile-first-name"
+                        value={profileForm.firstName}
+                        onChange={(event) => setProfileForm((current) => ({ ...current, firstName: event.target.value }))}
+                        autoComplete="given-name"
+                        className="rounded-2xl border-border/40 focus:ring-primary/20 h-12"
+                      />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Apellidos</Label>
-                      <Input defaultValue={lastName} className="rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                      <Label htmlFor="profile-last-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.lastName")}</Label>
+                      <Input
+                        id="profile-last-name"
+                        value={profileForm.lastName}
+                        onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))}
+                        autoComplete="family-name"
+                        className="rounded-2xl border-border/40 focus:ring-primary/20 h-12"
+                      />
                     </div>
                     <div className="col-span-1 sm:col-span-2 space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Correo Electrónico Verificado</Label>
-                      <Input defaultValue={user?.email} disabled className="rounded-2xl bg-muted/20 border-border/20 opacity-60 h-12" />
+                      <Label htmlFor="profile-email" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.email")}</Label>
+                      <Input id="profile-email" defaultValue={user?.email} disabled className="rounded-2xl bg-muted/20 border-border/20 opacity-60 h-12" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Contacto de Enlace</Label>
+                      <Label htmlFor="profile-phone" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.phone")}</Label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                        <Input placeholder="+507 0000-0000" className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                        <Input
+                          id="profile-phone"
+                          value={profileForm.phone}
+                          onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
+                          placeholder="+507 0000-0000"
+                          autoComplete="tel"
+                          className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12"
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Dirección Preferida</Label>
+                      <Label htmlFor="profile-address" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.address")}</Label>
                       <div className="relative">
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
-                        <Input placeholder="Ciudad de Panamá..." className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12" />
+                        <Input
+                          id="profile-address"
+                          value={profileForm.preferredAddress}
+                          onChange={(event) => setProfileForm((current) => ({ ...current, preferredAddress: event.target.value }))}
+                          placeholder="Ciudad de Panamá..."
+                          autoComplete="street-address"
+                          className="pl-11 rounded-2xl border-border/40 focus:ring-primary/20 h-12"
+                        />
                       </div>
                     </div>
                   </div>
                   <Separator className="bg-border/20" />
-                  <Button className="rounded-full px-10 h-11 shadow-elegant font-bold">
-                    Guardar Perfil
+                  <Button type="submit" disabled={savingProfile} className="rounded-full px-10 h-11 shadow-elegant font-bold w-full sm:w-auto">
+                    {savingProfile ? t("profile.saving") : t("profile.save")}
                   </Button>
+                  </form>
                 </CardContent>
               </Card>
               

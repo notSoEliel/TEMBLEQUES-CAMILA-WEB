@@ -4,7 +4,11 @@ import {
   ICategoryConfig, 
   ISizeGroupConfig, 
   PaginationMetadata, 
-  ApiResponse 
+  ApiResponse,
+  IContactMessage,
+  ContactStatus,
+  IUserAudit,
+  IUserProfile,
 } from "@/types";
 
 const API_URL = "/api";
@@ -78,7 +82,15 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 // Auth
 export const authApi = {
   me: (token: string) =>
-    api<{ user: any }>("/auth/me", { token }),
+    api<{ user: IUserProfile }>("/auth/me", { token }),
+  updateMe: (data: { name: string; phone?: string; preferredAddress?: string }, token: string) =>
+    api<{ user: IUserProfile }>("/auth/me", { method: "PATCH", body: data, token }),
+};
+
+// Contact
+export const contactApi = {
+  submit: (data: { name: string; email: string; message: string }) =>
+    api<{ message: string }>("/contact", { method: "POST", body: data }),
 };
 
 // Products
@@ -105,7 +117,7 @@ export const productsApi = {
     const params = new URLSearchParams();
     if (from) params.set("from", from);
     if (to) params.set("to", to);
-    const query = params.toString() ? `?${params.toString()}` : "";
+    const query = params.toString() ? `?${searchParams.toString()}` : "";
     return api<{ booked: Array<{ start: string; end: string; size: string }> }>(`/products/${id}/availability${query}`);
   },
 };
@@ -214,7 +226,6 @@ export const adminApi = {
   getUser: (id: string, token: string) =>
     api<{ user: any }>(`/admin/users/${id}`, { token }),
 
-
   userRentals: (userId: string, token: string, params: { page?: number; limit?: number; status?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", String(params.page));
@@ -225,7 +236,10 @@ export const adminApi = {
   },
 
   userStats: (userId: string, token: string) =>
-    api<{ stats: { completed: number; cancelled: number; pending: number } }>(`/admin/users/${userId}/stats`, { token }),
+    api<{ stats: { total: number; completed?: number; cancelled: number; pending: number; reserved: number; totalSpent: number } }>(`/admin/users/${userId}/stats`, { token }),
+
+  userAudit: (userId: string, token: string) =>
+    api<{ audit: IUserAudit }>(`/admin/users/${userId}/audit`, { token }),
 
   // Maintenance Blocks
   listMaintenance: (token: string) =>
@@ -251,6 +265,46 @@ export const adminApi = {
     });
     if (!res.ok) throw new Error("Error al exportar reporte");
     return res.text();
+  },
+
+  // Contacts
+  contacts: (token: string, params: { status?: ContactStatus; page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.set("status", params.status);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<IContactMessage>>(`/admin/contacts${query}`, { token });
+  },
+
+  updateContactStatus: (id: string, status: ContactStatus, token: string) =>
+    api<{ contact: IContactMessage }>(`/admin/contacts/${id}/status`, { method: "PATCH", body: { status }, token }),
+
+  downloadRentalContract: async (rentalId: string, token: string) => {
+    const response = await fetch(`${API_URL}/admin/rentals/${rentalId}/contract.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      let message = "No se pudo generar el contrato.";
+      try {
+        const data = await response.json();
+        message = data?.error || message;
+      } catch {
+        message = `No se pudo generar el contrato (${response.status}).`;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `contrato-${rentalId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   },
 };
 

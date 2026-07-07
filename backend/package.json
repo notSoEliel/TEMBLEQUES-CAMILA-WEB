@@ -9,16 +9,17 @@
     "tunnel": "bunx localtunnel --port 3000 --subdomain tembleques-camila"
   },
   "dependencies": {
+    "@clerk/backend": "^1.21.0",
     "hono": "^4.7.0",
     "mongoose": "^8.9.0",
-    "@clerk/backend": "^1.21.0",
-    "zod": "^3.24.0",
+    "pdfkit": "^0.19.1",
     "stripe": "^17.5.0",
-    "svix": "^1.60.0"
+    "svix": "^1.60.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/pdfkit": "^0.17.6",
     "bun-types": "latest",
     "typescript": "^5.7.0"
   }
 }
-

@@ -14,7 +14,11 @@ import {
   Mail,
   Phone,
   User as UserIcon,
-  CalendarCheck
+  CalendarCheck,
+  ShieldCheck,
+  AlertTriangle,
+  DollarSign,
+  FileText
 } from "lucide-react";
 import {
   Pagination,
@@ -25,7 +29,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import type { IUserAudit } from "@/types";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendiente",
@@ -39,13 +44,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", {
-    style: "currency",
-    currency: "PAB",
-  }).format(amount);
-}
-
 export default function AdminUserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,6 +51,7 @@ export default function AdminUserDetail() {
   
   const [rentals, setRentals] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [audit, setAudit] = useState<IUserAudit | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,15 +67,17 @@ export default function AdminUserDetail() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [rentalsRes, statsRes, userRes] = await Promise.all([
+      const [rentalsRes, statsRes, userRes, auditRes] = await Promise.all([
         adminApi.userRentals(id!, token!, { page: currentPage, limit: 10, status: filterStatus || undefined }),
         adminApi.userStats(id!, token!),
-        adminApi.getUser(id!, token!)
+        adminApi.getUser(id!, token!),
+        adminApi.userAudit(id!, token!)
       ]);
       setRentals(rentalsRes.data);
       setPagination(rentalsRes.pagination);
       setStats(statsRes.stats);
       setUserData(userRes.user);
+      setAudit(auditRes.audit);
     } catch (err) {
       console.error(err);
     }
@@ -84,6 +85,12 @@ export default function AdminUserDetail() {
   };
 
   const user = userData || {};
+  const trustLabel = audit?.trustLevel === "alto" ? "Alto" : audit?.trustLevel === "medio" ? "Medio" : "Requiere revisión";
+  const trustClass = audit?.trustLevel === "alto"
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : audit?.trustLevel === "medio"
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-destructive/5 text-destructive border-destructive/20";
 
   return (
     <div className="space-y-8">
@@ -172,6 +179,55 @@ export default function AdminUserDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Customer Audit */}
+      <Card className="border border-border/60 shadow-elegant overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b border-border/60">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-lg font-bold">Auditoría del Cliente</CardTitle>
+            <Badge className={cn("rounded-full px-4 py-1 text-[10px] font-black uppercase border", trustClass)}>
+              Confianza: {trustLabel}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-[1.5rem] border border-border/60 bg-background p-4 space-y-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Completados</p>
+              <p className="text-2xl font-black">{audit?.completed ?? 0}</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-border/60 bg-background p-4 space-y-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Incidencias</p>
+              <p className="text-2xl font-black">{audit?.incidents ?? 0}</p>
+              <p className="text-xs text-muted-foreground">{audit?.late ?? 0} atrasos · {audit?.damaged ?? 0} daños</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-border/60 bg-background p-4 space-y-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Saldo Pendiente</p>
+              <p className="text-2xl font-black">{formatCurrency(audit?.outstandingBalance ?? 0)}</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-border/60 bg-background p-4 space-y-2">
+              <FileText className="h-5 w-5 text-primary" />
+              <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Términos Aceptados</p>
+              <p className="text-2xl font-black">{audit?.termsAccepted ?? 0}</p>
+            </div>
+          </div>
+          {audit?.lastRental && (
+            <div className="mt-5 rounded-[1.5rem] border border-border/60 bg-muted/20 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground">Última reserva</p>
+                <p className="font-bold">{audit.lastRental.product_id?.name || "Producto"}</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(audit.lastRental.createdAt).toLocaleDateString("es-PA")} · {STATUS_LABELS[audit.lastRental.status] || audit.lastRental.status}
+                </p>
+              </div>
+              <p className="text-lg font-black text-primary">{formatCurrency(audit.lastRental.total)}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Activity Table */}
       <Card className="border border-border/60 shadow-elegant overflow-hidden">

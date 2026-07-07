@@ -128,6 +128,14 @@ export default function AdminReservations() {
     } catch (err: any) { showError(err.message, "generic"); }
   };
 
+  const handleDownloadContract = async (id: string) => {
+    try {
+      await adminApi.downloadRentalContract(id, token!);
+    } catch (err: any) {
+      showError(err.message || "No se pudo descargar el contrato.", "generic");
+    }
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     const newParams = new URLSearchParams(searchParams);
@@ -250,6 +258,7 @@ export default function AdminReservations() {
               rentals={group as any[]}
               onStatusChange={handleStatusChange}
               onBulkStatusChange={handleBulkStatusChange}
+              onDownloadContract={handleDownloadContract}
               statusLabels={STATUS_LABELS}
               statusColors={STATUS_COLORS}
               actionLabels={ACTION_LABELS}

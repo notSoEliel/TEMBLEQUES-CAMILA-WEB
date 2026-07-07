@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { Webhook } from "svix";
+import { z } from "zod";
 import { User } from "../models/User.js";
 import { authMiddleware, type AuthVariables } from "../middleware/auth.js";
 import { AppError } from "../lib/errors.js";
@@ -39,6 +40,38 @@ auth.get("/me", authMiddleware, async (c) => {
       email: user.email,
       role: user.role,
       phone: user.phone,
+      preferredAddress: user.preferredAddress,
+      createdAt: user.createdAt,
+    },
+  });
+});
+
+const updateProfileSchema = z.object({
+  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").max(120, "El nombre es demasiado largo"),
+  phone: z.string().trim().max(40, "El teléfono es demasiado largo").optional().or(z.literal("")),
+  preferredAddress: z.string().trim().max(240, "La dirección es demasiado larga").optional().or(z.literal("")),
+});
+
+// PATCH /api/auth/me — updates local customer profile fields stored in MongoDB.
+auth.patch("/me", authMiddleware, async (c) => {
+  const user = c.get("user");
+  const body = await c.req.json();
+  const data = updateProfileSchema.parse(body);
+
+  user.name = data.name;
+  user.phone = data.phone || undefined;
+  user.preferredAddress = data.preferredAddress || undefined;
+  await user.save();
+
+  return c.json({
+    user: {
+      id: user._id,
+      clerkId: user.clerkId,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+      preferredAddress: user.preferredAddress,
       createdAt: user.createdAt,
     },
   });

@@ -5,7 +5,10 @@ import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/
 import { Product } from "../models/Product.js";
 import { Rental } from "../models/Rental.js";
 import { User } from "../models/User.js";
+import { Contact, type ContactStatus } from "../models/Contact.js";
+import { TermsAcceptance } from "../models/TermsAcceptance.js";
 import { updateRentalStatus } from "../services/rental.js";
+import { generateRentalContractPdf } from "../services/contracts.js";
 import { AppError } from "../lib/errors.js";
 import { getPanamaTodayUTC } from "../services/payment-rules.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
@@ -14,6 +17,8 @@ const admin = new Hono<{ Variables: AuthVariables }>();
 
 // All admin routes require auth + admin role
 admin.use("/*", authMiddleware, requireAdmin);
+
+const contactStatusSchema = z.enum(["unread", "read", "archived"]);
 
 // GET /api/admin/dashboard - KPIs
 admin.get("/dashboard", async (c) => {
@@ -192,7 +197,7 @@ admin.get("/rentals", async (c) => {
 
   const [allRentals, total] = await Promise.all([
     Rental.find(filter)
-      .populate("user_id", "name email phone")
+      .populate("user_id", "name email phone preferredAddress")
       .populate("product_id", "name category images")
       .sort({ createdAt: sortOrder })
       .skip(skip)
@@ -228,6 +233,19 @@ admin.get("/rentals/calendar", async (c) => {
     .sort({ start_date: 1 });
 
   return c.json({ data: rentals });
+});
+
+// GET /api/admin/rentals/:id/contract.pdf
+admin.get("/rentals/:id/contract.pdf", async (c) => {
+  const pdf = await generateRentalContractPdf(c.req.param("id"));
+  return new Response(new Uint8Array(pdf), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="contrato-${c.req.param("id")}.pdf"`,
+      "Cache-Control": "no-store",
+    },
+  });
 });
 
 // PATCH /api/admin/rentals/:id/status
@@ -307,6 +325,131 @@ admin.get("/users/:id/stats", async (c) => {
   return c.json({
     stats: { total, cancelled, pending, reserved, totalSpent: spentResult[0]?.total || 0 },
   });
+});
+
+// GET /api/admin/users/:id/audit
+admin.get("/users/:id/audit", async (c) => {
+  const userId = c.req.param("id");
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new AppError("Usuario no encontrado", 404, "USER_NOT_FOUND");
+  }
+
+  const objectUserId = new mongoose.Types.ObjectId(userId);
+  const [user, statusBreakdown, spentResult, balanceResult, lastRental, termsCount] = await Promise.all([
+    User.findById(userId),
+    Rental.aggregate([
+      { $match: { user_id: objectUserId } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]),
+    Rental.aggregate([
+      {
+        $match: {
+          user_id: objectUserId,
+          payment_status: "completed",
+          status: { $nin: ["cancelled", "pending"] },
+        },
+      },
+      { $group: { _id: null, total: { $sum: "$total" } } },
+    ]),
+    Rental.aggregate([
+      { $match: { user_id: objectUserId, status: { $nin: ["cancelled", "returned", "damaged"] } } },
+      { $group: { _id: null, total: { $sum: "$balance_due" } } },
+    ]),
+    Rental.findOne({ user_id: userId })
+      .populate("product_id", "name category images")
+      .sort({ createdAt: -1 }),
+    TermsAcceptance.countDocuments({ user_id: userId }),
+  ]);
+
+  if (!user) {
+    throw new AppError("Usuario no encontrado", 404, "USER_NOT_FOUND");
+  }
+
+  const counts: Record<string, number> = {
+    pending: 0,
+    reserved: 0,
+    paid: 0,
+    confirmed: 0,
+    delivered: 0,
+    returned: 0,
+    late: 0,
+    damaged: 0,
+    cancelled: 0,
+  };
+
+  statusBreakdown.forEach((item: { _id: string; count: number }) => {
+    if (counts[item._id] !== undefined) counts[item._id] = item.count;
+  });
+
+  const incidents = counts.late + counts.damaged;
+  const completed = counts.returned + counts.damaged;
+  const totalRentals = Object.values(counts).reduce((sum, count) => sum + count, 0);
+  const trustLevel =
+    incidents === 0 && totalRentals >= 3
+      ? "alto"
+      : incidents <= 1 && counts.cancelled <= 1
+        ? "medio"
+        : "requiere_revision";
+
+  return c.json({
+    audit: {
+      totalRentals,
+      completed,
+      active: counts.reserved + counts.paid + counts.confirmed + counts.delivered,
+      pending: counts.pending,
+      cancelled: counts.cancelled,
+      late: counts.late,
+      damaged: counts.damaged,
+      incidents,
+      termsAccepted: termsCount,
+      totalSpent: spentResult[0]?.total || 0,
+      outstandingBalance: balanceResult[0]?.total || 0,
+      trustLevel,
+      lastRental,
+      statusBreakdown: counts,
+    },
+  });
+});
+
+// --- Contact Management ---
+
+// GET /api/admin/contacts
+admin.get("/contacts", async (c) => {
+  const { page, limit, skip } = getPaginationParams(c);
+  const status = c.req.query("status");
+  const filter: { status?: ContactStatus } = {};
+
+  if (status) {
+    const parsed = contactStatusSchema.safeParse(status);
+    if (!parsed.success) {
+      throw new AppError("Estado de contacto inválido", 400, "VALIDATION_ERROR");
+    }
+    filter.status = parsed.data;
+  }
+
+  const [contacts, total] = await Promise.all([
+    Contact.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Contact.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(contacts, total, page, limit));
+});
+
+const updateContactStatusSchema = z.object({
+  status: contactStatusSchema,
+});
+
+// PATCH /api/admin/contacts/:id/status
+admin.patch("/contacts/:id/status", async (c) => {
+  const body = await c.req.json();
+  const { status } = updateContactStatusSchema.parse(body);
+
+  const contact = await Contact.findByIdAndUpdate(c.req.param("id"), { status }, { new: true });
+  if (!contact) {
+    throw new AppError("Mensaje de contacto no encontrado", 404, "CONTACT_NOT_FOUND");
+  }
+
+  return c.json({ contact });
 });
 
 export default admin;

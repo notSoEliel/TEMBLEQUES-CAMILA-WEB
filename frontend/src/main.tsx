@@ -4,17 +4,26 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { esES } from "@clerk/localizations";
 import App from "./App";
 import "./index.css";
+import { I18nProvider } from "@/i18n";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const isMockClerkMode = PUBLISHABLE_KEY?.includes("your_clerk_publishable_key");
 
-if (!PUBLISHABLE_KEY) {
+if (!PUBLISHABLE_KEY && !isMockClerkMode) {
   throw new Error("VITE_CLERK_PUBLISHABLE_KEY is not defined. Check your .env file.");
 }
 
+const app = (
+  <I18nProvider>
+    <App />
+  </I18nProvider>
+);
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
+    {isMockClerkMode ? app : (
     <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
+      publishableKey={PUBLISHABLE_KEY!} 
       afterSignOutUrl="/" 
       localization={esES}
       appearance={{
@@ -48,7 +57,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       }}
     >
-      <App />
+      {app}
     </ClerkProvider>
+    )}
   </React.StrictMode>
 );
