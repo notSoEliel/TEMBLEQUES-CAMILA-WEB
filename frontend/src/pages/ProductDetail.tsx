@@ -144,7 +144,7 @@ export default function ProductDetail() {
       {/* Back */}
       <Button variant="ghost" size="sm" className="mb-6" onClick={() => navigate("/catalog")}>
         <ArrowLeft className="h-4 w-4 mr-2" />
-        {t("product.backBtn")}
+        {t("product.backCatalogBtn")}
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -206,9 +206,9 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Badge variant="outline">{categoryLabels[product.category]}</Badge>
               {isAvailable ? (
-                <Badge variant="default">{t("product.statusAvailable")}</Badge>
+                <Badge variant="default">{t("product.availLabel")}</Badge>
               ) : (
-                <Badge variant="destructive">{t("product.statusUnavailable")}</Badge>
+                <Badge variant="destructive">{t("product.notAvailLabel")}</Badge>
               )}
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -218,17 +218,17 @@ export default function ProductDetail() {
             {/* Price — show range or specific */}
             {selectedSize && displayPrice != null ? (
               <p className="text-3xl font-bold text-primary">
-                {formatCurrency(displayPrice)} <span className="text-base font-normal text-muted-foreground">{t("catalog.perDay")}</span>
+                {formatCurrency(displayPrice)} <span className="text-base font-normal text-muted-foreground">{t("product.perDay")}</span>
               </p>
             ) : hasPriceRange ? (
               <p className="text-3xl font-bold text-primary">
-                <span className="text-lg font-normal text-muted-foreground">{t("product.priceFrom")} </span>
+                <span className="text-lg font-normal text-muted-foreground">{t("product.fromLabel")} </span>
                 {formatCurrency(minPrice)} – {formatCurrency(maxPrice)}
-                <span className="text-base font-normal text-muted-foreground"> {t("catalog.perDay")}</span>
+                <span className="text-base font-normal text-muted-foreground"> {t("product.perDay")}</span>
               </p>
             ) : (
               <p className="text-3xl font-bold text-primary">
-                {formatCurrency(product.rental_price)} <span className="text-base font-normal text-muted-foreground">{t("catalog.perDay")}</span>
+                {formatCurrency(product.rental_price)} <span className="text-base font-normal text-muted-foreground">{t("product.perDay")}</span>
               </p>
             )}
           </div>
@@ -273,7 +273,7 @@ export default function ProductDetail() {
               </div>
               {selectedSize && selectedVariant && (
                 <p className="mt-3 text-xs font-medium text-muted-foreground">
-                  ✓ {selectedVariant.stock} {selectedVariant.stock !== 1 ? t("product.availablePlural") : t("product.availableSingular")} {t("product.inSize")} {selectedSize}
+                  ✓ {selectedVariant.stock} {selectedVariant.stock !== 1 ? t("product.pluralUnits") : t("product.singularUnit")} {t("product.inSize")} {selectedSize}
                 </p>
               )}
             </div>
@@ -310,7 +310,7 @@ export default function ProductDetail() {
 
           {/* Quantity Selector */}
           <div>
-            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">{t("review.quantity")}</h3>
+            <h3 className="font-bold mb-3 uppercase tracking-wider text-xs text-muted-foreground">{t("product.quantityTitle")}</h3>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1">
@@ -361,8 +361,8 @@ export default function ProductDetail() {
               <CardContent className="p-0 flex items-center gap-3">
                 <ShoppingBag className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("product.totalStock")}</p>
-                  <p className="font-bold">{totalStock} {totalStock !== 1 ? t("product.availablePlural") : t("product.availableSingular")}</p>
+                  <p className="text-xs text-muted-foreground">{t("product.stockTotalTitle")}</p>
+                  <p className="font-bold">{totalStock} {totalStock !== 1 ? t("product.pluralUnits") : t("product.singularUnit")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -370,8 +370,8 @@ export default function ProductDetail() {
               <CardContent className="p-0 flex items-center gap-3">
                 <Package className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{t("product.sizes")}</p>
-                  <p className="font-bold">{availableVariants.length} {availableVariants.length !== 1 ? t("product.availablePlural") : t("product.availableSingular")}</p>
+                  <p className="text-xs text-muted-foreground">{t("product.sizesTitle")}</p>
+                  <p className="font-bold">{availableVariants.length} {availableVariants.length !== 1 ? t("product.pluralUnits") : t("product.singularUnit")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -386,17 +386,17 @@ export default function ProductDetail() {
               onClick={handleAddToCart}
             >
               <ShoppingBag className="h-5 w-5 mr-2" />
-              {!selectedSize ? t("product.ctaSelectSize") : !startDate || !endDate ? t("product.ctaSelectDates") : t("product.ctaAddToCart")}
+              {!selectedSize ? t("product.selectSizeAlert") : !startDate || !endDate ? t("product.selectDatesAlert") : t("product.addToCartBtn")}
             </Button>
           ) : (
             <Button size="lg" className="w-full grayscale" disabled>
-              {t("product.ctaOutOfStock")}
+              {t("product.outOfStockBtn")}
             </Button>
           )}
 
           {!user && (
             <p className="text-sm text-muted-foreground text-center">
-              {t("product.loginRequired")}
+              {t("product.loginToReserveAlert")}
             </p>
           )}
         </div>
