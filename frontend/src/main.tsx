@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import { esES } from "@clerk/localizations";
 import App from "./App";
 import "./index.css";
+import { I18nProvider } from "@/i18n";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -48,7 +49,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       }}
     >
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ClerkProvider>
   </React.StrictMode>
 );

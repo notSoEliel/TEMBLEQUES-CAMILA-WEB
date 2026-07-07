@@ -27,11 +27,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 
 export default function ClientLayout() {
   const { user, logout } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleLogout = () => {
     logout();
@@ -50,12 +53,12 @@ export default function ClientLayout() {
                 <SheetTrigger asChild>
                   <button className="p-2.5 hover:bg-primary/8 rounded-full transition-colors flex items-center justify-center">
                     <Menu className="h-6 w-6" />
-                    <span className="sr-only">Abrir menú</span>
+                    <span className="sr-only">{t("nav.openMenu")}</span>
                   </button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[300px] sm:w-[350px] rounded-r-[var(--radius-popover)] border-none shadow-elegant-lg">
                   <SheetHeader className="pb-8 border-b border-border/40">
-                    <SheetTitle className="text-2xl pt-4">Navegación</SheetTitle>
+                    <SheetTitle className="text-2xl pt-4">{t("nav.navigation")}</SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col gap-5 mt-8">
                     <Link
@@ -63,40 +66,41 @@ export default function ClientLayout() {
                       className="flex items-center gap-3 text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       <Home className="h-6 w-6" />
-                      Inicio
+                      {t("nav.home")}
                     </Link>
                     <Link
                       to="/catalog"
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
-                      Catálogo
+                      {t("nav.catalog")}
                     </Link>
                     <Link
                       to="/historia"
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
-                      Historia
+                      {t("nav.history")}
                     </Link>
                     <Link
                       to="/credencial"
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
-                      Credenciales
+                      {t("nav.credentials")}
                     </Link>
                     <div className="flex flex-col gap-4 mt-4 px-2 pt-4 border-t border-border/40">
-                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">Ayuda</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">{t("nav.help")}</p>
                       <Link
                         to="/faq"
                         className="text-2xl font-bold tracking-tight hover:text-primary transition-colors"
                       >
-                        Preguntas Frecuentes
+                        {t("nav.faq")}
                       </Link>
                       <Link
-                        to="/contact"
+                        to="/contacto"
                         className="text-2xl font-bold tracking-tight hover:text-primary transition-colors"
                       >
-                        Contacto
+                        {t("nav.contact")}
                       </Link>
+                      <LanguageToggle className="mt-4 w-fit" />
                     </div>
                   </nav>
                 </SheetContent>
@@ -132,7 +136,7 @@ export default function ClientLayout() {
                   <NavigationMenuItem>
                     <Link to="/catalog">
                       <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                        Catálogo
+                        {t("nav.catalog")}
                       </NavigationMenuLink>
                     </Link>
                   </NavigationMenuItem>
@@ -140,7 +144,7 @@ export default function ClientLayout() {
                   <NavigationMenuItem>
                     <DropdownMenu>
                       <DropdownMenuTrigger className={cn(navigationMenuTriggerStyle(), "cursor-pointer group flex items-center gap-1.5 focus:outline-none")}>
-                        Nuestra Esencia
+                        {t("nav.essence")}
                         <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-[450px] p-4">
@@ -148,29 +152,29 @@ export default function ClientLayout() {
                           <div className="col-span-1 bg-primary/5 border border-primary/10 rounded-[0.75rem] p-5 flex flex-col justify-end min-h-[180px]">
                             <Flower className="h-8 w-8 text-primary/40 mb-4" />
                             <div className="text-lg font-bold text-primary font-display leading-tight mb-2">
-                              Cultura y Tradición
+                              {t("nav.cultureTitle")}
                             </div>
                             <p className="text-xs text-muted-foreground leading-relaxed">
-                              Cada pieza cuenta una historia de artesanos panameños.
+                              {t("nav.cultureText")}
                             </p>
                           </div>
                           <div className="col-span-1 flex flex-col gap-1">
                             <DropdownMenuItem asChild>
                               <Link to="/historia" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
-                                <span className="font-bold text-sm">Historia</span>
-                                <span className="text-[11px] text-muted-foreground leading-tight">Nuestros orígenes folclóricos.</span>
+                                <span className="font-bold text-sm">{t("nav.history")}</span>
+                                <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.historySub")}</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link to="/credencial" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
-                                <span className="font-bold text-sm">Credencial Artesano</span>
-                                <span className="text-[11px] text-muted-foreground leading-tight">Valoramos lo hecho a mano.</span>
+                                <span className="font-bold text-sm">{t("nav.credentials")}</span>
+                                <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.credentialsSub")}</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link to="/mision-vision" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
-                                <span className="font-bold text-sm">Misión y Visión</span>
-                                <span className="text-[11px] text-muted-foreground leading-tight">Nuestro compromiso cultural.</span>
+                                <span className="font-bold text-sm">{t("nav.missionVision")}</span>
+                                <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.missionSub")}</span>
                               </Link>
                             </DropdownMenuItem>
                           </div>
@@ -182,18 +186,18 @@ export default function ClientLayout() {
                   <NavigationMenuItem>
                     <DropdownMenu>
                       <DropdownMenuTrigger className={cn(navigationMenuTriggerStyle(), "cursor-pointer group flex items-center gap-1.5 focus:outline-none")}>
-                        Ayuda
+                        {t("nav.help")}
                         <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="w-56 p-2">
                         <DropdownMenuItem asChild>
                           <Link to="/faq" className="w-full flex items-center gap-2 px-3 py-2.5">
-                            <span className="font-bold">Preguntas Frecuentes</span>
+                            <span className="font-bold">{t("nav.faq")}</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link to="/contacto" className="w-full flex items-center gap-2 px-3 py-2.5">
-                            <span className="font-bold">Contacto</span>
+                            <span className="font-bold">{t("nav.contact")}</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -205,6 +209,7 @@ export default function ClientLayout() {
 
             {/* Actions: Cart & User (Right) */}
             <div className="flex items-center gap-3 md:gap-5">
+              <LanguageToggle className="hidden md:flex" />
               <Link
                 to="/cart"
                 className="group relative p-2.5 hover:bg-primary/5 rounded-full transition-all duration-300 flex items-center justify-center"
@@ -251,13 +256,13 @@ export default function ClientLayout() {
                         <DropdownMenuItem asChild>
                           <Link to="/profile" className="w-full flex items-center gap-2.5">
                             <UserIcon className="h-4 w-4 opacity-70" />
-                            <span>Mi Perfil</span>
+                            <span>{t("nav.profile")}</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link to="/profile/orders" className="w-full flex items-center gap-2.5">
                             <ShoppingBag className="h-4 w-4 opacity-70" />
-                            <span>Mis Pedidos</span>
+                            <span>{t("nav.orders")}</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
@@ -268,7 +273,7 @@ export default function ClientLayout() {
                             <DropdownMenuItem asChild>
                               <Link to="/admin" className="w-full flex items-center gap-2.5 text-primary font-bold">
                                 <LayoutDashboard className="h-4 w-4" />
-                                <span>Administración</span>
+                                <span>{t("nav.admin")}</span>
                               </Link>
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
@@ -278,7 +283,7 @@ export default function ClientLayout() {
                       <DropdownMenuItem asChild>
                         <Link to="/profile?tab=settings" className="w-full flex items-center gap-2.5">
                           <Settings className="h-4 w-4 opacity-70" />
-                          <span>Ajustes</span>
+                          <span>{t("nav.settings")}</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="opacity-50" />
@@ -287,7 +292,7 @@ export default function ClientLayout() {
                         className="text-destructive focus:bg-destructive/5 focus:text-destructive font-bold flex items-center gap-2.5"
                       >
                         <LogOut className="h-4 w-4" />
-                        <span>Cerrar Sesión</span>
+                        <span>{t("nav.logout")}</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -296,12 +301,12 @@ export default function ClientLayout() {
                 <div className="hidden md:flex items-center gap-3">
                   <Link to="/login">
                     <Button variant="ghost" size="sm" className="font-bold hover:bg-primary/5 rounded-full px-5">
-                      Entrar
+                      {t("nav.login")}
                     </Button>
                   </Link>
                   <Link to="/register">
                     <Button size="sm" className="shadow-sm font-bold rounded-full px-6">
-                      Registro
+                      {t("nav.register")}
                     </Button>
                   </Link>
                 </div>
@@ -348,34 +353,34 @@ export default function ClientLayout() {
                 </h3>
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Alquiler premium de vestimenta típica panameña y accesorios folclóricos. La tradición se luce mejor cuando se reserva fácil.
+                {t("nav.footerText")}
               </p>
             </div>
             <div>
               <h4 className="font-semibold mb-5 text-sm tracking-wide uppercase text-muted-foreground/70">
-                Navegación
+                {t("nav.footerNav")}
               </h4>
               <ul className="space-y-3 text-sm">
                 <li>
                   <Link to="/catalog" className="text-muted-foreground hover:text-primary transition-colors">
-                    Catálogo
+                    {t("nav.catalog")}
                   </Link>
                 </li>
                 <li>
                   <Link to="/register" className="text-muted-foreground hover:text-primary transition-colors">
-                    Crear Cuenta
+                    {t("nav.createAccount")}
                   </Link>
                 </li>
                 <li>
                   <Link to="/login" className="text-muted-foreground hover:text-primary transition-colors">
-                    Iniciar Sesión
+                    {t("nav.signIn")}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold mb-5 text-sm tracking-wide uppercase text-muted-foreground/70">
-                Contacto
+                {t("nav.contact")}
               </h4>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>contacto@temblequescamila.com</li>
@@ -387,11 +392,11 @@ export default function ClientLayout() {
           <Separator className="my-10" />
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground/60">
-              © 2026 Tembleques Camila. Todos los derechos reservados.
+              © 2026 Tembleques Camila. {t("nav.footerRights")}
             </p>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/50">
               <Flower className="h-3.5 w-3.5 text-primary/40" />
-              <span>Hecho con orgullo en Panamá</span>
+              <span>{t("nav.madeInPanama")}</span>
             </div>
           </div>
         </div>

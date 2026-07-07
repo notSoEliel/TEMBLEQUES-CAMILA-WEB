@@ -10,6 +10,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { contactApi } from "@/services/api";
 import { useErrorModal } from "@/components/ErrorModal";
+import { useI18n } from "@/i18n";
 
 // Fix Leaflet icon issue
 const customIcon = L.divIcon({
@@ -22,6 +23,7 @@ const customIcon = L.divIcon({
 export default function Contact() {
   const position: [number, number] = [8.9525, -79.5342]; // Centered in Casco Viejo
   const { errorModal, showError } = useErrorModal();
+  const { t } = useI18n();
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
 
@@ -51,11 +53,10 @@ export default function Contact() {
         {/* Header */}
         <div className="text-center space-y-4">
           <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight leading-tight py-2">
-            Hablemos de <span className="text-primary italic">Tradición</span>
+            {t("contact.titlePrefix")} <span className="text-primary italic">{t("contact.titleAccent")}</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto font-medium leading-relaxed">
-            ¿Tienes alguna duda sobre tu reserva o buscas una pieza especial? 
-            Nuestro equipo de curadores está listo para asesorarte.
+            {t("contact.subtitle")}
           </p>
         </div>
 
@@ -68,7 +69,7 @@ export default function Contact() {
                   <Phone className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold">Llámanos</h4>
+                  <h4 className="font-bold">{t("contact.call")}</h4>
                   <p className="text-sm text-muted-foreground font-medium">+507 8888-8888</p>
                 </div>
               </div>
@@ -77,7 +78,7 @@ export default function Contact() {
                   <Mail className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="font-bold">Escríbenos</h4>
+                  <h4 className="font-bold">{t("contact.write")}</h4>
                   <p className="text-sm text-muted-foreground font-medium">contacto@temblequescamila.pa</p>
                 </div>
               </div>
@@ -87,12 +88,12 @@ export default function Contact() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest pl-4">Nombre Completo</Label>
+                    <Label htmlFor="name" className="text-xs font-black uppercase tracking-widest pl-4">{t("contact.name")}</Label>
                     <Input
                       id="name"
                       value={form.name}
                       onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                      placeholder="Ej. Ana Pérez"
+                      placeholder={t("contact.namePlaceholder")}
                       autoComplete="name"
                       required
                       minLength={2}
@@ -100,13 +101,13 @@ export default function Contact() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest pl-4">Correo Electrónico</Label>
+                    <Label htmlFor="email" className="text-xs font-black uppercase tracking-widest pl-4">{t("contact.email")}</Label>
                     <Input
                       id="email"
                       value={form.email}
                       onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
                       type="email"
-                      placeholder="ana@ejemplo.com"
+                      placeholder={t("contact.emailPlaceholder")}
                       autoComplete="email"
                       required
                       className="h-14 px-6 border-border/40 focus:border-primary/20"
@@ -114,12 +115,12 @@ export default function Contact() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="message" className="text-xs font-black uppercase tracking-widest pl-4">Tu Mensaje</Label>
+                  <Label htmlFor="message" className="text-xs font-black uppercase tracking-widest pl-4">{t("contact.message")}</Label>
                   <Textarea
                     id="message"
                     value={form.message}
                     onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))}
-                    placeholder="¿En qué podemos ayudarte hoy?"
+                    placeholder={t("contact.messagePlaceholder")}
                     required
                     minLength={10}
                     className="min-h-[160px] px-6 py-4 border-border/40 focus:border-primary/20"
@@ -128,7 +129,7 @@ export default function Contact() {
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full font-bold text-lg shadow-elegant group">
-                {submitting ? "Enviando..." : "Enviar Mensaje"}
+                {submitting ? t("contact.submitting") : t("contact.submit")}
                 <Send className="h-5 w-5 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>
             </form>
@@ -140,7 +141,7 @@ export default function Contact() {
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <MapPin className="h-4 w-4" />
               </div>
-              <h3 className="text-xl font-display font-bold">Nuestra Ubicación</h3>
+              <h3 className="text-xl font-display font-bold">{t("contact.location")}</h3>
             </div>
             
             <div className="relative aspect-square md:aspect-video lg:aspect-square w-full rounded-[2rem] overflow-hidden shadow-elegant border border-border/10 bg-muted/20">
@@ -168,7 +169,7 @@ export default function Contact() {
                   onClick={handleOpenMaps}
                   className="rounded-full px-6 h-11 shadow-elegant-lg font-bold bg-background text-foreground hover:bg-muted border-border/20"
                 >
-                  Cómo llegar
+                  {t("contact.directions")}
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>
               </div>
@@ -176,8 +177,7 @@ export default function Contact() {
             
             <div className="bg-muted/30 p-6 rounded-[2rem] border border-border/20">
               <p className="text-sm text-muted-foreground leading-relaxed italic">
-                Ubicados en el corazón del <span className="text-primary font-bold">Casco Viejo</span>, 
-                donde la historia cobra vida. Visítanos con previa cita para una experiencia personalizada.
+                {t("contact.locationNote")}
               </p>
             </div>
           </div>
