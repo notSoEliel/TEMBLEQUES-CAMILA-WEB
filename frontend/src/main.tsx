@@ -1,10 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
-import { esES } from "@clerk/localizations";
 import App from "./App";
 import "./index.css";
-import { I18nProvider } from "@/i18n";
+import { useI18n, I18nProvider } from "@/i18n";
+import { esES, enUS } from "@clerk/localizations";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const isMockClerkMode = PUBLISHABLE_KEY?.includes("your_clerk_publishable_key");
@@ -13,19 +13,19 @@ if (!PUBLISHABLE_KEY && !isMockClerkMode) {
   throw new Error("VITE_CLERK_PUBLISHABLE_KEY is not defined. Check your .env file.");
 }
 
-const app = (
-  <I18nProvider>
-    <App />
-  </I18nProvider>
-);
+function ClerkProviderWithI18n({ children }: { children: React.ReactNode }) {
+  const { language } = useI18n();
+  const localization = language === "en" ? enUS : esES;
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    {isMockClerkMode ? app : (
+  if (isMockClerkMode) {
+    return <>{children}</>;
+  }
+
+  return (
     <ClerkProvider 
       publishableKey={PUBLISHABLE_KEY!} 
       afterSignOutUrl="/" 
-      localization={esES}
+      localization={localization}
       appearance={{
         layout: {
           socialButtonsVariant: "blockButton",
@@ -57,8 +57,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       }}
     >
-      {app}
+      {children}
     </ClerkProvider>
-    )}
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <I18nProvider>
+      <ClerkProviderWithI18n>
+        <App />
+      </ClerkProviderWithI18n>
+    </I18nProvider>
   </React.StrictMode>
 );

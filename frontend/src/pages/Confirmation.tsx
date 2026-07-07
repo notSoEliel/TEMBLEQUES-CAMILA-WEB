@@ -6,28 +6,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Calendar, ArrowRight, Loader2 } from "lucide-react";
-
 import { formatCurrency } from "@/lib/utils";
-
-const STATUS_LABELS: Record<string, string> = {
-  paid:      "Pagado",
-  pending:   "Pendiente",
-  confirmed: "Confirmado",
-  cancelled: "Cancelado",
-  delivered: "Entregado",
-  returned:  "Devuelto",
-  damaged:   "Dañado",
-  late:      "Atrasado",
-};
+import { useI18n } from "@/i18n";
 
 export default function Confirmation() {
   const [searchParams] = useSearchParams();
   const { token } = useAuth();
+  const { t, language } = useI18n();
   const [rental, setRental] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const rentalId  = searchParams.get("rental");
   const sessionId = searchParams.get("session_id");
+
+  const statusLabels: Record<string, string> = {
+    paid:      t("status.paid"),
+    pending:   t("status.pending"),
+    confirmed: t("status.confirmed"),
+    cancelled: t("status.cancelled"),
+    delivered: t("status.delivered"),
+    returned:  t("status.returned"),
+    damaged:   t("status.damaged"),
+    late:      t("status.late"),
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -56,10 +57,12 @@ export default function Confirmation() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground font-medium">Verificando tu reserva…</p>
+        <p className="text-muted-foreground font-medium">{t("confirm.verifying")}</p>
       </div>
     );
   }
+
+  const locale = language === "en" ? "en-US" : "es-PA";
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
@@ -69,14 +72,14 @@ export default function Confirmation() {
           <CheckCircle className="h-10 w-10 text-primary" />
         </div>
         <h1 className="text-3xl font-bold mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
-          ¡Reserva Confirmada!
+          {t("confirm.successTitle")}
         </h1>
         <p className="text-muted-foreground">
-          Tu reserva ha sido procesada exitosamente. Recibirás los detalles por correo electrónico.
+          {t("confirm.successSubtitle")}
         </p>
         {sessionId && (
           <p className="text-xs text-muted-foreground/60 mt-1 font-mono">
-            Sesión: {sessionId.slice(0, 24)}…
+            {t("confirm.sessionLabel")} {sessionId.slice(0, 24)}…
           </p>
         )}
       </div>
@@ -85,31 +88,31 @@ export default function Confirmation() {
       {rental ? (
         <Card className="text-left mb-8 border border-border/60 shadow-elegant">
           <CardContent className="p-6 space-y-4">
-            <h3 className="font-bold text-lg leading-none">Detalles de la Reserva</h3>
+            <h3 className="font-bold text-lg leading-none">{t("confirm.detailsTitle")}</h3>
             <Separator className="bg-black/10" />
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Producto</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.productLabel")}</p>
                 <p className="font-bold text-primary">{rental.product_id?.name || "N/A"}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Estado</p>
-                <p className="font-bold">{STATUS_LABELS[rental.status] ?? rental.status}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.statusLabel")}</p>
+                <p className="font-bold">{statusLabels[rental.status] ?? rental.status}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Fecha Inicio</p>
-                <p className="font-bold">{new Date(rental.start_date + "T12:00:00").toLocaleDateString("es-PA")}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.startDateLabel")}</p>
+                <p className="font-bold">{new Date(rental.start_date + "T12:00:00").toLocaleDateString(locale)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Fecha Devolución</p>
-                <p className="font-bold">{new Date(rental.end_date + "T12:00:00").toLocaleDateString("es-PA")}</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.endDateLabel")}</p>
+                <p className="font-bold">{new Date(rental.end_date + "T12:00:00").toLocaleDateString(locale)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">Total Pagado</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.totalLabel")}</p>
                 <p className="font-black text-primary text-xl">{formatCurrency(rental.total)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">ID Reserva</p>
+                <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.idLabel")}</p>
                 <p className="font-mono text-[10px] text-muted-foreground break-all">{rental._id}</p>
               </div>
             </div>
@@ -122,9 +125,9 @@ export default function Confirmation() {
               <div className="bg-primary/20 p-2 rounded-full">
                 <CheckCircle className="h-6 w-6 text-primary" />
               </div>
-              <p className="font-bold text-lg">Reserva Múltiple Procesada</p>
+              <p className="font-bold text-lg">{t("confirm.multiTitle")}</p>
               <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-                Tus reservas han sido procesadas correctamente. Puedes ver todos los detalles en tu perfil.
+                {t("confirm.multiSubtitle")}
               </p>
             </div>
           </CardContent>
@@ -133,7 +136,7 @@ export default function Confirmation() {
         <Card className="mb-8 border border-border/60 shadow-elegant">
           <CardContent className="p-6">
             <p className="text-muted-foreground text-sm">
-              Los detalles estarán disponibles en unos instantes mientras procesamos tu confirmación.
+              {t("confirm.processingDetails")}
             </p>
           </CardContent>
         </Card>
@@ -142,12 +145,12 @@ export default function Confirmation() {
       {/* What's next */}
       <Card className="text-left mb-8">
         <CardContent className="p-6">
-          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3">¿Qué sigue?</h3>
+          <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground mb-3">{t("confirm.nextTitle")}</h3>
           <ol className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">01</span>Recibirás un correo de confirmación con todos los detalles.</li>
-            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">02</span>Nuestro equipo preparará el artículo para la fecha acordada.</li>
-            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">03</span>Recoge el artículo en nuestro local o coordina la entrega.</li>
-            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">04</span>Devuélvelo antes de la fecha de devolución para evitar cargos adicionales.</li>
+            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">01</span>{t("confirm.nextStep1")}</li>
+            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">02</span>{t("confirm.nextStep2")}</li>
+            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">03</span>{t("confirm.nextStep3")}</li>
+            <li className="flex gap-3"><span className="text-primary font-bold shrink-0">04</span>{t("confirm.nextStep4")}</li>
           </ol>
         </CardContent>
       </Card>
@@ -157,12 +160,12 @@ export default function Confirmation() {
         <Button asChild>
           <Link to="/profile">
             <Calendar className="h-4 w-4 mr-2" />
-            Ver Mis Reservas
+            {t("confirm.viewReservationsBtn")}
           </Link>
         </Button>
         <Button variant="outline" asChild>
           <Link to="/catalog">
-            Seguir Explorando
+            {t("confirm.continueBtn")}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Link>
         </Button>
