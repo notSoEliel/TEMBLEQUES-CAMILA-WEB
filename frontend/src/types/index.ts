@@ -8,8 +8,10 @@ export interface ISizeVariant {
 export interface IProduct {
   _id: string;
   name: string;
+  name_en?: string;
   category: string;
   description: string;
+  description_en?: string;
   rental_price: number;
   variants: ISizeVariant[];
   images: string[];

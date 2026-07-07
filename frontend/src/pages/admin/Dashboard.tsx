@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/utils";
 import { adminApi } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -95,7 +96,7 @@ export default function AdminDashboard() {
     },
     {
       label: "Ingresos del Mes",
-      value: `$${dashboard?.monthlyRevenue ?? 0}`,
+      value: formatCurrency(dashboard?.monthlyRevenue ?? 0),
       icon: DollarSign,
       bgColor: "bg-emerald-50",
       iconColor: "text-emerald-600",

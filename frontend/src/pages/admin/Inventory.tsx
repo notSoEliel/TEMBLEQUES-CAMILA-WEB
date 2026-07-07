@@ -35,8 +35,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface ProductForm {
   name: string;
+  name_en?: string;
   category: string[];
   description: string;
+  description_en?: string;
   rental_price: number;
   variants: SizeVariant[];
   images: string[];
@@ -330,9 +332,15 @@ export default function AdminInventory() {
           <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nombre (Español)</Label>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nombre (Inglés - Opcional)</Label>
+                    <Input value={form.name_en || ""} onChange={(e) => setForm({ ...form, name_en: e.target.value })} />
+                  </div>
                 </div>
                 
                 <div className="space-y-3">
@@ -365,17 +373,29 @@ export default function AdminInventory() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Descripción</Label>
-                  <textarea
-                    ref={textareaRef}
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    required
-                    rows={3}
-                    className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
-                    placeholder="Describe el producto..."
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Descripción (Español)</Label>
+                    <textarea
+                      ref={textareaRef}
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      required
+                      rows={3}
+                      className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
+                      placeholder="Describe el producto..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción (Inglés - Opcional)</Label>
+                    <textarea
+                      value={form.description_en || ""}
+                      onChange={(e) => setForm({ ...form, description_en: e.target.value })}
+                      rows={3}
+                      className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
+                      placeholder="Product details..."
+                    />
+                  </div>
                 </div>
               </div>
 

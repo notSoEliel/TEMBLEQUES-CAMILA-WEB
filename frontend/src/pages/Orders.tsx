@@ -26,6 +26,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-600 border-amber-100",
@@ -196,7 +197,7 @@ export default function Orders() {
                             </Badge>
                           </div>
                           <h4 className="text-xl font-display font-bold">
-                            {order.rentals.length > 1 ? t("orders.comboPremium") : order.rentals[0].product_id?.name}
+                            {order.rentals.length > 1 ? t("orders.comboPremium") : getLocalizedText(order.rentals[0].product_id?.name || "", order.rentals[0].product_id?.name_en, language)}
                           </h4>
                           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-medium text-muted-foreground">
                             <div className="flex items-center gap-1.5">
@@ -284,7 +285,7 @@ export default function Orders() {
                             <img src={item.product_id?.images?.[0] || "/placeholder.png"} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                           </div>
                           <div className="flex-1 space-y-0.5">
-                            <p className="font-bold text-foreground">{item.product_id?.name}</p>
+                            <p className="font-bold text-foreground">{getLocalizedText(item.product_id?.name || "", item.product_id?.name_en, language)}</p>
                             <p className="text-xs text-muted-foreground">{t("cart.size")} {item.selected_size} • {formatCurrency(item.total)}</p>
                           </div>
                           <Badge className={cn("rounded-full px-3 py-0.5 text-[8px] font-black tracking-widest uppercase border", STATUS_COLORS[item.status])}>

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { X, Eye, Calendar, Package, ShoppingBag, ArrowLeft } from "lucide-react";
 import type { SizeVariant } from "@/components/SizeManager";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 const CATEGORY_LABELS: Record<string, string> = {
   pollera: "Polleras",
@@ -18,8 +20,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface ProductPreviewData {
   name: string;
+  name_en?: string;
   category: string[];
   description: string;
+  description_en?: string;
   rental_price: number;
   variants: SizeVariant[];
   images: string[];
@@ -32,6 +36,7 @@ interface ProductPreviewProps {
 }
 
 export default function ProductPreview({ product, isOpen, onClose }: ProductPreviewProps) {
+  const { language } = useI18n();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
@@ -180,7 +185,7 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                       className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2"
                       style={{ fontFamily: "'Playfair Display', serif" }}
                     >
-                      {product.name || "Sin nombre"}
+                      {getLocalizedText(product.name || "Sin nombre", product.name_en, language)}
                     </h1>
 
                     {/* Price */}
@@ -208,7 +213,7 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                   <div>
                     <h3 className="font-bold mb-2">Descripción</h3>
                     <p className="text-muted-foreground leading-relaxed">
-                      {product.description || "Sin descripción."}
+                      {getLocalizedText(product.description || "Sin descripción.", product.description_en, language)}
                     </p>
                   </div>
 

@@ -13,6 +13,7 @@ import { useErrorModal } from "@/components/ErrorModal";
 import ErrorPage from "@/pages/ErrorPage";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -123,7 +124,8 @@ export default function ProductDetail() {
     addItem({
       id: "", // Will be set by context
       productId: product._id,
-      name: product.name,
+      name: getLocalizedText(product.name, product.name_en, language),
+      name_en: product.name_en,
       image: product.images?.[0] || "",
       size: selectedSize,
       quantity,
@@ -212,7 +214,7 @@ export default function ProductDetail() {
               )}
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', serif" }}>
-              {product.name}
+              {getLocalizedText(product.name, product.name_en, language)}
             </h1>
 
             {/* Price — show range or specific */}
@@ -237,7 +239,7 @@ export default function ProductDetail() {
 
           <div>
             <h3 className="font-bold mb-2">{t("product.descriptionTitle")}</h3>
-            <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+            <p className="text-muted-foreground leading-relaxed">{getLocalizedText(product.description, product.description_en, language)}</p>
           </div>
 
           {/* Size Selector */}

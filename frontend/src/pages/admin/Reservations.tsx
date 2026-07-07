@@ -58,7 +58,7 @@ const TRANSITIONS: Record<string, string[]> = {
 };
 
 export default function AdminReservations() {
-  const { token } = useAuth();
+  const { token, getToken } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { errorModal, showError } = useErrorModal();
   const [rentals, setRentals] = useState<any[]>([]);
@@ -105,7 +105,8 @@ export default function AdminReservations() {
 
     setLoading(true);
     try {
-      const response = await adminApi.rentals(token!, { status: status || undefined, page, limit, sort });
+      const freshToken = await getToken();
+      const response = await adminApi.rentals(freshToken || token!, { status: status || undefined, page, limit, sort });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err: any) {
@@ -116,21 +117,24 @@ export default function AdminReservations() {
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      await adminApi.updateRentalStatus(id, status, token!);
+      const freshToken = await getToken();
+      await adminApi.updateRentalStatus(id, status, freshToken || token!);
       loadRentals();
     } catch (err: any) { showError(err.message, "generic"); }
   };
 
   const handleBulkStatusChange = async (ids: string[], status: string) => {
     try {
-      await Promise.all(ids.map(id => adminApi.updateRentalStatus(id, status, token!)));
+      const freshToken = await getToken();
+      await Promise.all(ids.map(id => adminApi.updateRentalStatus(id, status, freshToken || token!)));
       loadRentals();
     } catch (err: any) { showError(err.message, "generic"); }
   };
 
   const handleDownloadContract = async (id: string) => {
     try {
-      await adminApi.downloadRentalContract(id, token!);
+      const freshToken = await getToken();
+      await adminApi.downloadRentalContract(id, freshToken || token!);
     } catch (err: any) {
       showError(err.message || "No se pudo descargar el contrato.", "generic");
     }

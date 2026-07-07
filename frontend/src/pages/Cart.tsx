@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Trash2, ArrowLeft, ShoppingBag, CreditCard, Info, Plus, Minus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, total, totalDeposit, clearCart } = useCart();
@@ -69,7 +70,7 @@ export default function Cart() {
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <h3 className="text-lg font-semibold leading-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-                          {item.name}
+                          {getLocalizedText(item.name, item.name_en, language)}
                         </h3>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="text-xs bg-muted px-2.5 py-0.5 rounded-full font-medium text-muted-foreground">

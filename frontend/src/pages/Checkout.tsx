@@ -9,6 +9,7 @@ import { productsApi, rentalsApi, stripeApi, couponsApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -455,7 +456,7 @@ export default function Checkout() {
                           )}
                           <div className="flex-1">
                             <div className="flex justify-between items-start">
-                              <p className="font-bold text-sm">{item.name}</p>
+                              <p className="font-bold text-sm">{getLocalizedText(item.name, item.name_en, language)}</p>
                               <p className="text-xs text-muted-foreground font-medium whitespace-nowrap">{t("cart.rentalQty")} {item.quantity}</p>
                             </div>
                             <div className="flex gap-2 mt-1">

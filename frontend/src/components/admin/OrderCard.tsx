@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List, FileText } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 interface OrderCardProps {
   orderGroupId: string;
@@ -36,6 +38,7 @@ export default function OrderCard({
   actionLabels,
   transitions,
 }: OrderCardProps) {
+  const { language } = useI18n();
   const first = rentals[0];
   const totalOrder = rentals.reduce((sum, r) => sum + (r.total || 0), 0);
   const balanceDue = rentals.reduce((sum, r) => sum + (r.balance_due || 0), 0);
@@ -171,7 +174,7 @@ export default function OrderCard({
                   </div>
                   <div>
                     <p className="font-bold text-sm leading-tight uppercase group-hover:text-primary transition-colors">
-                      {r.product_id?.name || "Producto"}
+                      {getLocalizedText(r.product_id?.name || "Producto", r.product_id?.name_en, language)}
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">

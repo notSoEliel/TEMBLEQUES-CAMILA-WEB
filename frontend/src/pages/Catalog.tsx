@@ -43,9 +43,10 @@ import {
 import { settingsApi } from "@/services/api";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 
 export default function Catalog() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<IProduct[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
@@ -444,9 +445,9 @@ export default function Catalog() {
                             </Badge>
                           )}
                         </div>
-                      <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{product.name}</h3>
+                      <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{getLocalizedText(product.name, product.name_en, language)}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] flex-1">
-                        {product.description}
+                        {getLocalizedText(product.description, product.description_en, language)}
                       </p>
                       
                       <div className="flex items-center justify-between pt-2 border-t border-black/10 mt-auto">
