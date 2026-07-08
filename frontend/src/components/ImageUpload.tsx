@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ImagePlus, Loader2, CheckCircle } from "lucide-react";
 
-const CLOUDINARY_ENDPOINT =
-  "https://api.cloudinary.com/v1_1/dfshkpehf/image/upload";
-const UPLOAD_PRESET = "TemblequesCamila";
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dfshkpehf";
+const CLOUDINARY_ENDPOINT = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "TemblequesCamila";
 const MAX_BYTES = 8 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 
