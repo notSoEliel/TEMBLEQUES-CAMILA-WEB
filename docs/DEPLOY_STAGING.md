@@ -1,5 +1,14 @@
 # Despliegue Staging
 
+## Estado actual
+
+- Frontend staging: https://frontend-navy-five-22.vercel.app
+- Backend staging: https://backend-production-e696.up.railway.app
+- Healthcheck backend: https://backend-production-e696.up.railway.app/health
+- Base de datos staging: MongoDB gestionado en Railway.
+
+El backend esta desplegado en Railway desde la carpeta `backend` como raiz del servicio, con `bun run start` y healthcheck en `/health`. El frontend esta desplegado en Vercel desde `frontend` y consume la API mediante `VITE_API_URL`.
+
 ## Estrategia preferida
 
 Usar Railway para backend y Vercel para frontend si la cuenta de Railway tiene creditos disponibles. Railway simplifica logs, variables y despliegue por CLI. La base de datos recomendada es MongoDB Atlas M0.
@@ -32,7 +41,7 @@ Si Railway bloquea por creditos o billing, desplegar backend en Render. Render f
 railway login
 railway init
 railway variables
-railway up --service backend
+railway up . --path-as-root --service backend
 ```
 
 El frontend puede desplegarse desde Vercel conectado a la rama `staging`.

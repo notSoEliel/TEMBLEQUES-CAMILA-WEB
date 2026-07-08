@@ -5,7 +5,9 @@
 - Repositorio: https://github.com/notSoEliel/TEMBLEQUES-CAMILA-WEB
 - Rama de integracion: `staging`
 - GitHub Project: https://github.com/users/notSoEliel/projects/3
-- Despliegue staging: pendiente de configurar en Railway o Render
+- Despliegue frontend staging: https://frontend-navy-five-22.vercel.app
+- Despliegue backend staging: https://backend-production-e696.up.railway.app
+- Healthcheck backend: https://backend-production-e696.up.railway.app/health
 
 ## Estado del avance
 
@@ -21,7 +23,7 @@ El proyecto integra funcionalidades de cliente, administracion, checkout, invent
 
 ## Ruta de demostracion recomendada
 
-1. Abrir el despliegue remoto y navegar a catalogo.
+1. Abrir https://frontend-navy-five-22.vercel.app y navegar a catalogo.
 2. Filtrar una pieza, abrir detalle, elegir talla y fechas.
 3. Agregar al carrito, aceptar terminos y completar pago demo.
 4. Entrar como admin mock o usuario admin y revisar reservas.
