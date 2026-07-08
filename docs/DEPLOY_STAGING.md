@@ -4,18 +4,16 @@
 
 - Frontend staging: https://frontend-navy-five-22.vercel.app
 - Backend staging: https://backend-production-e696.up.railway.app
-- Healthcheck backend: https://backend-production-e696.up.railway.app/health
+- Backend healthcheck: https://backend-production-e696.up.railway.app/health
+- MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
+- MCP healthcheck: https://mcp-server-production-321a.up.railway.app/health
 - Base de datos staging: MongoDB gestionado en Railway.
 
-El backend esta desplegado en Railway desde la carpeta `backend` como raiz del servicio, con `bun run start` y healthcheck en `/health`. El frontend esta desplegado en Vercel desde `frontend` y consume la API mediante `VITE_API_URL`.
+El backend esta desplegado en Railway desde la carpeta `backend` como raiz del servicio, con `bun run start` y healthcheck en `/health`. El MCP esta desplegado en Railway desde la carpeta `mcp-server`, con transporte Streamable HTTP en `/mcp` y healthcheck en `/health`. El frontend esta desplegado en Vercel desde `frontend` y consume la API mediante `VITE_API_URL`.
 
-## Estrategia preferida
+## Estrategia
 
-Usar Railway para backend y Vercel para frontend si la cuenta de Railway tiene creditos disponibles. Railway simplifica logs, variables y despliegue por CLI. La base de datos recomendada es MongoDB Atlas M0.
-
-## Fallback
-
-Si Railway bloquea por creditos o billing, desplegar backend en Render. Render free puede entrar en reposo tras inactividad, por lo que conviene abrir la URL antes de la demo.
+Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railway simplifica logs, variables, dominios y despliegue por CLI. La base de datos recomendada a mediano plazo es MongoDB Atlas M0 si se requiere separacion mas clara entre staging y produccion.
 
 ## Variables de backend
 
@@ -35,18 +33,39 @@ Si Railway bloquea por creditos o billing, desplegar backend en Render. Render f
 - `VITE_CLOUDINARY_CLOUD_NAME`
 - `VITE_CLOUDINARY_UPLOAD_PRESET`
 
-## Comandos Railway sugeridos
+## Variables de MCP
+
+- `MCP_BACKEND_URL=https://backend-production-e696.up.railway.app`
+- `MCP_ADMIN_TOKEN`
+- `MCP_CLIENT_TOKEN`
+- `NIXPACKS_NODE_VERSION=22`
+- `NODE_ENV=production`
+
+Railway inyecta `PORT` automaticamente. El dominio del servicio MCP debe apuntar al puerto usado por Railway. En el despliegue actual el dominio esta configurado al puerto 8080.
+
+## Comandos Railway utiles
 
 ```bash
-railway login
-railway init
-railway variables
-railway up . --path-as-root --service backend
+railway status
+railway service list
+railway variables --service backend
+railway variables --service mcp-server
+railway up ./backend --path-as-root --service backend
+railway up ./mcp-server --path-as-root --service mcp-server
+railway domain list --service mcp-server
 ```
 
-El frontend puede desplegarse desde Vercel conectado a la rama `staging`.
+## Vercel
+
+El frontend se despliega desde la carpeta `frontend`. Cada cambio en variables `VITE_` requiere redeploy porque Vite las incrusta en build.
+
+```bash
+cd frontend
+vercel --prod --yes
+```
 
 ## Archivos incluidos
 
 - `backend/railway.json`: configura build, start command y healthcheck del backend.
+- `mcp-server/railway.json`: configura build, start command y healthcheck del MCP remoto.
 - `frontend/vercel.json`: configura build Vite y rewrite SPA para React Router.

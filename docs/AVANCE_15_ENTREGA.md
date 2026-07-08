@@ -8,6 +8,8 @@
 - Despliegue frontend staging: https://frontend-navy-five-22.vercel.app
 - Despliegue backend staging: https://backend-production-e696.up.railway.app
 - Healthcheck backend: https://backend-production-e696.up.railway.app/health
+- MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
+- Healthcheck MCP: https://mcp-server-production-321a.up.railway.app/health
 
 ## Estado del avance
 
@@ -19,7 +21,7 @@ El proyecto integra funcionalidades de cliente, administracion, checkout, invent
 2. Mostrar la solucion: catalogo, disponibilidad por fechas, carrito, checkout y perfil de cliente.
 3. Mostrar administracion: inventario, reservas, clientes, mensajes, cupones, mantenimiento, reportes y contratos.
 4. Mostrar calidad: GitHub Project, issues, PRs, CI y Playwright.
-5. Mostrar MCP: tools importables desde Codex o Claude Code para consultar y operar datos bajo autenticacion.
+5. Mostrar MCP: tools remotas por Streamable HTTP e importables por `stdio` desde Codex o Claude Code para consultar y operar datos bajo autenticacion.
 
 ## Ruta de demostracion recomendada
 
@@ -29,13 +31,13 @@ El proyecto integra funcionalidades de cliente, administracion, checkout, invent
 4. Entrar como admin mock o usuario admin y revisar reservas.
 5. Descargar contrato PDF desde una reserva.
 6. Revisar mensajes de contacto, clientes, reportes y cupones.
-7. Ejecutar una tool MCP de lectura, por ejemplo `catalog.products.search`.
+7. Ejecutar una tool MCP de lectura, por ejemplo `ops.health.check` o `catalog.products.search`, usando https://mcp-server-production-321a.up.railway.app/mcp.
 8. Mostrar GitHub Project con tickets Done, En progreso y Backlog.
 
 ## Responsabilidades para presentacion
 
 - Frontend: React 19, rutas, i18n, shadcn/Radix, estados de error y mobile.
 - Backend: Bun, Hono, Mongoose, Clerk, Stripe, cron de liberacion y PDFs.
-- MCP: autenticacion por token, tools y relacion con historias A13.
+- MCP: autenticacion por token, Streamable HTTP remoto, modo `stdio` local, tools y relacion con historias A13.
 - QA: Playwright deterministico, CI, typecheck y checklist de revision.
 - Deploy: variables, servicios remotos, base de datos y limitaciones del plan gratuito.
