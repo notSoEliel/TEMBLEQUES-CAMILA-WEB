@@ -1,4 +1,11 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function setMockAuth(page: Page, token: "mock-client-token" | "mock-admin-token"): Promise<void> {
+  await page.evaluate((mockToken) => {
+    localStorage.setItem("mock_auth_token", mockToken);
+  }, token);
+  await page.reload();
+}
 
 test.describe("Tembleques Camila - E2E Tests", () => {
   test.setTimeout(120_000);
@@ -27,17 +34,13 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe poder autenticarse y verificar roles usando tokens simulados", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-client-token");
-    });
+    await setMockAuth(page, "mock-client-token");
     await page.goto("/profile");
 
     await expect(page.locator("h1").last()).toContainText("comienza aquí, Test");
     await expect(page.locator('input[disabled]')).toHaveValue("client@test.com");
 
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-admin-token");
-    });
+    await setMockAuth(page, "mock-admin-token");
     await page.goto("/admin");
 
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
@@ -54,9 +57,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe bloquear la reserva si no se aceptan los términos, y procesarla al aceptarlos", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-client-token");
-    });
+    await setMockAuth(page, "mock-client-token");
 
     await page.goto("/catalog");
     await page.getByRole("heading", { name: "Pollera Santeñena Clásica", exact: false }).first().click();
@@ -94,9 +95,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe permitir al administrador gestionar el panel de control", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-admin-token");
-    });
+    await setMockAuth(page, "mock-admin-token");
 
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
@@ -121,9 +120,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
 
     await expect(page.getByText("Mensaje recibido correctamente", { exact: false })).toBeVisible();
 
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-admin-token");
-    });
+    await setMockAuth(page, "mock-admin-token");
     await page.goto("/admin/contacts");
 
     await expect(page.getByRole("heading", { name: "Mensajes de Contacto" })).toBeVisible();
@@ -131,17 +128,24 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe guardar perfil persistente del cliente", async ({ page, request }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-client-token");
-    });
+    await setMockAuth(page, "mock-client-token");
     await page.goto("/profile");
 
     await expect(page.locator('input[disabled]')).toHaveValue("client@test.com");
     await page.getByLabel("Contacto de Enlace").fill("+507 6000-0000");
     await page.getByLabel("Dirección Preferida").fill("Casco Viejo, Panama");
+    await expect(page.getByLabel("Contacto de Enlace")).toHaveValue("+507 6000-0000");
+    await expect(page.getByLabel("Dirección Preferida")).toHaveValue("Casco Viejo, Panama");
+    const saveResponsePromise = page.waitForResponse((response) =>
+      response.url().includes("/api/auth/me") && response.request().method() === "PATCH",
+    );
     await page.getByRole("button", { name: "Guardar Perfil" }).click();
+    const saveResponse = await saveResponsePromise;
+    const savePayload = await saveResponse.json();
 
     await expect(page.getByText("Perfil actualizado", { exact: false })).toBeVisible();
+    expect(savePayload.user.phone).toBe("+507 6000-0000");
+    expect(savePayload.user.preferredAddress).toBe("Casco Viejo, Panama");
 
     const response = await request.get("http://localhost:3000/api/auth/me", {
       headers: { Authorization: "Bearer mock-client-token" },
@@ -162,9 +166,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe exponer módulos administrativos de cupones, reportes y reglas", async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem("mock_auth_token", "mock-admin-token");
-    });
+    await setMockAuth(page, "mock-admin-token");
 
     await page.goto("/admin/coupons");
     await expect(page.getByRole("heading", { name: "Gestión de Cupones" })).toBeVisible();

@@ -25,15 +25,11 @@ export const authMiddleware = async (c: any, next: () => Promise<void>) => {
     const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
     const clerkId = `mock_${role}_id`;
 
-    let user = await User.findOne({ clerkId });
-    if (!user) {
-      user = await User.create({
-        clerkId,
-        name,
-        email,
-        role,
-      });
-    }
+    const user = await User.findOneAndUpdate(
+      { clerkId },
+      { $setOnInsert: { clerkId, name, email, role } },
+      { upsert: true, new: true },
+    );
     c.set("user", user);
     await next();
     return;
