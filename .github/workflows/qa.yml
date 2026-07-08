@@ -1,0 +1,81 @@
+name: QA
+
+on:
+  pull_request:
+    branches:
+      - staging
+      - master
+  push:
+    branches:
+      - staging
+      - master
+      - "avance-15/**"
+
+jobs:
+  quality:
+    name: Typecheck, build and E2E
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install root dependencies
+        run: bun install
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: bun install
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: bun install
+
+      - name: Install MCP dependencies
+        working-directory: mcp-server
+        run: bun install
+
+      - name: Frontend typecheck
+        working-directory: frontend
+        run: bun x tsc --noEmit
+
+      - name: Backend typecheck
+        working-directory: backend
+        run: bun x tsc --noEmit
+
+      - name: MCP typecheck
+        working-directory: mcp-server
+        run: bun x tsc --noEmit
+
+      - name: Frontend build
+        working-directory: frontend
+        run: bun run build
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: bun run test:e2e
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: pk_test_your_clerk_publishable_key
+          E2E_MONGO_URI: mongodb://localhost:27017/tembleques_camila_ci
+          E2E_STRIPE_SECRET_KEY: sk_test_placeholder
+          E2E_STRIPE_WEBHOOK_SECRET: whsec_placeholder
+          CLERK_SECRET_KEY: sk_test_placeholder
+          CLERK_WEBHOOK_SECRET: whsec_placeholder

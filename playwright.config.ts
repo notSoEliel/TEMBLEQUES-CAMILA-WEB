@@ -15,6 +15,13 @@ export default defineConfig({
     ["list"],
   ],
 
+  webServer: {
+    command: "bun run e2e:server",
+    url: "http://localhost:5173",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",
