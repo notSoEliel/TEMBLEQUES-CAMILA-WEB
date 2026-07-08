@@ -3,10 +3,14 @@
   "private": true,
   "scripts": {
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "e2e:server": "bun scripts/e2e-server.ts",
+    "mcp:start": "cd mcp-server && bun run start",
+    "mcp:typecheck": "cd mcp-server && bun run typecheck"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",
-    "@types/node": "^25.9.1"
+    "@types/node": "^25.9.1",
+    "bun-types": "latest"
   }
 }
