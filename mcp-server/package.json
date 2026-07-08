@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "bun src/index.ts",
+    "start": "bun src/http.ts",
+    "start:stdio": "bun src/index.ts",
     "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
