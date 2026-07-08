@@ -11,7 +11,13 @@ import {
   IUserProfile,
 } from "@/types";
 
-const API_URL = "/api";
+function resolveApiUrl(): string {
+  const configuredUrl = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+  if (configuredUrl === "/api" || configuredUrl.endsWith("/api")) return configuredUrl;
+  return `${configuredUrl}/api`;
+}
+
+const API_URL = resolveApiUrl();
 
 export type { PaginationMetadata };
 

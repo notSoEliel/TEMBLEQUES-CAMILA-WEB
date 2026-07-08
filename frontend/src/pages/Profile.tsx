@@ -132,7 +132,12 @@ export default function Profile() {
 
   const handleProfileSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const fullName = `${profileForm.firstName} ${profileForm.lastName}`.trim();
+    const formData = new FormData(event.currentTarget);
+    const firstNameValue = String(formData.get("firstName") ?? profileForm.firstName);
+    const lastNameValue = String(formData.get("lastName") ?? profileForm.lastName);
+    const phoneValue = String(formData.get("phone") ?? profileForm.phone);
+    const preferredAddressValue = String(formData.get("preferredAddress") ?? profileForm.preferredAddress);
+    const fullName = `${firstNameValue} ${lastNameValue}`.trim();
     if (fullName.length < 2) {
       showError(t("profile.emptyName"), "validation");
       return;
@@ -142,8 +147,8 @@ export default function Profile() {
     try {
       await updateProfile({
         name: fullName,
-        phone: profileForm.phone,
-        preferredAddress: profileForm.preferredAddress,
+        phone: phoneValue,
+        preferredAddress: preferredAddressValue,
       });
       showError(t("profile.saved"), "success");
     } catch (error) {
@@ -217,6 +222,7 @@ export default function Profile() {
                       <Label htmlFor="profile-first-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.firstName")}</Label>
                       <Input
                         id="profile-first-name"
+                        name="firstName"
                         value={profileForm.firstName}
                         onChange={(event) => setProfileForm((current) => ({ ...current, firstName: event.target.value }))}
                         autoComplete="given-name"
@@ -227,6 +233,7 @@ export default function Profile() {
                       <Label htmlFor="profile-last-name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("profile.lastName")}</Label>
                       <Input
                         id="profile-last-name"
+                        name="lastName"
                         value={profileForm.lastName}
                         onChange={(event) => setProfileForm((current) => ({ ...current, lastName: event.target.value }))}
                         autoComplete="family-name"
@@ -243,6 +250,7 @@ export default function Profile() {
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
                         <Input
                           id="profile-phone"
+                          name="phone"
                           value={profileForm.phone}
                           onChange={(event) => setProfileForm((current) => ({ ...current, phone: event.target.value }))}
                           placeholder="+507 0000-0000"
@@ -257,6 +265,7 @@ export default function Profile() {
                         <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
                         <Input
                           id="profile-address"
+                          name="preferredAddress"
                           value={profileForm.preferredAddress}
                           onChange={(event) => setProfileForm((current) => ({ ...current, preferredAddress: event.target.value }))}
                           placeholder="Ciudad de Panamá..."
