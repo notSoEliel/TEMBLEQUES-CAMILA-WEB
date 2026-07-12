@@ -338,3 +338,39 @@ export const settingsApi = {
   update: (data: ISettings, token: string) =>
     api<{ settings: ISettings }>("/settings", { method: "PUT", body: data, token }),
 };
+
+// Media
+export const mediaApi = {
+  uploadImage: async (file: File, token?: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: Record<string, string> = {};
+    let currentToken = token;
+
+    if (typeof window !== "undefined" && (window as any).Clerk?.session) {
+      try {
+        const freshToken = await (window as any).Clerk.session.getToken();
+        if (freshToken) currentToken = freshToken;
+      } catch (e) {}
+    }
+
+    if (currentToken) {
+      headers["Authorization"] = `Bearer ${currentToken}`;
+    }
+
+    const response = await fetch(`${API_URL}/media/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.error || "Error al subir la imagen.");
+    }
+
+    return response.json() as Promise<{ success: boolean; url: string }>;
+  },
+};
+
