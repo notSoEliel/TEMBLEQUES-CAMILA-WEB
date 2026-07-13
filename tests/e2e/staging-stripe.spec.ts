@@ -56,13 +56,13 @@ test.describe("Staging - Stripe test real", () => {
     await page.waitForURL(/checkout\.stripe\.com/, { timeout: 30_000 });
 
     await page.locator('input[name="cardNumber"], input[autocomplete="cc-number"]').first().fill(
-      process.env.E2E_STRIPE_TEST_CARD ?? "4242424242424242",
+      process.env.E2E_STRIPE_TEST_CARD || "4242424242424242",
     );
     await page.locator('input[name="cardExpiry"], input[autocomplete="cc-exp"]').first().fill(
-      process.env.E2E_STRIPE_TEST_EXPIRY ?? "1230",
+      process.env.E2E_STRIPE_TEST_EXPIRY || "1230",
     );
     await page.locator('input[name="cardCvc"], input[autocomplete="cc-csc"]').first().fill(
-      process.env.E2E_STRIPE_TEST_CVC ?? "123",
+      process.env.E2E_STRIPE_TEST_CVC || "123",
     );
     await fillIfVisible(page, 'input[type="email"]', requireEnvironment("E2E_CLERK_EMAIL"));
     await page.getByRole("button", { name: /Pagar|Pay/ }).last().click();
