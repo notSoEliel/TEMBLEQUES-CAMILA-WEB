@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
-import { clerk } from "@clerk/testing/playwright";
+import { clerk, clerkSetup } from "@clerk/testing/playwright";
 
 export interface StagingProductVariant {
   size: string;
@@ -44,9 +44,17 @@ function getStagingBackendURL(): string {
   return requireEnvironment("E2E_BACKEND_URL").replace(/\/$/, "");
 }
 
+let clerkSetupPromise: Promise<unknown> | undefined;
+
+async function ensureClerkSetup(): Promise<void> {
+  clerkSetupPromise ??= clerkSetup();
+  await clerkSetupPromise;
+}
+
 export async function loginWithClerk(page: Page): Promise<void> {
   const email = requireEnvironment("E2E_CLERK_EMAIL");
 
+  await ensureClerkSetup();
   await page.goto("/");
   await clerk.signIn({ page, emailAddress: email });
   await expect(page).not.toHaveURL(/\/login/);
