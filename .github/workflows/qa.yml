@@ -94,6 +94,7 @@ jobs:
           CLERK_WEBHOOK_SECRET: whsec_placeholder
           AUTH_MOCKS_ENABLED: true
           INTEGRATIONS_MODE: demo
+          RATE_LIMIT_ENABLED: false
 
       - name: Upload Playwright artifacts
         if: always()
