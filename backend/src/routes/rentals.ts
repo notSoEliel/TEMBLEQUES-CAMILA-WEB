@@ -5,7 +5,6 @@ import { Rental } from "../models/Rental.js";
 import { createRental } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
-import { isStripeConfigured } from "../services/stripe.js";
 
 const rentals = new Hono<{ Variables: AuthVariables }>();
 
@@ -94,46 +93,6 @@ rentals.get("/my", async (c) => {
     filter.status = "cancelled";
   } else {
     filter.status = { $ne: "cancelled" };
-  }
-
-  // PROACTIVE SYNC: Check for pending rentals that might have been paid (legacy/limbo data)
-  // Only check rentals that have a stripe_session_id and are still pending
-  const pendingWithSession = await Rental.find({
-    user_id: user._id,
-    status: "pending",
-    stripe_session_id: { $exists: true, $ne: null }
-  });
-
-  if (pendingWithSession.length > 0 && isStripeConfigured()) {
-    try {
-      const { getStripeClient } = await import("../services/stripe.js");
-      const stripe = await getStripeClient();
-      
-      // Process groups first to be efficient
-      const groupIds = [...new Set(pendingWithSession.map(r => r.order_group_id).filter(id => !!id))];
-      
-      for (const groupId of groupIds) {
-        // Find session by searching Stripe (or retrieving by ID from first rental)
-        const firstRental = pendingWithSession.find(r => r.order_group_id === groupId);
-        if (firstRental?.stripe_session_id) {
-          const session = await stripe.checkout.sessions.retrieve(firstRental.stripe_session_id);
-          if (session.payment_status === "paid") {
-             // Force update all rentals in this group
-             await Rental.updateMany(
-               { order_group_id: groupId },
-               { 
-                 $set: { 
-                   status: firstRental.payment_type === "full" ? "paid" : "reserved",
-                   payment_status: "completed"
-                 } 
-               }
-             );
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Sync error in /my:", err);
-    }
   }
 
   const [myRentals, total] = await Promise.all([

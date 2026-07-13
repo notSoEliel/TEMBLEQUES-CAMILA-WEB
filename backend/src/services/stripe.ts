@@ -1,4 +1,5 @@
 import { Rental, type IRental } from "../models/Rental.js";
+import { StripeWebhookEvent } from "../models/StripeWebhookEvent.js";
 import { AppError } from "../lib/errors.js";
 import { type IProduct } from "../models/Product.js";
 
@@ -106,8 +107,33 @@ export async function handleStripeWebhook(
     );
   }
 
-  await processStripeEvent(event);
+  try {
+    await StripeWebhookEvent.create({
+      event_id: event.id,
+      event_type: event.type,
+    });
+  } catch (error: unknown) {
+    if (isDuplicateKeyError(error)) {
+      return { received: true, event: event.type };
+    }
+    throw error;
+  }
+
+  try {
+    await processStripeEvent(event);
+  } catch (error: unknown) {
+    await StripeWebhookEvent.deleteOne({ event_id: event.id });
+    throw error;
+  }
+
   return { received: true, event: event.type };
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "code" in error
+    && error.code === 11000;
 }
 
 async function processStripeEvent(event: import("stripe").Stripe.Event): Promise<void> {

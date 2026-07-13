@@ -195,29 +195,8 @@ stripe.get("/verify-session", authMiddleware, async (c) => {
     const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY as string);
     const session = await stripeClient.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status === "paid") {
-      const orderGroupId = session.metadata?.orderGroupId;
-      if (orderGroupId) {
-        // Update rentals just in case webhook hasn't fired yet
-        const rentalsToUpdate = await Rental.find({ order_group_id: orderGroupId });
-        for (const rental of rentalsToUpdate) {
-          rental.status = rental.payment_type === "full" ? "paid" : "reserved";
-          rental.payment_status = "completed";
-          await rental.save();
-        }
-      } else {
-        // Fallback for older sessions
-        const rentalId = session.metadata?.rentalId;
-        if (rentalId) {
-          const rental = await Rental.findById(rentalId);
-          if (rental) {
-            rental.status = rental.payment_type === "full" ? "paid" : "reserved";
-            rental.payment_status = "completed";
-            await rental.save();
-          }
-        }
-      }
-    }
+    // El webhook verificado es la única fuente de verdad para cambiar el estado.
+    // Esta ruta solo consulta Stripe para mostrar el resultado al cliente.
     return c.json({ verified: true, payment_status: session.payment_status });
   } catch (error) {
     console.error("Error verifying session:", error);

@@ -37,6 +37,22 @@ El servidor E2E arranca el backend con `APP_ENV=ci`, `SEED_ENABLED=true`, `SEED_
 
 El workflow de GitHub ejecuta lint, typecheck, pruebas unitarias, build y Playwright. Aunque Playwright falle, el workflow intenta conservar `playwright-report/` y `test-results/` como artefactos.
 
+## Smoke tests reales de staging
+
+Los smoke tests de Clerk y Stripe están separados de CI y requieren activación explícita. No se ejecutan contra localhost ni con tokens mock:
+
+```bash
+E2E_STAGING_URL=https://frontend-staging.example \
+E2E_REAL_INTEGRATIONS=true \
+E2E_CLERK_EMAIL='cuenta-test' \
+E2E_CLERK_PASSWORD='secreto-test' \
+bun run test:e2e:staging
+```
+
+La contraseña solo debe inyectarse desde el gestor de secretos o el entorno local protegido; no debe aparecer en el comando guardado, logs ni issues. Stripe usa por defecto la tarjeta de prueba `4242 4242 4242 4242`, y el test exige que la reserva alcance `reserved` o `paid` por el webhook. Si el endpoint devuelve `demo` o el webhook no cambia el estado, el smoke falla.
+
+El flujo de confirmación y `GET /api/rentals/my` no modifican estados de pago. La única transición financiera se procesa en el webhook con firma validada y deduplicación por `event.id`.
+
 ## Promoción a la demo
 
 La demo académica debe desplegarse con una base separada de staging o con una copia controlada de sus datos. Primero se valida el catálogo con fixtures; después se sustituyen las imágenes y productos sintéticos por los productos reales implementados. La estructura de claves y el contrato de disponibilidad permanecen iguales, por lo que los tests no necesitan cambiar al sustituir el contenido.
