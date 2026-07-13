@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
+import { authMiddleware, requirePermission, type AuthVariables } from "../middleware/auth.js";
 import { Coupon } from "../models/Coupon.js";
 import { AppError } from "../lib/errors.js";
 
@@ -71,12 +71,12 @@ coupons.post("/validate", authMiddleware, async (c) => {
 });
 
 // ─── ADMIN ROUTES ─────────────────────────────────────────────────────────────
-coupons.get("/", authMiddleware, requireAdmin, async (c) => {
+coupons.get("/", authMiddleware, requirePermission("coupons.manage"), async (c) => {
   const allCoupons = await Coupon.find().sort({ createdAt: -1 });
   return c.json({ coupons: allCoupons });
 });
 
-coupons.post("/", authMiddleware, requireAdmin, async (c) => {
+coupons.post("/", authMiddleware, requirePermission("coupons.manage"), async (c) => {
   const body = await c.req.json();
   const data = createCouponSchema.parse(body);
 
@@ -96,7 +96,7 @@ coupons.post("/", authMiddleware, requireAdmin, async (c) => {
   return c.json({ coupon }, 201);
 });
 
-coupons.put("/:id", authMiddleware, requireAdmin, async (c) => {
+coupons.put("/:id", authMiddleware, requirePermission("coupons.manage"), async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
   const data = createCouponSchema.partial().parse(body);
@@ -125,7 +125,7 @@ coupons.put("/:id", authMiddleware, requireAdmin, async (c) => {
   return c.json({ coupon });
 });
 
-coupons.delete("/:id", authMiddleware, requireAdmin, async (c) => {
+coupons.delete("/:id", authMiddleware, requirePermission("coupons.manage"), async (c) => {
   const id = c.req.param("id");
   const coupon = await Coupon.findByIdAndDelete(id);
   if (!coupon) {

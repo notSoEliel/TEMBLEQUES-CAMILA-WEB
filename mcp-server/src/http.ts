@@ -1,21 +1,25 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createTemblequesMcpServer } from "./server.js";
+import {
+  authenticateMcpRequest,
+  getMcpCorsHeaders,
+  isMcpOriginAllowed,
+  loadMcpAuthConfig,
+  type McpPrincipal,
+} from "./auth.js";
 
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 3000);
-const allowedOrigin = process.env.MCP_ALLOWED_ORIGIN ?? "*";
+const authConfig = loadMcpAuthConfig();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": allowedOrigin,
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, Last-Event-ID, mcp-protocol-version, Authorization",
-  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version",
-};
-
-function json(data: unknown, status = 200): Response {
+function json(
+  data: unknown,
+  status = 200,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...corsHeaders,
+      ...headers,
       "Content-Type": "application/json",
     },
   });
@@ -25,8 +29,12 @@ Bun.serve({
   port,
   async fetch(request) {
     const url = new URL(request.url);
+    const corsHeaders = getMcpCorsHeaders(request, authConfig.allowedOrigins);
 
     if (request.method === "OPTIONS") {
+      if (!isMcpOriginAllowed(request, authConfig.allowedOrigins)) {
+        return json({ error: "Origen no permitido" }, 403, corsHeaders);
+      }
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
@@ -34,10 +42,7 @@ Bun.serve({
       return json({
         status: "ok",
         name: "tembleques-camila-mcp",
-        backendUrl: process.env.MCP_BACKEND_URL ?? "http://localhost:3000",
-        adminTokenConfigured: Boolean(process.env.MCP_ADMIN_TOKEN),
-        clientTokenConfigured: Boolean(process.env.MCP_CLIENT_TOKEN),
-      });
+      }, 200, corsHeaders);
     }
 
     if (url.pathname !== "/mcp") {
@@ -49,11 +54,24 @@ Bun.serve({
         jsonrpc: "2.0",
         error: { code: -32000, message: "Metodo no permitido" },
         id: null,
-      }, 405);
+      }, 405, corsHeaders);
+    }
+
+    if (!isMcpOriginAllowed(request, authConfig.allowedOrigins)) {
+      return json({ error: "Origen no permitido" }, 403, corsHeaders);
+    }
+
+    const principal: McpPrincipal | null = authenticateMcpRequest(request, authConfig);
+    if (!principal) {
+      return json(
+        { error: "Autenticación MCP requerida", code: "MCP_AUTH_REQUIRED" },
+        401,
+        { ...corsHeaders, "WWW-Authenticate": "Bearer" },
+      );
     }
 
     const transport = new WebStandardStreamableHTTPServerTransport();
-    const server = createTemblequesMcpServer();
+    const server = createTemblequesMcpServer(principal);
 
     try {
       await server.connect(transport);
@@ -70,7 +88,7 @@ Bun.serve({
         jsonrpc: "2.0",
         error: { code: -32603, message: "Error interno del servidor MCP" },
         id: null,
-      }, 500);
+      }, 500, corsHeaders);
     }
   },
 });

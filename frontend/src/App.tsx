@@ -56,8 +56,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Guards a route that requires admin role.
- * Shows a forbidden page if the user is not an admin.
+ * Guards a route that requires an operational role.
+ * Detailed permissions remain enforced by the backend per endpoint.
  */
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -74,7 +74,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     return <ErrorPage variant="unauthorized" />;
   }
 
-  if (user.role !== "admin") {
+  if (user.role === "client") {
     return <ErrorPage variant="forbidden" />;
   }
 

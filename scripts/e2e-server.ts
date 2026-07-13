@@ -80,6 +80,8 @@ async function main(): Promise<void> {
 
   spawn(["bun", "run", "dev"], "backend", {
     APP_ENV: "ci",
+    AUTH_MOCKS_ENABLED: "true",
+    RATE_LIMIT_ENABLED: "false",
     MONGO_URI: mongoUri,
     SEED_ENABLED: "true",
     SEED_PROFILE: seedProfile,

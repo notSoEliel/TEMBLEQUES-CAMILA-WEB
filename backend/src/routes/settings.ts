@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { Settings, type ICategoryConfig } from "../models/Settings.js";
 import { Product } from "../models/Product.js";
-import { authMiddleware, requireAdmin } from "../middleware/auth.js";
+import { authMiddleware, requirePermission } from "../middleware/auth.js";
 import { z } from "zod";
 
 const settings = new Hono();
@@ -52,7 +52,7 @@ const settingsSchema = z.object({
   ),
 });
 
-settings.put("/", authMiddleware, requireAdmin, async (c) => {
+settings.put("/", authMiddleware, requirePermission("settings.write"), async (c) => {
   const rawBody = await c.req.json();
   const body = settingsSchema.parse(rawBody);
   

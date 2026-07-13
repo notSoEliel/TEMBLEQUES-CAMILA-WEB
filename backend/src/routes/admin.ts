@@ -1,7 +1,8 @@
 import { Hono } from "hono";
+import { createClerkClient } from "@clerk/backend";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
+import { authMiddleware, requirePermission, type AuthVariables } from "../middleware/auth.js";
 import { Product } from "../models/Product.js";
 import { Rental } from "../models/Rental.js";
 import { User } from "../models/User.js";
@@ -12,13 +13,48 @@ import { generateRentalContractPdf } from "../services/contracts.js";
 import { AppError } from "../lib/errors.js";
 import { getPanamaTodayUTC } from "../services/payment-rules.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
+import type { Role } from "../models/User.js";
+import { AdminAuditLog } from "../models/AdminAuditLog.js";
+import { adminAuditMiddleware } from "../services/audit.js";
 
 const admin = new Hono<{ Variables: AuthVariables }>();
 
-// All admin routes require auth + admin role
-admin.use("/*", authMiddleware, requireAdmin);
+// All administrative routes require authentication. Each operation declares its
+// own permission below so an inventory operator does not receive user/settings access.
+admin.use("/*", authMiddleware);
+admin.use("/*", adminAuditMiddleware);
+admin.use("/seed-status", requirePermission("dashboard.read"));
+admin.use("/dashboard", requirePermission("dashboard.read"));
+admin.use("/products", requirePermission("products.write"));
+admin.use("/products/*", requirePermission("products.write"));
+admin.use("/rentals", requirePermission("reservations.read"));
+admin.use("/rentals/*", requirePermission("reservations.read"));
+admin.use("/rentals/:id/status", requirePermission("reservations.write"));
+admin.use("/users", requirePermission("users.read"));
+admin.use("/users/*", requirePermission("users.read"));
+admin.use("/contacts", requirePermission("contacts.manage"));
+admin.use("/contacts/*", requirePermission("contacts.manage"));
 
 const contactStatusSchema = z.enum(["unread", "read", "archived"]);
+
+// GET /api/admin/audit - immutable administrative activity log
+admin.get("/audit", requirePermission("audit.read"), async (c) => {
+  const { page, limit, skip } = getPaginationParams(c);
+  const action = c.req.query("action");
+  const entity = c.req.query("entity");
+  const success = c.req.query("success");
+  const filter: { action?: string; entity?: string; success?: boolean } = {};
+  if (action) filter.action = action;
+  if (entity) filter.entity = entity;
+  if (success === "true" || success === "false") filter.success = success === "true";
+
+  const [data, total] = await Promise.all([
+    AdminAuditLog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    AdminAuditLog.countDocuments(filter),
+  ]);
+
+  return c.json(createPaginatedResponse(data, total, page, limit));
+});
 
 // GET /api/admin/seed-status - Read-only verification of the managed seed namespace
 admin.get("/seed-status", async (c) => {
@@ -290,6 +326,46 @@ admin.patch("/rentals/:id/status", async (c) => {
 });
 
 // --- User Management ---
+
+const roleSchema = z.enum(["client", "owner", "operator", "inventory", "support"]);
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
+// PATCH /api/admin/users/:id/role - owner-only role assignment
+admin.patch("/users/:id/role", requirePermission("users.roles.write"), async (c) => {
+  const body = await c.req.json();
+  const role = roleSchema.parse(body.role) as Exclude<Role, "admin">;
+  const actor = c.get("user");
+  const target = await User.findById(c.req.param("id"));
+
+  if (!target) {
+    throw new AppError("Usuario no encontrado", 404, "USER_NOT_FOUND");
+  }
+
+  if (target._id.toString() === actor._id.toString() && role !== "owner") {
+    throw new AppError("No puedes quitarte tu propio acceso de propietario.", 400, "OWNER_SELF_DEMOTION_FORBIDDEN");
+  }
+
+  if ((target.role === "owner" || target.role === "admin") && role !== "owner") {
+    const ownerCount = await User.countDocuments({ role: { $in: ["owner", "admin"] } });
+    if (ownerCount <= 1) {
+      throw new AppError("Debe existir al menos un propietario activo.", 400, "LAST_OWNER_FORBIDDEN");
+    }
+  }
+
+  if (!target.clerkId.startsWith("mock_") && !target.clerkId.startsWith("seed_") && !target.clerkId.startsWith("mcp_")) {
+    try {
+      await clerkClient.users.updateUserMetadata(target.clerkId, {
+        publicMetadata: { role },
+      });
+    } catch {
+      throw new AppError("No se pudo sincronizar el rol con Clerk.", 502, "CLERK_ROLE_SYNC_FAILED");
+    }
+  }
+
+  target.role = role;
+  await target.save();
+  return c.json({ user: target });
+});
 
 // GET /api/admin/users
 admin.get("/users", async (c) => {

@@ -27,8 +27,18 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_UPLOAD_PRESET=tembleques_products_signed`
 - `FRONTEND_URL`
+- `CORS_ALLOWED_ORIGINS`
+- `TRUST_PROXY=true`
 - `NODE_ENV=production`
 - `APP_ENV=staging`
+- `AUTH_MOCKS_ENABLED=false`
+- `INTEGRATIONS_MODE=real`
+- `RATE_LIMIT_ENABLED=true`
+- `RATE_LIMIT_PUBLIC_PER_MINUTE`
+- `RATE_LIMIT_AUTH_PER_MINUTE`
+- `RATE_LIMIT_CHECKOUT_PER_MINUTE`
+- `RATE_LIMIT_ADMIN_PER_MINUTE`
+- `RATE_LIMIT_MAX_KEYS`
 - `SEED_ENABLED=true`
 - `SEED_PROFILE=staging`
 - `SEED_MODE=upsert`
@@ -45,8 +55,12 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 ## Variables de MCP
 
 - `MCP_BACKEND_URL=https://backend-production-e696.up.railway.app`
-- `MCP_ADMIN_TOKEN`
-- `MCP_CLIENT_TOKEN`
+- `MCP_AUTH_REQUIRED=true`
+- `MCP_ADMIN_API_KEY`
+- `MCP_CLIENT_API_KEY`
+- `MCP_BACKEND_ADMIN_TOKEN`
+- `MCP_BACKEND_CLIENT_TOKEN`
+- `MCP_ALLOWED_ORIGIN`
 - `NIXPACKS_NODE_VERSION=22`
 - `NODE_ENV=production`
 
@@ -88,7 +102,7 @@ vercel --prod --yes
 El backend expone `GET /api/admin/seed-status` como lectura administrativa para comprobar el namespace gestionado por el seed sin devolver documentos ni secretos. Requiere el mismo token administrativo que las demás rutas `/api/admin`:
 
 ```bash
-curl -H "Authorization: Bearer $MCP_ADMIN_TOKEN" \
+curl -H "Authorization: Bearer $MCP_BACKEND_ADMIN_TOKEN" \
   https://backend-production-e696.up.railway.app/api/admin/seed-status
 ```
 

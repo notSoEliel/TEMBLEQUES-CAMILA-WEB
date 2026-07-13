@@ -12,7 +12,7 @@ El servidor MCP expone herramientas autenticadas para que Codex o Claude Code co
 - Transporte: Streamable HTTP.
 - Backend consumido: https://backend-production-e696.up.railway.app
 
-El endpoint `/mcp` acepta JSON-RPC MCP por HTTP. El endpoint `/health` permite verificar que el servicio esta vivo y que tiene tokens configurados.
+El endpoint `/mcp` acepta JSON-RPC MCP por HTTP y exige `Authorization: Bearer <MCP_API_KEY>`. El endpoint `/health` permite verificar que el servicio esta vivo sin exponer la configuración interna.
 
 ## Ejecucion local HTTP
 
@@ -20,8 +20,12 @@ El endpoint `/mcp` acepta JSON-RPC MCP por HTTP. El endpoint `/health` permite v
 cd mcp-server
 bun install
 MCP_BACKEND_URL=http://localhost:3000 \
-MCP_ADMIN_TOKEN=mock-admin-token \
-MCP_CLIENT_TOKEN=mock-client-token \
+MCP_AUTH_REQUIRED=true \
+MCP_ADMIN_API_KEY='clave-admin-larga' \
+MCP_CLIENT_API_KEY='clave-cliente-larga' \
+MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
+MCP_BACKEND_CLIENT_TOKEN='credencial-interna-cliente' \
+MCP_ALLOWED_ORIGIN=http://localhost:5173 \
 PORT=3900 \
 bun run start
 ```
@@ -38,8 +42,9 @@ El modo `stdio` se mantiene para importarlo directamente desde Codex o Claude Co
 ```bash
 cd mcp-server
 MCP_BACKEND_URL=http://localhost:3000 \
-MCP_ADMIN_TOKEN=mock-admin-token \
-MCP_CLIENT_TOKEN=mock-client-token \
+MCP_AUTH_REQUIRED=false \
+MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
+MCP_BACKEND_CLIENT_TOKEN='credencial-interna-cliente' \
 bun run start:stdio
 ```
 
@@ -52,16 +57,17 @@ bun /ruta/al/repo/mcp-server/src/index.ts
 ## Variables requeridas
 
 - `MCP_BACKEND_URL`: URL del backend Hono.
-- `MCP_ADMIN_TOKEN`: token Bearer con rol administrador.
-- `MCP_CLIENT_TOKEN`: token Bearer de cliente.
+- `MCP_ADMIN_API_KEY`: API key externa con scopes administrativos.
+- `MCP_CLIENT_API_KEY`: API key externa con scopes de cliente.
+- `MCP_BACKEND_ADMIN_TOKEN`: credencial interna del MCP hacia el backend.
+- `MCP_BACKEND_CLIENT_TOKEN`: credencial interna de cliente hacia el backend.
 - `PORT`: puerto HTTP para Railway o desarrollo local.
-- `MCP_ALLOWED_ORIGIN`: origen CORS opcional. Por defecto usa `*`.
+- `MCP_AUTH_REQUIRED`: debe ser `true` en staging y producción; solo se puede desactivar en stdio/local explícitamente.
+- `MCP_ALLOWED_ORIGIN`: lista separada por comas de orígenes permitidos; no se acepta `*` en staging ni producción.
 
 ## Seguridad
 
-Las tools administrativas usan `MCP_ADMIN_TOKEN`. Las tools de cliente usan `MCP_CLIENT_TOKEN`. Las tools publicas no envian token salvo que lo requieran por contexto. El servidor MCP no imprime tokens.
-
-Para el avance academico se mantienen tokens demo aceptados por el backend (`mock-admin-token` y `mock-client-token`). Para produccion real deben reemplazarse por tokens emitidos por el sistema de autenticacion o por un proxy MCP con OAuth/API key rotativa.
+Todas las solicitudes HTTP a `/mcp`, incluidas `tools/list`, requieren una API key externa. Las tools administrativas y de cliente aplican scopes separados. El MCP usa credenciales internas distintas para llamar al backend y nunca imprime tokens.
 
 ## Prueba rapida remota
 
@@ -71,6 +77,7 @@ Listar tools:
 curl -sS https://mcp-server-production-321a.up.railway.app/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
+  -H "Authorization: Bearer $MCP_ADMIN_API_KEY" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 ```
 
@@ -80,6 +87,7 @@ Ejecutar health tool:
 curl -sS https://mcp-server-production-321a.up.railway.app/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
+  -H "Authorization: Bearer $MCP_ADMIN_API_KEY" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ops.health.check","arguments":{}}}'
 ```
 

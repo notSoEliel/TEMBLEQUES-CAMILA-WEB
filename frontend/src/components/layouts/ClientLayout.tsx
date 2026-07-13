@@ -232,7 +232,7 @@ export default function ClientLayout() {
                       <Avatar className="h-10 w-10 border-2 border-transparent hover:border-primary/30 transition-all cursor-pointer active:scale-95 flex items-center justify-center">
                         <AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback>
                       </Avatar>
-                      {user.role === "admin" && (
+                      {user.role !== "client" && (
                         <div className="absolute -bottom-1 -right-1 bg-primary text-[8px] font-black text-white px-1 rounded-full border border-background shadow-sm uppercase tracking-tighter">
                           Admin
                         </div>
@@ -267,7 +267,7 @@ export default function ClientLayout() {
                         </DropdownMenuItem>
                       </DropdownMenuGroup>
                       <DropdownMenuSeparator className="opacity-50" />
-                      {user.role === "admin" && (
+                      {user.role !== "client" && (
                         <>
                           <DropdownMenuGroup>
                             <DropdownMenuItem asChild>
