@@ -91,7 +91,7 @@ function rangeHasConflict(
   stock: number
 ): boolean {
   if (rangeStart > rangeEnd) return false;
-  let current = new Date(rangeStart + "T12:00:00");
+  const current = new Date(rangeStart + "T12:00:00");
   const end = new Date(rangeEnd + "T12:00:00");
   while (current <= end) {
     const iso = isoDate(current);
@@ -238,7 +238,7 @@ export default function AvailabilityCalendar({
   const conflictingRentals = useMemo(() => {
     if (!startDate || !endDate) return 0;
     let maxConflicts = 0;
-    let current = new Date(startDate + "T12:00:00");
+    const current = new Date(startDate + "T12:00:00");
     const end = new Date(endDate + "T12:00:00");
     while (current <= end) {
       const iso = isoDate(current);

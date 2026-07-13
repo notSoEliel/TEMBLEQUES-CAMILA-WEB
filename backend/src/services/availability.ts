@@ -1,6 +1,9 @@
+import type { FilterQuery } from "mongoose";
 import { Rental } from "../models/Rental.js";
 import { Product } from "../models/Product.js";
+import type { IRental } from "../models/Rental.js";
 import { MaintenanceBlock } from "../models/MaintenanceBlock.js";
+import { hasAvailableStock, type AvailabilityConflict } from "./availability-rules.js";
 
 /**
  * Checks whether a specific size variant of a product is available for the
@@ -23,7 +26,7 @@ export async function checkAvailability(
   const variant = product.variants.find((v) => v.size === selectedSize);
   if (!variant || variant.in_maintenance || variant.stock <= 0) return false;
 
-  const query: any = {
+  const query: FilterQuery<IRental> = {
     product_id: productId,
     selected_size: selectedSize,
     status: { $nin: ["cancelled", "returned", "damaged"] },
@@ -43,30 +46,18 @@ export async function checkAvailability(
     end_date: { $gte: startDate },
   }).select("start_date end_date");
 
-  // Calculate maximum concurrent rentals + maintenance blocks for any single day in the requested range
-  let maxConcurrent = 0;
-  let current = new Date(startDate);
-  current.setUTCHours(12, 0, 0, 0); // use middle of the day to avoid timezone edge cases
-  const end = new Date(endDate);
-  end.setUTCHours(12, 0, 0, 0);
+  const conflicts: AvailabilityConflict[] = [
+    ...conflictingRentals.map((rental) => ({
+      startDate: rental.start_date,
+      endDate: rental.end_date,
+    })),
+    ...conflictingBlocks.map((block) => ({
+      startDate: block.start_date,
+      endDate: block.end_date,
+    })),
+  ];
 
-  while (current <= end) {
-    let count = 0;
-    for (const r of conflictingRentals) {
-      if (current >= r.start_date && current <= r.end_date) {
-        count++;
-      }
-    }
-    for (const mb of conflictingBlocks) {
-      if (current >= mb.start_date && current <= mb.end_date) {
-        count++;
-      }
-    }
-    if (count > maxConcurrent) maxConcurrent = count;
-    current.setUTCDate(current.getUTCDate() + 1);
-  }
-
-  return maxConcurrent < variant.stock;
+  return hasAvailableStock(variant.stock, startDate, endDate, conflicts);
 }
 
 /**

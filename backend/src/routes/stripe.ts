@@ -70,7 +70,7 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   }
 
   // Apply Coupon if provided
-  let discountPerRental: Record<string, number> = {};
+  const discountPerRental: Record<string, number> = {};
   if (couponCode) {
     const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), is_active: true });
     if (!coupon) {

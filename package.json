@@ -2,6 +2,7 @@
   "name": "tembleques-camila-root",
   "private": true,
   "scripts": {
+    "lint": "eslint .",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "e2e:server": "bun scripts/e2e-server.ts",
@@ -9,8 +10,12 @@
     "mcp:typecheck": "cd mcp-server && bun run typecheck"
   },
   "devDependencies": {
+    "@eslint/js": "^9.31.0",
     "@playwright/test": "^1.49.0",
     "@types/node": "^25.9.1",
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "eslint": "^9.31.0",
+    "globals": "^16.3.0",
+    "typescript-eslint": "^8.37.0"
   }
 }
