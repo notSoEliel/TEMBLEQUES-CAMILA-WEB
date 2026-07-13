@@ -26,7 +26,7 @@ async function waitForWebhookState(
   orderGroupId: string,
 ): Promise<void> {
   await expect.poll(async () => {
-    const response = await request.get("/api/rentals/my?page=1&limit=100", {
+    const response = await request.get(`${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/my?page=1&limit=100`, {
       headers: { Authorization: authorization },
     });
     if (!response.ok()) return "request-failed";

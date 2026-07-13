@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { clerk } from "@clerk/testing/playwright";
 
 export interface StagingProductVariant {
   size: string;
@@ -39,28 +40,20 @@ export function requireEnvironment(name: string): string {
   return value;
 }
 
+function getStagingBackendURL(): string {
+  return requireEnvironment("E2E_BACKEND_URL").replace(/\/$/, "");
+}
+
 export async function loginWithClerk(page: Page): Promise<void> {
   const email = requireEnvironment("E2E_CLERK_EMAIL");
-  const password = requireEnvironment("E2E_CLERK_PASSWORD");
 
-  await page.goto("/login");
-  const identifier = page.locator('input[name="identifier"], input[type="email"]').first();
-  await expect(identifier).toBeVisible();
-  await identifier.fill(email);
-  const primaryButton = page.locator('button[data-localization-key="formButtonPrimary"]');
-  await expect(primaryButton).toBeVisible();
-  await primaryButton.click();
-
-  const passwordInput = page.locator('input[name="password"], input[type="password"]').first();
-  await expect(passwordInput).toBeVisible();
-  await passwordInput.fill(password);
-  await expect(primaryButton).toBeVisible();
-  await primaryButton.click();
+  await page.goto("/");
+  await clerk.signIn({ page, emailAddress: email });
   await expect(page).not.toHaveURL(/\/login/);
 }
 
 export async function getAvailableStagingProduct(request: APIRequestContext): Promise<StagingProduct> {
-  const response = await request.get("/api/products?page=1&limit=50");
+  const response = await request.get(`${getStagingBackendURL()}/api/products?page=1&limit=50`);
   expect(response.ok()).toBeTruthy();
   const payload = await response.json() as StagingProductResponse;
   const product = payload.data.find((candidate) =>
