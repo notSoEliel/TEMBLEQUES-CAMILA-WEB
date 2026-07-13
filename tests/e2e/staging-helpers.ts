@@ -122,13 +122,24 @@ export async function fillStripeField(
   selector: string,
   value: string,
 ): Promise<void> {
-  const contexts: Array<Page | Frame> = [page, ...page.frames()];
-  for (const context of contexts) {
-    const field = context.locator(selector).first();
-    if (await field.isVisible().catch(() => false)) {
-      await field.fill(value);
-      return;
+  let visibleField: ReturnType<Page["locator"]> | undefined;
+
+  await expect.poll(async () => {
+    const contexts: Array<Page | Frame> = [page, ...page.frames()];
+    for (const context of contexts) {
+      const field = context.locator(selector).first();
+      if (await field.isVisible().catch(() => false)) {
+        visibleField = field;
+        return true;
+      }
     }
+
+    return false;
+  }, { timeout: 30_000, intervals: [250, 500, 1_000] }).toBeTruthy();
+
+  if (visibleField) {
+    await visibleField.fill(value);
+    return;
   }
 
   throw new Error(`No se encontró el campo de Stripe: ${selector}`);
