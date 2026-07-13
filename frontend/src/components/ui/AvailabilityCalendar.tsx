@@ -356,7 +356,7 @@ export default function AvailabilityCalendar({
       </div>
 
       {loadingAvailability && (
-        <p className="text-xs text-muted-foreground animate-pulse">Cargando disponibilidad…</p>
+        <p data-testid="availability-loading" className="text-xs text-muted-foreground animate-pulse">Cargando disponibilidad…</p>
       )}
 
       {/* Range conflict warning */}

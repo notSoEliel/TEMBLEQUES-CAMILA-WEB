@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Frame, type Page } from "@playwright/test";
 import { clerk, clerkSetup } from "@clerk/testing/playwright";
 
 export interface StagingProductVariant {
@@ -18,6 +18,7 @@ export interface StagingProductResponse {
 }
 
 export interface CheckoutRequestBody {
+  rentalIds?: string[];
   orderGroupId?: string;
   paymentType?: "reservation" | "full";
 }
@@ -96,9 +97,15 @@ export async function addAvailableProductToCheckout(
   await page.goto(`/product/${product._id}`);
   await page.getByRole("button", { name: variant.size, exact: true }).click();
 
+  const availabilityLoading = page.getByTestId("availability-loading");
+  if (await availabilityLoading.count()) {
+    await expect(availabilityLoading).toBeHidden({ timeout: 15_000 });
+  }
+
   const dayButtons = page.locator("div.grid-cols-7 button:not([disabled])");
-  await expect(dayButtons.first()).toBeVisible();
+  await expect(dayButtons.first()).toBeEnabled({ timeout: 15_000 });
   await dayButtons.nth(0).click();
+  await expect(dayButtons.nth(1)).toBeEnabled({ timeout: 15_000 });
   await dayButtons.nth(1).click();
 
   await page.getByRole("button", { name: "Añadir al Carrito" }).click();
@@ -108,4 +115,21 @@ export async function addAvailableProductToCheckout(
   await page.getByRole("button", { name: "Continuar a Términos" }).click();
   await page.getByTestId("checkout-terms-checkbox").click();
   await page.getByRole("button", { name: "Continuar a Revisión" }).click();
+}
+
+export async function fillStripeField(
+  page: Page,
+  selector: string,
+  value: string,
+): Promise<void> {
+  const contexts: Array<Page | Frame> = [page, ...page.frames()];
+  for (const context of contexts) {
+    const field = context.locator(selector).first();
+    if (await field.isVisible().catch(() => false)) {
+      await field.fill(value);
+      return;
+    }
+  }
+
+  throw new Error(`No se encontró el campo de Stripe: ${selector}`);
 }

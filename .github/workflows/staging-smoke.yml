@@ -21,15 +21,19 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: bun install
+
       - name: Validate required staging secrets
         env:
-          E2E_STAGING_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          STAGING_FRONTEND_URL: ${{ secrets.STAGING_FRONTEND_URL }}
           E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
-          test -n "$E2E_STAGING_URL"
+          test -n "$STAGING_FRONTEND_URL"
           test -n "$E2E_BACKEND_URL"
           test -n "$E2E_CLERK_EMAIL"
           test -n "$CLERK_SECRET_KEY"
@@ -38,10 +42,30 @@ jobs:
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
 
+      - name: Build exact staging frontend artifact
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ secrets.STAGING_BACKEND_URL }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+        run: bun run build
+
+      - name: Start exact staging frontend artifact
+        working-directory: frontend
+        run: |
+          bunx vite preview --host 0.0.0.0 --port 5173 > /tmp/staging-frontend.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/staging-frontend.log
+          exit 1
+
       - name: Run real staging smoke tests
         run: bun run test:e2e:staging
         env:
-          E2E_STAGING_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          E2E_STAGING_URL: http://localhost:5173
           E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
           E2E_REAL_INTEGRATIONS: "true"
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
