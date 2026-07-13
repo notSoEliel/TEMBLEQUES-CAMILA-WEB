@@ -338,3 +338,72 @@ export const settingsApi = {
   update: (data: ISettings, token: string) =>
     api<{ settings: ISettings }>("/settings", { method: "PUT", body: data, token }),
 };
+
+// Media
+interface SignResponse {
+  timestamp: number;
+  signature: string;
+  apiKey: string;
+  cloudName: string;
+  uploadPreset: string;
+}
+
+interface CloudinaryUploadSuccess {
+  secure_url?: unknown;
+}
+
+interface CloudinaryUploadError {
+  error: {
+    message: string;
+  };
+}
+
+export const mediaApi = {
+  uploadImage: async (file: File, token?: string): Promise<{ success: boolean; url: string }> => {
+    try {
+      // 1. Obtener la firma de nuestro backend seguro
+      const signRes = await api<{ success: boolean; data: SignResponse }>("/media/sign", { 
+        method: "GET",
+        token 
+      });
+      const { timestamp, signature, apiKey, cloudName, uploadPreset } = signRes.data;
+
+      // 2. Preparar el payload para Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", timestamp.toString());
+      formData.append("upload_preset", uploadPreset);
+      formData.append("signature", signature);
+
+      // 3. Subida directa a Cloudinary
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      
+      const uploadRes = await fetch(cloudinaryUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errorData = (await uploadRes.json().catch(() => null)) as CloudinaryUploadError | null;
+        throw new Error(errorData?.error?.message || "Error al subir a Cloudinary");
+      }
+
+      const data = (await uploadRes.json()) as CloudinaryUploadSuccess;
+      if (typeof data.secure_url !== "string" || data.secure_url.length === 0) {
+        throw new Error("Cloudinary no devolvió la URL de la imagen");
+      }
+
+      const finalUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
+      return { success: true, url: finalUrl };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Cloudinary upload failed:", error.message);
+        throw new Error(error.message || "No se pudo completar la subida de la imagen. Inténtalo nuevamente.");
+      }
+      console.error("Cloudinary upload failed with unknown error", error);
+      throw new Error("No se pudo completar la subida de la imagen. Inténtalo nuevamente.");
+    }
+  },
+};
+

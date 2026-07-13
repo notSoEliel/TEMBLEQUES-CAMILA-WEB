@@ -40,14 +40,19 @@ graph TD
         Redis[(Redis Cache - Proyectado)]
     end
 
-    Browser -->|HTTP/HTTPS| Vite
-    Vite -->|"/api" Reverse Proxy| Hono
-    Hono -->|TCP/27017| Mongo
-    Hono -->|REST API| Clerk
-    Hono -->|REST API| Stripe
-    Stripe -->|Webhooks| Svix
-    Svix -->|Signed POST| Hono
-    Browser -->|Unsigned Upload| Cloudinary
+    %% Frontend a Backend
+    Browser -->|Autenticación (JWT)| Hono
+    Browser -->|Solicita firma temporal| Hono
+    Browser -->|Pedidos y Pagos| Hono
+
+    %% Backend a Externos
+    Hono -->|CRUD de Datos| Mongo
+    Hono -->|Validar Pagos| Stripe
+    Stripe -->|Webhooks| Hono
+
+    %% Servicios Directos desde Cliente
+    Browser -->|Autenticación Auth| Clerk
+    Browser -->|Subida firmada JPG/PNG/WEBP| Cloudinary
 ```
 
 ---
@@ -229,6 +234,7 @@ sequenceDiagram
     participant V as Vite Proxy
     participant B as Backend (Hono)
     participant C as Clerk / Stripe
+    participant CL as Cloudinary
     participant DB as MongoDB
 
     U->>V: GET /api/products?page=1
@@ -246,6 +252,13 @@ sequenceDiagram
     B->>C: Verificar Token (Middleware)
     C-->>B: User Context
     B->>DB: Operación Autorizada
+
+    Note over U,B: Flujo de imágenes firmado
+    U->>B: GET /api/media/sign (admin)
+    B-->>U: timestamp, upload_preset, signature, api_key y cloud_name
+    U->>CL: POST /image/upload con el archivo y la firma
+    CL-->>U: secure_url
+    Note over U,CL: El límite de 5 MB se valida en el navegador; el backend no recibe el archivo.
 ```
 
 ---

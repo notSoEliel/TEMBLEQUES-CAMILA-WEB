@@ -18,6 +18,7 @@ import couponRoutes from "./routes/coupons.js";
 import maintenanceRoutes from "./routes/maintenance.js";
 import reportRoutes from "./routes/reports.js";
 import contactRoutes from "./routes/contact.js";
+import mediaRoutes from "./routes/media.js";
 import { startCronJobs } from "./services/cron.js";
 
 const app = new Hono();
@@ -81,6 +82,7 @@ app.route("/api/coupons", couponRoutes);
 app.route("/api/admin/maintenance", maintenanceRoutes);
 app.route("/api/admin/reports", reportRoutes);
 app.route("/api/contact", contactRoutes);
+app.route("/api/media", mediaRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;

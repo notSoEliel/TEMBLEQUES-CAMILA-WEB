@@ -22,6 +22,10 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 - `CLERK_WEBHOOK_SECRET`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `CLOUDINARY_UPLOAD_PRESET=tembleques_products_signed`
 - `FRONTEND_URL`
 - `NODE_ENV=production`
 - `PORT`
@@ -30,8 +34,8 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 
 - `VITE_API_URL`
 - `VITE_CLERK_PUBLISHABLE_KEY`
-- `VITE_CLOUDINARY_CLOUD_NAME`
-- `VITE_CLOUDINARY_UPLOAD_PRESET`
+
+El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nube, la API key y el preset desde `/api/media/sign`. El secreto de Cloudinary solo existe en Railway.
 
 ## Variables de MCP
 
