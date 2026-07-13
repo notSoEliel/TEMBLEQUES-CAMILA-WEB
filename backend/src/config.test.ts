@@ -26,8 +26,13 @@ describe("configuración segura", () => {
 
   it("enumera variables faltantes sin imprimir valores", () => {
     expect(() => loadConfig({ APP_ENV: "production" })).toThrow(
-      /MONGO_URI.*CLERK_SECRET_KEY.*STRIPE_WEBHOOK_SECRET/,
+      /MONGO_URI.*CLERK_SECRET_KEY.*STRIPE_WEBHOOK_SECRET.*BACKUP_ENCRYPTION_KEY/,
     );
+  });
+
+  it("exige la clave de respaldo en producción", () => {
+    expect(() => loadConfig({ ...secureStaging, APP_ENV: "production" })).toThrow("BACKUP_ENCRYPTION_KEY");
+    expect(loadConfig({ ...secureStaging, APP_ENV: "production", BACKUP_ENCRYPTION_KEY: "a".repeat(64) }).appEnv).toBe("production");
   });
 
   it("rechaza mocks explícitos en staging", () => {

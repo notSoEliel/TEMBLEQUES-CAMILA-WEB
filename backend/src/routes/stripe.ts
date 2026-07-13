@@ -13,6 +13,7 @@ import {
   isStripeConfigured,
   type IPopulatedRental,
 } from "../services/stripe.js";
+import { recordMetric, structuredLog } from "../services/observability.js";
 
 const stripe = new Hono<{ Variables: AuthVariables }>();
 
@@ -61,12 +62,16 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     );
   }
 
+  recordMetric("checkout_started_total");
+
   // Update payment type if requested
   if (paymentType) {
     for (const rental of rentals) {
       rental.payment_type = paymentType;
       await rental.save();
     }
+
+    recordMetric("checkout_completed_total", rentals.length, { mode: "demo" });
   }
 
   // Apply Coupon if provided
@@ -168,6 +173,7 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   // Real Stripe
   const origin = c.req.header("origin") || "http://localhost:5173";
   const { url, sessionId } = await createStripeSession(rentals as unknown as IPopulatedRental[], origin);
+  recordMetric("checkout_sessions_created_total", 1, { mode: "stripe" });
 
   for (const rental of rentals) {
     rental.stripe_session_id = sessionId;
@@ -199,7 +205,7 @@ stripe.get("/verify-session", authMiddleware, async (c) => {
     // Esta ruta solo consulta Stripe para mostrar el resultado al cliente.
     return c.json({ verified: true, payment_status: session.payment_status });
   } catch (error) {
-    console.error("Error verifying session:", error);
+    structuredLog("error", "stripe.session_verification_failed", { error: error instanceof Error ? error.message : "unknown" });
     throw new AppError("Error verificando la sesión", 500, "STRIPE_VERIFY_ERROR");
   }
 });

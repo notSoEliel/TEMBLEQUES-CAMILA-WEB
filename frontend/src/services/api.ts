@@ -26,6 +26,42 @@ export interface PaginatedResponse<T> {
   pagination: PaginationMetadata;
 }
 
+export interface ObservabilityMetric {
+  name: string;
+  value: number;
+  labels: Record<string, string>;
+}
+
+export interface ObservabilityAlert {
+  _id: string;
+  type: string;
+  severity: "info" | "warning" | "critical";
+  status: "open" | "resolved";
+  message: string;
+  source: string;
+  createdAt: string;
+}
+
+export interface ObservabilityOverview {
+  health: {
+    checkedAt: string;
+    database: { status: "ok" | "unavailable"; state: number };
+    dependencies: Record<string, "configured" | "not_configured">;
+    configuration: {
+      appEnv: string;
+      cors: "configured" | "not_configured";
+      backups: "configured" | "not_configured";
+    };
+    cron: { job: string; lastRunAt?: string; lastSuccessAt?: string; lastError?: string };
+    recentErrors: Array<{ timestamp: string; requestId?: string; path?: string; code: string; statusCode: number }>;
+  };
+  metrics: {
+    counters: ObservabilityMetric[];
+    latency: { requestCount: number; averageMs: number; p95Ms: number };
+  };
+  alerts: ObservabilityAlert[];
+}
+
 interface ApiOptions {
   method?: string;
   body?: any;
@@ -188,6 +224,15 @@ export const stripeApi = {
 export const adminApi = {
   dashboard: (token: string) =>
     api<{ dashboard: any }>("/admin/dashboard", { token }),
+
+  observabilityOverview: (token: string) =>
+    api<ObservabilityOverview>("/admin/observability/overview", { token }),
+
+  resolveObservabilityAlert: (id: string, token: string) =>
+    api<{ alert: ObservabilityAlert }>(`/admin/observability/alerts/${id}/resolve`, {
+      method: "PATCH",
+      token,
+    }),
 
   // Products CRUD
   createProduct: (data: any, token: string) =>
@@ -406,4 +451,3 @@ export const mediaApi = {
     }
   },
 };
-

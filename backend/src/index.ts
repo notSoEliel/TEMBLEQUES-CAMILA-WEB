@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
 import { connectDB } from "./db.js";
@@ -19,9 +18,12 @@ import maintenanceRoutes from "./routes/maintenance.js";
 import reportRoutes from "./routes/reports.js";
 import contactRoutes from "./routes/contact.js";
 import mediaRoutes from "./routes/media.js";
+import observabilityRoutes from "./routes/observability.js";
+import privacyRoutes from "./routes/privacy.js";
 import { startCronJobs } from "./services/cron.js";
 import { loadConfig } from "./config.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
+import { recordRecentError, requestObservabilityMiddleware, structuredLog } from "./services/observability.js";
 
 const appConfig = loadConfig();
 
@@ -57,7 +59,7 @@ app.use("/*", cors({
   allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: false,
 }));
-app.use("/*", logger());
+app.use("/*", requestObservabilityMiddleware);
 app.use("/api/*", createRateLimitMiddleware());
 
 // Avoid route-level DB errors while Mongo is still booting.
@@ -73,6 +75,15 @@ app.use("/api/*", async (c, next) => {
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 app.onError((err, c) => {
+  const statusCode = err instanceof AppError ? err.statusCode : err instanceof ZodError ? 400 : 500;
+  const errorCode = err instanceof AppError ? (err.code ?? "APP_ERROR") : err instanceof ZodError ? "VALIDATION_ERROR" : "INTERNAL_ERROR";
+  recordRecentError({
+    timestamp: new Date().toISOString(),
+    requestId: c.req.header("x-request-id"),
+    path: c.req.path,
+    code: errorCode,
+    statusCode,
+  });
   if (err instanceof AppError) {
     return c.json(
       { error: err.message, ...(err.code && { code: err.code }) },
@@ -85,7 +96,8 @@ app.onError((err, c) => {
     return c.json({ error: message, code: "VALIDATION_ERROR" }, 400);
   }
 
-  console.error("[Server] Error no controlado:", err);
+  const requestId = c.req.header("x-request-id");
+  structuredLog("error", "http.unhandled_error", { requestId, path: c.req.path });
   return c.json(
     { error: "Ocurrió un error interno. Por favor, intenta de nuevo.", code: "INTERNAL_ERROR" },
     500,
@@ -109,6 +121,8 @@ app.route("/api/admin/maintenance", maintenanceRoutes);
 app.route("/api/admin/reports", reportRoutes);
 app.route("/api/contact", contactRoutes);
 app.route("/api/media", mediaRoutes);
+app.route("/api/admin/observability", observabilityRoutes);
+app.route("/api/privacy", privacyRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;
