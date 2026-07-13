@@ -40,14 +40,19 @@ graph TD
         Redis[(Redis Cache - Proyectado)]
     end
 
-    Browser -->|HTTP/HTTPS| Vite
-    Vite -->|"/api" Reverse Proxy| Hono
-    Hono -->|TCP/27017| Mongo
-    Hono -->|REST API| Clerk
-    Hono -->|REST API| Stripe
-    Stripe -->|Webhooks| Svix
-    Svix -->|Signed POST| Hono
-    Browser -->|Unsigned Upload| Cloudinary
+    %% Frontend a Backend
+    Browser -->|Autenticación (JWT)| Backend
+    Browser -->|Firmas Cloudinary| Backend
+    Browser -->|Pedidos y Pagos| Backend
+
+    %% Backend a Externos
+    Backend -->|CRUD de Datos| DB
+    Backend -->|Validar Pagos| Stripe
+    Stripe -->|Webhooks| Backend
+
+    %% Servicios Directos desde Cliente
+    Browser -->|Autenticación Auth| Clerk
+    Browser -->|Signed Upload| Cloudinary
 ```
 
 ---
