@@ -1,5 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
+import { hasMcpScope, type McpPrincipal, type McpScope } from "./auth.js";
 
 type AuthMode = "public" | "client" | "admin";
 
@@ -13,8 +15,8 @@ type ApiResult = {
 };
 
 const backendUrl = (process.env.MCP_BACKEND_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const adminToken = process.env.MCP_ADMIN_TOKEN;
-const clientToken = process.env.MCP_CLIENT_TOKEN;
+const adminToken = process.env.MCP_BACKEND_ADMIN_TOKEN ?? process.env.MCP_ADMIN_TOKEN;
+const clientToken = process.env.MCP_BACKEND_CLIENT_TOKEN ?? process.env.MCP_CLIENT_TOKEN;
 
 function tokenFor(mode: AuthMode): string | undefined {
   if (mode === "admin") return adminToken;
@@ -37,25 +39,68 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   return value ? `?${value}` : "";
 }
 
-async function api(
+function requiredScopeFor(
   path: string,
-  mode: AuthMode = "public",
-  init: RequestInit = {},
-): Promise<ApiResult> {
-  ensureToken(mode);
-  const headers = new Headers(init.headers);
-  headers.set("Accept", "application/json");
-  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  const token = tokenFor(mode);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  mode: AuthMode,
+  method: string,
+): McpScope | undefined {
+  if (mode === "public") {
+    if (path.includes("/availability")) return "availability.read";
+    if (path.startsWith("/api/products")) return "catalog.read";
+    return undefined;
+  }
 
-  const response = await fetch(`${backendUrl}${path}`, { ...init, headers });
-  const contentType = response.headers.get("content-type") ?? "";
-  const data = contentType.includes("application/json")
-    ? await response.json() as JsonValue
-    : { text: await response.text() };
+  if (mode === "client") {
+    if (path === "/api/rentals" && method === "POST") return "rentals.create";
+    if (path.startsWith("/api/rentals/my")) return "rentals.read.own";
+    if (path.startsWith("/api/rentals/") && method === "DELETE") return "rentals.cancel.own";
+    if (path.startsWith("/api/stripe/")) return "payments.create";
+    return undefined;
+  }
 
-  return { ok: response.ok, status: response.status, data };
+  if (path.includes("/dashboard")) return "dashboard.read";
+  if (path === "/api/admin/audit") return "audit.read";
+  if (path.includes("/users/") && path.includes("/audit")) return "audit.read";
+  if (path.startsWith("/api/admin/users")) return "users.read";
+  if (path.includes("/maintenance")) return "inventory.write";
+  if (path.startsWith("/api/admin/products")) return "products.write";
+  if (path.includes("/reports")) return "reports.read";
+  if (path.includes("/settings")) return "settings.write";
+  if (path.startsWith("/api/admin/rentals")) return "reservations.read";
+  return undefined;
+}
+
+function createBackendApi(principal?: McpPrincipal) {
+  return async function api(
+    path: string,
+    mode: AuthMode = "public",
+    init: RequestInit = {},
+    scopeOverride?: McpScope,
+  ): Promise<ApiResult> {
+    ensureToken(mode);
+    const method = (init.method ?? "GET").toUpperCase();
+    const scope = scopeOverride ?? requiredScopeFor(path, mode, method);
+    if (scope && !hasMcpScope(principal, scope)) {
+      throw new McpError(
+        ErrorCode.InvalidRequest,
+        `La credencial MCP no tiene el permiso requerido: ${scope}`,
+      );
+    }
+
+    const headers = new Headers(init.headers);
+    headers.set("Accept", "application/json");
+    if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    const token = tokenFor(mode);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const response = await fetch(`${backendUrl}${path}`, { ...init, headers });
+    const contentType = response.headers.get("content-type") ?? "";
+    const data = contentType.includes("application/json")
+      ? await response.json() as JsonValue
+      : { text: await response.text() };
+
+    return { ok: response.ok, status: response.status, data };
+  };
 }
 
 function response(result: JsonValue) {
@@ -69,7 +114,8 @@ function response(result: JsonValue) {
   };
 }
 
-export function createTemblequesMcpServer(): McpServer {
+export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
+const api = createBackendApi(principal);
 const server = new McpServer({
   name: "tembleques-camila",
   version: "1.0.0",
@@ -302,10 +348,16 @@ server.registerTool(
   "security.audit.search",
   {
     title: "Consultar auditoria",
-    description: "Consulta auditoria disponible por cliente. La auditoria global queda en backlog.",
-    inputSchema: { userId: z.string() },
+    description: "Consulta el registro global de acciones administrativas con filtros y paginacion.",
+    inputSchema: {
+      action: z.string().optional(),
+      entity: z.string().optional(),
+      success: z.enum(["true", "false"]).optional(),
+      page: z.number().default(1),
+      limit: z.number().default(20),
+    },
   },
-  async ({ userId }) => response(await api(`/api/admin/users/${userId}/audit`, "admin")),
+  async (input) => response(await api(`/api/admin/audit${toQuery(input)}`, "admin")),
 );
 
 server.registerTool(
@@ -317,11 +369,6 @@ server.registerTool(
   },
   async () => response({
     backend: await api("/health"),
-    config: {
-      backendUrl,
-      adminTokenConfigured: Boolean(adminToken),
-      clientTokenConfigured: Boolean(clientToken),
-    },
   }),
 );
 
@@ -332,7 +379,12 @@ server.registerTool(
     description: "Lista reservas administrativas para detectar estados de pago inconsistentes.",
     inputSchema: { page: z.number().default(1), limit: z.number().default(50) },
   },
-  async (input) => response(await api(`/api/admin/rentals${toQuery(input)}`, "admin")),
+  async (input) => response(await api(
+    `/api/admin/rentals${toQuery(input)}`,
+    "admin",
+    {},
+    "payments.reconcile",
+  )),
 );
 
 return server;

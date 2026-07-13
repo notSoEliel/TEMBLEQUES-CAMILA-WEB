@@ -5,7 +5,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { AppError } from "../lib/errors.js";
 
 type TestUser = {
-  role: "client" | "admin";
+  role: "client" | "owner";
   name: string;
 };
 
@@ -37,16 +37,16 @@ vi.mock("../middleware/auth.js", () => ({
     if (token === "Bearer mock-client") {
       c.set("user", { role: "client", name: "Client" });
     } else if (token === "Bearer mock-admin") {
-      c.set("user", { role: "admin", name: "Admin" });
+      c.set("user", { role: "owner", name: "Admin" });
     }
 
     await next();
   },
-  requireAdmin: async (c: Context<TestEnvironment>, next: Next) => {
+  requirePermission: () => async (c: Context<TestEnvironment>, next: Next) => {
     const user = c.get("user");
-    if (user.role !== "admin") {
+    if (user.role !== "owner") {
       throw new AppError(
-        "Acceso denegado. Se requiere rol de administrador.",
+        "No tienes permisos para realizar esta acción.",
         403,
         "AUTH_FORBIDDEN",
       );
@@ -103,7 +103,7 @@ describe("Media Router - /sign", () => {
 
     expect(res.status).toBe(403);
     const body = await res.json();
-    expect(body.error).toBe("Acceso denegado. Se requiere rol de administrador.");
+    expect(body.error).toBe("No tienes permisos para realizar esta acción.");
   });
 
   it.each([

@@ -20,19 +20,45 @@ import reportRoutes from "./routes/reports.js";
 import contactRoutes from "./routes/contact.js";
 import mediaRoutes from "./routes/media.js";
 import { startCronJobs } from "./services/cron.js";
+import { loadConfig } from "./config.js";
+import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
+
+const appConfig = loadConfig();
+
+const allowedOrigins = new Set(
+  [
+    "http://localhost:5173",
+    "http://frontend:5173",
+    appConfig.frontendUrl,
+    ...(process.env.CORS_ALLOWED_ORIGINS ?? "").split(","),
+  ]
+    .map((origin) => origin?.trim())
+    .filter((origin): origin is string => Boolean(origin)),
+);
 
 const app = new Hono();
 
+app.use("/api/*", async (c, next) => {
+  const origin = c.req.header("Origin");
+  const method = c.req.method.toUpperCase();
+  const isMutable = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+  if (origin && !allowedOrigins.has(origin) && (isMutable || method === "OPTIONS")) {
+    throw new AppError("Origen no permitido", 403, "ORIGIN_NOT_ALLOWED");
+  }
+
+  await next();
+});
+
 // Middleware
 app.use("/*", cors({
-  origin: [
-    "http://localhost:5173", 
-    "http://frontend:5173",
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
-  ],
-  credentials: true,
+  origin: (origin) => allowedOrigins.has(origin) ? origin : undefined,
+  allowHeaders: ["Content-Type", "Authorization"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: false,
 }));
 app.use("/*", logger());
+app.use("/api/*", createRateLimitMiddleware());
 
 // Avoid route-level DB errors while Mongo is still booting.
 app.use("/api/*", async (c, next) => {
@@ -88,7 +114,7 @@ app.route("/api/media", mediaRoutes);
 const PORT = Number(process.env.PORT) || 3000;
 
 function shouldRunSeed(): boolean {
-  if (process.env.APP_ENV === "production" || process.env.SEED_ENABLED === "false") {
+  if (appConfig.appEnv === "production" || process.env.SEED_ENABLED === "false") {
     return false;
   }
 
@@ -96,8 +122,8 @@ function shouldRunSeed(): boolean {
     return true;
   }
 
-  return process.env.APP_ENV === "local"
-    || process.env.APP_ENV === "ci"
+  return appConfig.appEnv === "local"
+    || appConfig.appEnv === "ci"
     || process.env.NODE_ENV === "development";
 }
 

@@ -37,6 +37,7 @@ Plataforma e-commerce B2C para alquiler de vestimenta folclorica panamena, con c
 - [Frontend deep dive](docs/FRONTEND_DEEP_DIVE.md)
 - [Pagos y webhooks](docs/PAYMENTS_WEBHOOKS.md)
 - [Autenticacion y Clerk](docs/AUTH_FLOW.md)
+- [Seguridad y configuracion](docs/SECURITY_AND_CONFIGURATION.md)
 - [Modelo de datos](docs/DATABASE_SCHEMA.md)
 - [Contribucion](docs/CONTRIBUTING.md)
 - [Decisiones tecnicas](docs/ADRS.md)
@@ -76,8 +77,9 @@ cd frontend && bun run dev
 ```bash
 cd mcp-server
 MCP_BACKEND_URL=http://localhost:3000 \
-MCP_ADMIN_TOKEN=mock-admin-token \
-MCP_CLIENT_TOKEN=mock-client-token \
+MCP_AUTH_REQUIRED=false \
+MCP_BACKEND_ADMIN_TOKEN=mock-admin-token \
+MCP_BACKEND_CLIENT_TOKEN=mock-client-token \
 bun run start:stdio
 ```
 

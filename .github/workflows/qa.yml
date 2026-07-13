@@ -92,6 +92,8 @@ jobs:
           E2E_STRIPE_WEBHOOK_SECRET: whsec_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
           CLERK_WEBHOOK_SECRET: whsec_placeholder
+          AUTH_MOCKS_ENABLED: true
+          INTEGRATIONS_MODE: demo
 
       - name: Upload Playwright artifacts
         if: always()

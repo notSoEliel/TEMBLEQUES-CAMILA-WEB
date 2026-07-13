@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
+import { authMiddleware, requirePermission, type AuthVariables } from "../middleware/auth.js";
 import { MaintenanceBlock } from "../models/MaintenanceBlock.js";
 import { Product } from "../models/Product.js";
 import { AppError } from "../lib/errors.js";
@@ -15,7 +15,9 @@ const createBlockSchema = z.object({
   reason: z.string().optional(),
 });
 
-maintenance.use("/*", authMiddleware, requireAdmin);
+maintenance.use("/*", authMiddleware);
+maintenance.use("/", requirePermission("inventory.read"));
+maintenance.use("/:id", requirePermission("inventory.write"));
 
 // GET /api/admin/maintenance - List all maintenance blocks
 maintenance.get("/", async (c) => {

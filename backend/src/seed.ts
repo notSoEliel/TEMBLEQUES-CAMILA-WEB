@@ -37,7 +37,7 @@ interface UserFixture {
   clerkId: string;
   name: string;
   email: string;
-  role: "client" | "admin";
+  role: "client" | "owner";
   phone: string;
   preferredAddress: string;
 }
@@ -223,7 +223,7 @@ const SEED_USERS: UserFixture[] = [
     clerkId: "seed_staging_admin",
     name: "Administrador de demostración",
     email: "admin.seed@example.invalid",
-    role: "admin",
+    role: "owner",
     phone: "+507 6000-0002",
     preferredAddress: "Ciudad de Panamá",
   },

@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import { authMiddleware, requireAdmin, type AuthVariables } from "../middleware/auth.js";
+import { authMiddleware, requirePermission, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { Product } from "../models/Product.js";
 import { calculateRentalDays } from "../services/payment-rules.js";
 
 const reports = new Hono<{ Variables: AuthVariables }>();
 
-reports.use("/*", authMiddleware, requireAdmin);
+reports.use("/*", authMiddleware, requirePermission("reports.read"));
 
 reports.get("/inventory-stats", async (c) => {
   const [products, rentals] = await Promise.all([

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { v2 as cloudinary } from "cloudinary";
 import { AppError } from "../lib/errors.js";
-import { authMiddleware, requireAdmin } from "../middleware/auth.js";
+import { authMiddleware, requirePermission } from "../middleware/auth.js";
 
 interface CloudinaryConfiguration {
   cloudName: string;
@@ -29,7 +29,7 @@ function getCloudinaryConfiguration(): CloudinaryConfiguration {
 
 const mediaRouter = new Hono();
 
-mediaRouter.use("/sign", authMiddleware, requireAdmin);
+mediaRouter.use("/sign", authMiddleware, requirePermission("products.write"));
 
 mediaRouter.get("/sign", (c) => {
   const { cloudName, apiKey, apiSecret, uploadPreset } = getCloudinaryConfiguration();
