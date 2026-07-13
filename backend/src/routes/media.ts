@@ -1,54 +1,47 @@
 import { Hono } from "hono";
-import { validateImageFile } from "../lib/media.js";
+import { v2 as cloudinary } from "cloudinary";
 import { AppError } from "../lib/errors.js";
+import { authMiddleware, requireAdmin } from "../middleware/auth.js";
+
+// Cloudinary config
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true,
+});
 
 const mediaRouter = new Hono();
 
-const CLOUDINARY_CLOUD_NAME = process.env.VITE_CLOUDINARY_CLOUD_NAME || "dfshkpehf";
-const CLOUDINARY_ENDPOINT = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
-const UPLOAD_PRESET = process.env.VITE_CLOUDINARY_UPLOAD_PRESET || "TemblequesCamila";
+mediaRouter.use("/sign", authMiddleware, requireAdmin);
 
-function applyWebpTransform(secureUrl: string): string {
-  return secureUrl.replace("/upload/", "/upload/f_auto,q_auto/");
-}
-
-mediaRouter.post("/upload", async (c) => {
-  const body = await c.req.parseBody();
-  const file = body["file"] as File | undefined; // En el frontend envían "file"
-
-  if (!file) {
-    throw new AppError("No se ha enviado ninguna imagen.", 400, "VALIDATION_ERROR");
-  }
-
-  // 1. Validar la imagen (Magic Bytes y tamaño)
-  await validateImageFile(file);
-
-  // 2. Reenviar el archivo a Cloudinary
+mediaRouter.get("/sign", async (c) => {
   try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", UPLOAD_PRESET);
+    const timestamp = Math.round(new Date().getTime() / 1000);
 
-    const res = await fetch(CLOUDINARY_ENDPOINT, {
-      method: "POST",
-      body: formData,
-    });
+    const paramsToSign = {
+      timestamp,
+    };
 
-    if (!res.ok) {
-      throw new AppError(`Error de Cloudinary: ${res.statusText}`, 502, "EXTERNAL_API_ERROR");
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!apiSecret) {
+      throw new AppError("Falta configuración de Cloudinary en el servidor", 500, "INTERNAL_ERROR");
     }
 
-    const data = (await res.json()) as any;
-    const finalUrl = applyWebpTransform(data.secure_url);
+    const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
 
     return c.json({
       success: true,
-      url: finalUrl,
+      data: {
+        timestamp,
+        signature,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      },
     });
-  } catch (err: any) {
-    console.error("[Media Route] Error subiendo a Cloudinary:", err);
-    if (err instanceof AppError) throw err;
-    throw new AppError("No se pudo procesar la subida de la imagen.", 500, "INTERNAL_ERROR");
+  } catch (error) {
+    console.error("[Cloudinary Sign Error]:", error);
+    throw new AppError("Error generando firma de subida", 500, "SIGNATURE_ERROR");
   }
 });
 

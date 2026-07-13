@@ -340,37 +340,52 @@ export const settingsApi = {
 };
 
 // Media
+interface SignResponse {
+  timestamp: number;
+  signature: string;
+  apiKey: string;
+  cloudName: string;
+}
+
 export const mediaApi = {
-  uploadImage: async (file: File, token?: string) => {
-    const formData = new FormData();
-    formData.append("file", file);
+  uploadImage: async (file: File, token?: string): Promise<{ success: boolean; url: string }> => {
+    try {
+      // 1. Obtener la firma de nuestro backend seguro
+      const signRes = await api<{ success: boolean; data: SignResponse }>("/media/sign", { 
+        method: "GET",
+        token 
+      });
+      const { timestamp, signature, apiKey, cloudName } = signRes.data;
 
-    const headers: Record<string, string> = {};
-    let currentToken = token;
+      // 2. Preparar el payload para Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", timestamp.toString());
+      formData.append("signature", signature);
 
-    if (typeof window !== "undefined" && (window as any).Clerk?.session) {
-      try {
-        const freshToken = await (window as any).Clerk.session.getToken();
-        if (freshToken) currentToken = freshToken;
-      } catch (e) {}
+      // 3. Subida directa a Cloudinary
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      
+      const uploadRes = await fetch(cloudinaryUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json().catch(() => null);
+        throw new Error(errorData?.error?.message || "Error al subir a Cloudinary");
+      }
+
+      const data = await uploadRes.json();
+      
+      const finalUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
+      return { success: true, url: finalUrl };
+    } catch (error: any) {
+      console.error("Cloudinary upload failed:", error);
+      throw new Error(error.message || "No se pudo completar la subida de la imagen. Inténtalo nuevamente.");
     }
-
-    if (currentToken) {
-      headers["Authorization"] = `Bearer ${currentToken}`;
-    }
-
-    const response = await fetch(`${API_URL}/media/upload`, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error || "Error al subir la imagen.");
-    }
-
-    return response.json() as Promise<{ success: boolean; url: string }>;
   },
 };
+
 
