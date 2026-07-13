@@ -47,12 +47,15 @@ export async function loginWithClerk(page: Page): Promise<void> {
   const identifier = page.locator('input[name="identifier"], input[type="email"]').first();
   await expect(identifier).toBeVisible();
   await identifier.fill(email);
-  await page.getByRole("button", { name: /continuar|continue/i }).click();
+  const primaryButton = page.locator('button[data-localization-key="formButtonPrimary"]');
+  await expect(primaryButton).toBeVisible();
+  await primaryButton.click();
 
   const passwordInput = page.locator('input[name="password"], input[type="password"]').first();
   await expect(passwordInput).toBeVisible();
   await passwordInput.fill(password);
-  await page.getByRole("button", { name: /continuar|continue|sign in|entrar/i }).click();
+  await expect(primaryButton).toBeVisible();
+  await primaryButton.click();
   await expect(page).not.toHaveURL(/\/login/);
 }
 
