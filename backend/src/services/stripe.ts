@@ -98,7 +98,7 @@ export async function handleStripeWebhook(
 
   let event: import("stripe").Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
   } catch {
     throw new AppError(
       "Firma del webhook invalida. El cuerpo de la solicitud pudo haber sido modificado.",
