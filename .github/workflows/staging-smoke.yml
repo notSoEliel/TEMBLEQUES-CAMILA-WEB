@@ -27,11 +27,13 @@ jobs:
           E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
           test -n "$E2E_STAGING_URL"
           test -n "$E2E_BACKEND_URL"
           test -n "$E2E_CLERK_EMAIL"
           test -n "$CLERK_SECRET_KEY"
+          test -n "$CLERK_PUBLISHABLE_KEY"
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
@@ -44,6 +46,7 @@ jobs:
           E2E_REAL_INTEGRATIONS: "true"
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
           E2E_STRIPE_TEST_CARD: ${{ secrets.E2E_STRIPE_TEST_CARD }}
           E2E_STRIPE_TEST_EXPIRY: ${{ secrets.E2E_STRIPE_TEST_EXPIRY }}
           E2E_STRIPE_TEST_CVC: ${{ secrets.E2E_STRIPE_TEST_CVC }}
