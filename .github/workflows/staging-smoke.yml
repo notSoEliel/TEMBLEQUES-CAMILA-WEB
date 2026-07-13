@@ -62,6 +62,22 @@ jobs:
           cat /tmp/staging-frontend.log
           exit 1
 
+      - name: Verify remote staging seed namespace
+        env:
+          E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
+        run: |
+          response=$(curl -fsS \
+            -H "Authorization: Bearer mock-admin-token" \
+            "$E2E_BACKEND_URL/api/admin/seed-status")
+          echo "$response" | jq
+          test "$(echo "$response" | jq -r '.environment')" = "staging"
+          test "$(echo "$response" | jq -r '.seed.enabled')" = "true"
+          test "$(echo "$response" | jq -r '.seed.profile')" = "staging"
+          test "$(echo "$response" | jq -r '.seed.namespace.products')" = "12"
+          test "$(echo "$response" | jq -r '.seed.namespace.rentals')" = "3"
+          test "$(echo "$response" | jq -r '.seed.namespace.users')" = "2"
+          test "$(echo "$response" | jq -r '.seed.namespace.termsAcceptances')" = "3"
+
       - name: Run real staging smoke tests
         run: bun run test:e2e:staging
         env:
