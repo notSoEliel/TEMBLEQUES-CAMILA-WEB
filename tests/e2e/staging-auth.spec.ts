@@ -9,9 +9,9 @@ test.use({ baseURL: stagingURL });
 test.describe("Staging - Clerk real", () => {
   test.skip(!realIntegrationsEnabled, "Se ejecuta solo con E2E_REAL_INTEGRATIONS=true.");
 
-  test("autentica una cuenta test y carga su perfil desde el backend", async ({ page }) => {
-    await page.goto("/profile");
-    await expect(page).toHaveURL(/\/login/);
+  test("rechaza API protegida y autentica una cuenta test en staging", async ({ page, request }) => {
+    const unauthenticatedResponse = await request.get("/api/rentals/my?page=1&limit=1");
+    expect(unauthenticatedResponse.status()).toBe(401);
 
     await loginWithClerk(page);
     await page.goto("/profile");
