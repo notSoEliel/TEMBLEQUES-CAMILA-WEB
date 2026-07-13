@@ -22,6 +22,8 @@ async function waitForWebhookState(
 ): Promise<void> {
   await expect.poll(async () => {
     const authorization = await getCurrentAuthorization(page);
+    if (!authorization) return "request-failed";
+
     const response = await request.get(`${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/my?page=1&limit=100`, {
       headers: { Authorization: authorization },
     });
@@ -31,7 +33,7 @@ async function waitForWebhookState(
   }, { timeout: 60_000, intervals: [2_000, 5_000] }).toMatch(/reserved|paid/);
 }
 
-async function getCurrentAuthorization(page: Page): Promise<string> {
+async function getCurrentAuthorization(page: Page): Promise<string | null> {
   const token = await page.evaluate(async () => {
     const clerk = (window as Window & {
       Clerk?: {
@@ -44,11 +46,7 @@ async function getCurrentAuthorization(page: Page): Promise<string> {
     return clerk?.session?.getToken() ?? null;
   });
 
-  if (!token) {
-    throw new Error("Clerk no devolvió un token vigente para consultar el webhook.");
-  }
-
-  return `Bearer ${token}`;
+  return token ? `Bearer ${token}` : null;
 }
 
 test.describe("Staging - Stripe test real", () => {
