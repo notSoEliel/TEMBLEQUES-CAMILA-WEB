@@ -47,6 +47,8 @@ function requiredVariables(environment: AppEnvironment, env: Record<string, stri
     "MCP_BACKEND_CLIENT_TOKEN",
   ];
 
+  if (environment === "production") names.push("BACKUP_ENCRYPTION_KEY");
+
   return names.filter((name) => isPlaceholder(env[name]));
 }
 

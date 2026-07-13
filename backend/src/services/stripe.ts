@@ -2,6 +2,8 @@ import { Rental, type IRental } from "../models/Rental.js";
 import { StripeWebhookEvent } from "../models/StripeWebhookEvent.js";
 import { AppError } from "../lib/errors.js";
 import { type IProduct } from "../models/Product.js";
+import { raiseSystemAlert } from "./alerts.js";
+import { recordMetric, structuredLog } from "./observability.js";
 
 export type IPopulatedRental = Omit<IRental, "product_id"> & {
   product_id: IProduct;
@@ -174,6 +176,7 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
           await rental.save();
         }
       }
+      recordMetric("checkout_completed_total", rentalsToUpdate.length, { mode: "stripe" });
       break;
     }
 
@@ -199,6 +202,7 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
         rental.payment_status = "failed";
         await rental.save();
       }
+      recordMetric("checkout_expired_total", rentalsToCancel.length);
       break;
     }
 
@@ -211,6 +215,16 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
 
       await Rental.findByIdAndUpdate(rentalId, {
         payment_status: "failed",
+      });
+      recordMetric("payment_failed_total");
+      void raiseSystemAlert({
+        type: "payment_failed",
+        severity: "warning",
+        message: "Stripe informó un pago fallido.",
+        source: "stripe.webhook",
+        metadata: { rentalId },
+      }).catch((error: unknown) => {
+        structuredLog("error", "alert.persist_failed", { error: error instanceof Error ? error.message : "unknown" });
       });
       break;
     }
