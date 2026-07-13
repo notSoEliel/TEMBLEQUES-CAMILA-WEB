@@ -61,6 +61,7 @@ test.describe("Staging - Stripe test real", () => {
     );
     await fillStripeField(page, 'input[type="email"], input[name="email"], input[autocomplete="email"], input[placeholder*="email"]', requireEnvironment("E2E_CLERK_EMAIL"));
     await fillStripeField(page, 'input[autocomplete="cc-name"], input[name="billingName"], input[placeholder*="Full name"]', "QA Tembleques Camila");
+    await fillStripeField(page, 'input[autocomplete="postal-code"], input[name="postalCode"], input[placeholder*="ZIP"]', "10001");
     await page.getByRole("button", { name: /Pagar|Pay/ }).last().click();
     await page.waitForURL(/\/confirmation/, { timeout: 60_000 });
 
