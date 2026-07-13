@@ -5,6 +5,7 @@ import {
   loginWithClerk,
   requireEnvironment,
   fillStripeField,
+  uncheckStripeField,
   type CheckoutRequestBody,
   type StagingRentalListResponse,
 } from "./staging-helpers";
@@ -63,6 +64,7 @@ test.describe("Staging - Stripe test real", () => {
     await fillStripeField(page, 'input[autocomplete="cc-name"], input[name="billingName"], input[placeholder*="Full name"]', "QA Tembleques Camila");
     await fillStripeField(page, 'input[autocomplete="postal-code"], input[name="postalCode"], input[placeholder*="ZIP"]', "10001");
     await fillStripeField(page, 'input[type="tel"], input[autocomplete="tel"], input[name="phone"], input[placeholder*="phone"], input[placeholder*="Phone"]', "+12025550123");
+    await uncheckStripeField(page, 'input[type="checkbox"]');
     await page.getByRole("button", { name: /Pagar|Pay/ }).last().click();
     await page.waitForURL(/\/confirmation/, { timeout: 60_000 });
 
