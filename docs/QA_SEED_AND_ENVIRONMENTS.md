@@ -56,6 +56,8 @@ El flujo de confirmación y `GET /api/rentals/my` no modifican estados de pago. 
 
 El repositorio incluye `.github/workflows/staging-smoke.yml`, ejecutable manualmente desde GitHub Actions. Usa el environment `staging`, valida que existan la URL y las credenciales de Clerk, ejecuta ambos smoke tests y conserva los artefactos aunque fallen. Las claves y el webhook de Stripe permanecen configurados en Railway; nunca se copian al workflow.
 
+El workflow construye el frontend del commit exacto que se está verificando con `VITE_API_URL` apuntando al backend staging y lo sirve temporalmente en el runner. Así el smoke combina frontend versionado + backend staging + Clerk/Stripe reales, sin depender de que un alias de Vercel tenga desplegado el mismo commit. El dominio frontend configurado en `STAGING_FRONTEND_URL` queda reservado para comprobaciones manuales.
+
 ## Promoción a la demo
 
 La demo académica debe desplegarse con una base separada de staging o con una copia controlada de sus datos. Primero se valida el catálogo con fixtures; después se sustituyen las imágenes y productos sintéticos por los productos reales implementados. La estructura de claves y el contrato de disponibilidad permanecen iguales, por lo que los tests no necesitan cambiar al sustituir el contenido.
