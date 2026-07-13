@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 import {
   addAvailableProductToCheckout,
   getAvailableStagingProduct,
@@ -16,11 +16,12 @@ const realIntegrationsEnabled = process.env.E2E_REAL_INTEGRATIONS === "true";
 test.use({ baseURL: stagingURL });
 
 async function waitForWebhookState(
+  page: Page,
   request: APIRequestContext,
-  authorization: string,
   rentalIds: string[],
 ): Promise<void> {
   await expect.poll(async () => {
+    const authorization = await getCurrentAuthorization(page);
     const response = await request.get(`${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/my?page=1&limit=100`, {
       headers: { Authorization: authorization },
     });
@@ -28,6 +29,26 @@ async function waitForWebhookState(
     const payload = await response.json() as StagingRentalListResponse;
     return payload.data.find((rental) => rentalIds.includes(rental._id))?.status ?? "not-found";
   }, { timeout: 60_000, intervals: [2_000, 5_000] }).toMatch(/reserved|paid/);
+}
+
+async function getCurrentAuthorization(page: Page): Promise<string> {
+  const token = await page.evaluate(async () => {
+    const clerk = (window as Window & {
+      Clerk?: {
+        session?: {
+          getToken: () => Promise<string | null>;
+        };
+      };
+    }).Clerk;
+
+    return clerk?.session?.getToken() ?? null;
+  });
+
+  if (!token) {
+    throw new Error("Clerk no devolvió un token vigente para consultar el webhook.");
+  }
+
+  return `Bearer ${token}`;
 }
 
 test.describe("Staging - Stripe test real", () => {
@@ -71,6 +92,6 @@ test.describe("Staging - Stripe test real", () => {
 
     expect(authorization).toMatch(/^Bearer\s+/);
     expect(checkoutBody.rentalIds?.length).toBeGreaterThan(0);
-    await waitForWebhookState(request, authorization!, checkoutBody.rentalIds!);
+    await waitForWebhookState(page, request, checkoutBody.rentalIds!);
   });
 });
