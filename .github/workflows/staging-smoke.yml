@@ -24,12 +24,14 @@ jobs:
       - name: Validate required staging secrets
         env:
           E2E_STAGING_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
-          E2E_CLERK_PASSWORD: ${{ secrets.E2E_CLERK_PASSWORD }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
         run: |
           test -n "$E2E_STAGING_URL"
+          test -n "$E2E_BACKEND_URL"
           test -n "$E2E_CLERK_EMAIL"
-          test -n "$E2E_CLERK_PASSWORD"
+          test -n "$CLERK_SECRET_KEY"
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
@@ -38,9 +40,10 @@ jobs:
         run: bun run test:e2e:staging
         env:
           E2E_STAGING_URL: ${{ secrets.STAGING_FRONTEND_URL }}
+          E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
           E2E_REAL_INTEGRATIONS: "true"
           E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
-          E2E_CLERK_PASSWORD: ${{ secrets.E2E_CLERK_PASSWORD }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           E2E_STRIPE_TEST_CARD: ${{ secrets.E2E_STRIPE_TEST_CARD }}
           E2E_STRIPE_TEST_EXPIRY: ${{ secrets.E2E_STRIPE_TEST_EXPIRY }}
           E2E_STRIPE_TEST_CVC: ${{ secrets.E2E_STRIPE_TEST_CVC }}

@@ -43,13 +43,14 @@ Los smoke tests de Clerk y Stripe están separados de CI y requieren activación
 
 ```bash
 E2E_STAGING_URL=https://frontend-staging.example \
+E2E_BACKEND_URL=https://backend-staging.example \
 E2E_REAL_INTEGRATIONS=true \
 E2E_CLERK_EMAIL='cuenta-test' \
-E2E_CLERK_PASSWORD='secreto-test' \
+CLERK_SECRET_KEY='secreto-test' \
 bun run test:e2e:staging
 ```
 
-La contraseña solo debe inyectarse desde el gestor de secretos o el entorno local protegido; no debe aparecer en el comando guardado, logs ni issues. Stripe usa por defecto la tarjeta de prueba `4242 4242 4242 4242`, y el test exige que la reserva alcance `reserved` o `paid` por el webhook. Si el endpoint devuelve `demo` o el webhook no cambia el estado, el smoke falla.
+La clave de Clerk solo debe inyectarse desde el gestor de secretos o el entorno local protegido; no debe aparecer en el comando guardado, logs ni issues. El helper oficial `@clerk/testing` genera un token real de desarrollo y evita depender de MFA o de una bandeja de correo. Stripe usa por defecto la tarjeta de prueba `4242 4242 4242 4242`, y el test exige que la reserva alcance `reserved` o `paid` por el webhook. Si el endpoint devuelve `demo` o el webhook no cambia el estado, el smoke falla.
 
 El flujo de confirmación y `GET /api/rentals/my` no modifican estados de pago. La única transición financiera se procesa en el webhook con firma validada y deduplicación por `event.id`.
 
