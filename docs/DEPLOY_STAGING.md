@@ -82,3 +82,14 @@ vercel --prod --yes
 - `backend/railway.json`: configura build, start command y healthcheck del backend.
 - `mcp-server/railway.json`: configura build, start command y healthcheck del MCP remoto.
 - `frontend/vercel.json`: configura build Vite y rewrite SPA para React Router.
+
+## Verificación operativa del seed
+
+El backend expone `GET /api/admin/seed-status` como lectura administrativa para comprobar el namespace gestionado por el seed sin devolver documentos ni secretos. Requiere el mismo token administrativo que las demás rutas `/api/admin`:
+
+```bash
+curl -H "Authorization: Bearer $MCP_ADMIN_TOKEN" \
+  https://backend-production-e696.up.railway.app/api/admin/seed-status
+```
+
+La respuesta informa el ambiente, perfil, modo y conteos de `products`, `rentals`, `users` y `termsAcceptances`. Esta comprobación debe ejecutarse después de un deploy de staging y conservarse como evidencia del issue H56/#61.

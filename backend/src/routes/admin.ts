@@ -20,6 +20,34 @@ admin.use("/*", authMiddleware, requireAdmin);
 
 const contactStatusSchema = z.enum(["unread", "read", "archived"]);
 
+// GET /api/admin/seed-status - Read-only verification of the managed seed namespace
+admin.get("/seed-status", async (c) => {
+  const seedRentals = await Rental.find({ fixture_key: { $exists: true } }).select("_id").lean();
+  const seedRentalIds = seedRentals.map((rental) => rental._id);
+
+  const [products, rentals, users, termsAcceptances] = await Promise.all([
+    Product.countDocuments({ seed_key: { $exists: true } }),
+    Rental.countDocuments({ fixture_key: { $exists: true } }),
+    User.countDocuments({ clerkId: { $regex: /^seed_/ } }),
+    TermsAcceptance.countDocuments({ rental_id: { $in: seedRentalIds } }),
+  ]);
+
+  return c.json({
+    environment: process.env.APP_ENV ?? "unknown",
+    seed: {
+      enabled: process.env.SEED_ENABLED === "true",
+      profile: process.env.SEED_PROFILE ?? "unknown",
+      mode: process.env.SEED_MODE ?? "unknown",
+      namespace: {
+        products,
+        rentals,
+        users,
+        termsAcceptances,
+      },
+    },
+  });
+});
+
 // GET /api/admin/dashboard - KPIs
 admin.get("/dashboard", async (c) => {
   const now = new Date();
