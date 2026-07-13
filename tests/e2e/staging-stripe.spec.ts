@@ -43,7 +43,13 @@ async function getCurrentAuthorization(page: Page): Promise<string | null> {
       };
     }).Clerk;
 
-    return clerk?.session?.getToken() ?? null;
+    const tokenPromise = clerk?.session?.getToken();
+    if (!tokenPromise) return null;
+
+    return Promise.race([
+      tokenPromise,
+      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), 5_000)),
+    ]);
   });
 
   return token ? `Bearer ${token}` : null;
