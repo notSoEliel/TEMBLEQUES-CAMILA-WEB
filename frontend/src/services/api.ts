@@ -345,15 +345,11 @@ interface SignResponse {
   signature: string;
   apiKey: string;
   cloudName: string;
-  allowed_formats: string;
-  max_image_file_size: number;
+  uploadPreset: string;
 }
 
 interface CloudinaryUploadSuccess {
-  secure_url: string;
-  public_id: string;
-  format: string;
-  bytes: number;
+  secure_url?: unknown;
 }
 
 interface CloudinaryUploadError {
@@ -370,16 +366,15 @@ export const mediaApi = {
         method: "GET",
         token 
       });
-      const { timestamp, signature, apiKey, cloudName, allowed_formats, max_image_file_size } = signRes.data;
+      const { timestamp, signature, apiKey, cloudName, uploadPreset } = signRes.data;
 
       // 2. Preparar el payload para Cloudinary
       const formData = new FormData();
       formData.append("file", file);
       formData.append("api_key", apiKey);
       formData.append("timestamp", timestamp.toString());
+      formData.append("upload_preset", uploadPreset);
       formData.append("signature", signature);
-      formData.append("allowed_formats", allowed_formats);
-      formData.append("max_image_file_size", max_image_file_size.toString());
 
       // 3. Subida directa a Cloudinary
       const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
@@ -395,7 +390,10 @@ export const mediaApi = {
       }
 
       const data = (await uploadRes.json()) as CloudinaryUploadSuccess;
-      
+      if (typeof data.secure_url !== "string" || data.secure_url.length === 0) {
+        throw new Error("Cloudinary no devolvió la URL de la imagen");
+      }
+
       const finalUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
       return { success: true, url: finalUrl };
     } catch (error: unknown) {
@@ -408,5 +406,4 @@ export const mediaApi = {
     }
   },
 };
-
 

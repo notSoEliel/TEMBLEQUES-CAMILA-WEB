@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
+    "test": "vitest run",
     "seed": "bun src/seed.ts",
     "tunnel": "bunx localtunnel --port 3000 --subdomain tembleques-camila"
   },

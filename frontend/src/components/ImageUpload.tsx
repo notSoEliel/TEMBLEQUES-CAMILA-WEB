@@ -1,11 +1,11 @@
-import React, { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ImagePlus, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { ImagePlus, Loader2, AlertCircle } from "lucide-react";
 import { mediaApi } from "@/services/api";
-
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+import {
+  IMAGE_ACCEPT_ATTRIBUTE,
+  validateProductImage,
+} from "@/lib/media-validation";
 
 interface ImageUploadProps {
   onUpload: (url: string) => void;
@@ -18,19 +18,28 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
-  function validate(file: File): string | null {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return "Formato no soportado. Usa JPEG, PNG, WEBP o SVG.";
+  function setFilePreview(file: File) {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
     }
-    if (file.size > MAX_BYTES) {
-      return "El archivo es demasiado pesado. Máximo permitido: 5MB.";
+
+    const objectUrl = URL.createObjectURL(file);
+    previewUrlRef.current = objectUrl;
+    setPreview(objectUrl);
+  }
+
+  function clearFilePreview() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
     }
-    return null;
+    setPreview(null);
   }
 
   async function upload(file: File) {
-    const validationError = validate(file);
+    const validationError = validateProductImage(file);
     if (validationError) {
       setError(validationError);
       return;
@@ -41,7 +50,7 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
 
     try {
       const res = await mediaApi.uploadImage(file);
-      setPreview(null);
+      clearFilePreview();
       onUpload(res.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado al subir la imagen.");
@@ -50,12 +59,30 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
     }
   }
 
+  function selectFile(file: File) {
+    const validationError = validateProductImage(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setFilePreview(file);
+    void upload(file);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+    };
+  }, []);
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setPreview(objectUrl);
-      upload(file);
+      selectFile(file);
     }
     e.target.value = "";
   }
@@ -65,9 +92,7 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      const objectUrl = URL.createObjectURL(file);
-      setPreview(objectUrl);
-      upload(file);
+      selectFile(file);
     }
   }
 
@@ -78,7 +103,12 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
         tabIndex={0}
         aria-label="Zona de carga de imagen"
         onClick={() => !uploading && inputRef.current?.click()}
-        onKeyDown={(e) => e.key === "Enter" && !uploading && inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && !uploading) {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
@@ -104,15 +134,15 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
               alt="Vista previa"
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-               <span className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">Toca para cambiar</span>
+            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-black/45 p-3">
+              <span className="text-white text-sm font-semibold">Toca para cambiar</span>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center px-4">
             <ImagePlus className="h-8 w-8 text-zinc-600 mb-2" />
             <p className="text-sm font-medium text-foreground">Selecciona o arrastra una imagen</p>
-            <p className="text-xs text-muted-foreground mt-0.5">JPEG, PNG, WEBP, SVG (máx. 5MB)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">JPG, PNG, WEBP (máx. 5 MB)</p>
           </div>
         )}
       </div>
@@ -131,7 +161,7 @@ export default function ImageUpload({ onUpload, className }: ImageUploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept=".jpg,.jpeg,.png,.webp,.svg"
+        accept={IMAGE_ACCEPT_ATTRIBUTE}
         className="hidden"
         onChange={handleFileChange}
         aria-hidden

@@ -3,55 +3,50 @@ import { v2 as cloudinary } from "cloudinary";
 import { AppError } from "../lib/errors.js";
 import { authMiddleware, requireAdmin } from "../middleware/auth.js";
 
-// Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true,
-});
+interface CloudinaryConfiguration {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+  uploadPreset: string;
+}
+
+function getCloudinaryConfiguration(): CloudinaryConfiguration {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !apiKey || !apiSecret || !uploadPreset) {
+    throw new AppError(
+      "Falta configuración de Cloudinary en el servidor",
+      500,
+      "CLOUDINARY_CONFIG_MISSING",
+    );
+  }
+
+  return { cloudName, apiKey, apiSecret, uploadPreset };
+}
 
 const mediaRouter = new Hono();
 
 mediaRouter.use("/sign", authMiddleware, requireAdmin);
 
-mediaRouter.get("/sign", async (c) => {
-  try {
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+mediaRouter.get("/sign", (c) => {
+  const { cloudName, apiKey, apiSecret, uploadPreset } = getCloudinaryConfiguration();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const paramsToSign = { timestamp, upload_preset: uploadPreset };
+  const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
 
-    if (!cloudName || !apiKey || !apiSecret) {
-      throw new AppError("Falta configuración de Cloudinary en el servidor", 500, "INTERNAL_ERROR");
-    }
-
-    const timestamp = Math.round(new Date().getTime() / 1000);
-
-    // Parámetros obligatorios que Cloudinary validará
-    const paramsToSign = {
+  return c.json({
+    success: true,
+    data: {
       timestamp,
-      allowed_formats: "jpg,png,webp,svg",
-      max_image_file_size: 5242880, // 5MB
-    };
-
-    const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
-
-    return c.json({
-      success: true,
-      data: {
-        timestamp,
-        signature,
-        apiKey,
-        cloudName,
-        allowed_formats: paramsToSign.allowed_formats,
-        max_image_file_size: paramsToSign.max_image_file_size,
-      },
-    });
-  } catch (error) {
-    console.error("[Cloudinary Sign Error]:", error);
-    if (error instanceof AppError) throw error;
-    throw new AppError("Error generando firma de subida", 500, "SIGNATURE_ERROR");
-  }
+      signature,
+      apiKey,
+      cloudName,
+      uploadPreset,
+    },
+  });
 });
 
 export default mediaRouter;

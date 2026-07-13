@@ -198,11 +198,12 @@ Servir imágenes de alta resolución consume ancho de banda y CPU. Necesitábamo
 2. **AWS S3 Puro**: Requiere lógica adicional para transformación.
 
 ### Decisión
-Usar **Cloudinary** con subidas firmadas (Signed Uploads) directamente desde el cliente. La firma criptográfica se genera en nuestro backend e incluye restricciones inmutables como `allowed_formats` y `max_image_file_size`.
+Usar **Cloudinary** con subidas firmadas (Signed Uploads) directamente desde el cliente. La firma criptográfica se genera en nuestro backend y solo cubre el `timestamp` y el preset `tembleques_products_signed`. Ese preset restringe los formatos a JPG, PNG y WEBP.
 
 ### Impacto en Código (Code-Level Impact)
 - **Firma Segura**: El frontend solicita una firma en `/api/media/sign` que exige autenticación de administrador.
-- **Restricciones Inmutables**: Los parámetros de formato y tamaño máximo firmados por el servidor deben ser enviados idénticamente por el frontend; Cloudinary los valida y rechaza la subida si no coinciden.
+- **Restricción de formatos**: El frontend envía el `upload_preset` firmado y Cloudinary aplica los formatos configurados en ese preset.
+- **Límite de tamaño**: El frontend bloquea archivos mayores de 5 MB como regla de interfaz. Este límite no es una garantía server-side porque el archivo no atraviesa nuestro backend.
 - **Optimización Automática**: Uso de flags `f_auto,q_auto` en las URLs generadas.
 
 ### Trade-offs y Consecuencias
