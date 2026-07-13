@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useUser, useAuth as useClerkAuth, useClerk } from "@clerk/clerk-react";
+import { authApi } from "@/services/api";
 
 interface User {
   id: string;
@@ -164,14 +165,10 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
         setToken(freshToken);
 
         if (freshToken) {
-          const res = await fetch("/api/auth/me", {
-            headers: { Authorization: `Bearer ${freshToken}` },
-          });
-
-          if (res.ok) {
-            const data = await res.json();
+          try {
+            const data = await authApi.me(freshToken);
             setUser({ ...data.user, avatarUrl: clerkUser.imageUrl });
-          } else {
+          } catch {
             // Token valid in Clerk but no MongoDB profile yet — build minimal user
             // from Clerk data. The upsert in the middleware will create it on next protected call.
             const primaryEmail =
@@ -211,20 +208,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
     }
 
-    const res = await fetch("/api/auth/me", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${currentToken}`,
-      },
-      body: JSON.stringify(data),
-    });
-
-    const payload = await res.json();
-    if (!res.ok) {
-      throw new Error(payload?.error || "No se pudo guardar el perfil.");
-    }
-
+    const payload = await authApi.updateMe(data, currentToken);
     const updatedUser = { ...payload.user, avatarUrl: user?.avatarUrl };
     setUser(updatedUser);
     return updatedUser;
