@@ -144,3 +144,27 @@ export async function fillStripeField(
 
   throw new Error(`No se encontró el campo de Stripe: ${selector}`);
 }
+
+export async function uncheckStripeField(
+  page: Page,
+  selector: string,
+): Promise<void> {
+  let checkedField: ReturnType<Page["locator"]> | undefined;
+
+  await expect.poll(async () => {
+    const contexts: Array<Page | Frame> = [page, ...page.frames()];
+    for (const context of contexts) {
+      const field = context.locator(selector).first();
+      if (await field.isVisible().catch(() => false) && await field.isChecked().catch(() => false)) {
+        checkedField = field;
+        return true;
+      }
+    }
+
+    return false;
+  }, { timeout: 30_000, intervals: [250, 500, 1_000] }).toBeTruthy();
+
+  if (checkedField) {
+    await checkedField.uncheck();
+  }
+}
