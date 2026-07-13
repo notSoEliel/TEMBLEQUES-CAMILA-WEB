@@ -28,6 +28,11 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 - `CLOUDINARY_UPLOAD_PRESET=tembleques_products_signed`
 - `FRONTEND_URL`
 - `NODE_ENV=production`
+- `APP_ENV=staging`
+- `SEED_ENABLED=true`
+- `SEED_PROFILE=staging`
+- `SEED_MODE=upsert`
+- `SEED_PRUNE=false`
 - `PORT`
 
 ## Variables de frontend
@@ -44,6 +49,10 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 - `MCP_CLIENT_TOKEN`
 - `NIXPACKS_NODE_VERSION=22`
 - `NODE_ENV=production`
+
+La base de datos de staging debe ser distinta de la base de producción. El seed de staging solo actualiza documentos que tienen `seed_key`, `fixture_key` o un `clerkId` del namespace `seed_`; no borra datos manuales de QA. Para una demostración estable se recomienda desplegar el mismo commit con `APP_ENV=demo`, otra `MONGO_URI` y `SEED_PROFILE=demo`.
+
+Producción debe usar `APP_ENV=production` y `SEED_ENABLED=false`. El backend rechaza la ejecución del seed en ese entorno.
 
 Railway inyecta `PORT` automaticamente. El dominio del servicio MCP debe apuntar al puerto usado por Railway. En el despliegue actual el dominio esta configurado al puerto 8080.
 

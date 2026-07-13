@@ -1,4 +1,49 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+
+interface E2EProductVariant {
+  size: string;
+  stock: number;
+  in_maintenance: boolean;
+}
+
+interface E2EProduct {
+  _id: string;
+  name: string;
+  variants: E2EProductVariant[];
+}
+
+interface ProductListResponse {
+  data: E2EProduct[];
+}
+
+interface RentalResponse {
+  rental: {
+    _id: string;
+    status: string;
+  };
+}
+
+function futureDate(daysAhead: number): string {
+  const date = new Date();
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  return date.toISOString().slice(0, 10);
+}
+
+async function getAvailableProduct(request: APIRequestContext): Promise<E2EProduct> {
+  const response = await request.get("http://localhost:3000/api/products?page=1&limit=20");
+  expect(response.ok()).toBeTruthy();
+  const payload = await response.json() as ProductListResponse;
+  const product = payload.data.find((candidate) =>
+    candidate.variants.some((variant) => !variant.in_maintenance && variant.stock > 0),
+  );
+
+  if (!product) {
+    throw new Error("El seed E2E no contiene un producto disponible.");
+  }
+
+  return product;
+}
 
 async function setMockAuth(page: Page, token: "mock-client-token" | "mock-admin-token"): Promise<void> {
   await page.evaluate((mockToken) => {
@@ -46,23 +91,27 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   });
 
-  test("Debe buscar y filtrar prendas en el catálogo", async ({ page }) => {
+  test("Debe buscar y filtrar prendas en el catálogo", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
     await page.goto("/catalog");
 
     const searchInput = page.locator('input[placeholder="Buscar productos..."]');
-    await searchInput.fill("Pollera");
+    await searchInput.fill(product.name.split(/\s+/)[0]);
     await page.getByRole("button", { name: "Buscar" }).click();
 
-    await expect(page.getByRole("heading", { name: "Pollera Santeñena Clásica", exact: false })).toBeVisible();
+    await expect(page.getByRole("heading", { name: product.name, exact: true })).toBeVisible();
   });
 
-  test("Debe bloquear la reserva si no se aceptan los términos, y procesarla al aceptarlos", async ({ page }) => {
+  test("Debe bloquear la reserva si no se aceptan los términos, y procesarla al aceptarlos", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
+    const size = product.variants.find((variant) => !variant.in_maintenance && variant.stock > 0)?.size;
+    if (!size) throw new Error("El producto semilla no tiene talla disponible.");
+
     await setMockAuth(page, "mock-client-token");
 
-    await page.goto("/catalog");
-    await page.getByRole("heading", { name: "Pollera Santeñena Clásica", exact: false }).first().click();
+    await page.goto(`/product/${product._id}`);
 
-    await page.getByRole("button", { name: "S", exact: true }).click();
+    await page.getByRole("button", { name: size, exact: true }).click();
 
     const dayButtons = page.locator("div.grid-cols-7 button:not([disabled])");
     await expect(dayButtons.first()).toBeVisible();
@@ -82,7 +131,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     const continueToPaymentBtn = page.getByRole("button", { name: "Continuar a Revisión" });
     await expect(continueToPaymentBtn).toBeDisabled();
 
-    const termsCheckbox = page.locator('button[role="checkbox"]#terms, input#terms');
+    const termsCheckbox = page.getByTestId("checkout-terms-checkbox");
     await termsCheckbox.click();
 
     await expect(continueToPaymentBtn).toBeEnabled();
@@ -110,6 +159,39 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByRole("heading", { name: "Usuarios", exact: true })).toBeVisible();
   });
 
+  test("Debe permitir al administrador actualizar el estado de una reserva", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
+    const size = product.variants.find((variant) => !variant.in_maintenance && variant.stock > 0)?.size;
+    if (!size) throw new Error("El producto semilla no tiene talla disponible.");
+
+    const createResponse = await request.post("http://localhost:3000/api/rentals", {
+      headers: { Authorization: "Bearer mock-client-token" },
+      data: {
+        productId: product._id,
+        selectedSize: size,
+        startDate: futureDate(6),
+        endDate: futureDate(8),
+        termsAccepted: true,
+        paymentType: "reservation",
+      },
+    });
+    expect(createResponse.ok()).toBeTruthy();
+    const created = await createResponse.json() as RentalResponse;
+
+    const updateResponse = await request.patch(`http://localhost:3000/api/admin/rentals/${created.rental._id}/status`, {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: { status: "reserved" },
+    });
+    expect(updateResponse.ok()).toBeTruthy();
+    const updated = await updateResponse.json() as RentalResponse;
+    expect(updated.rental.status).toBe("reserved");
+
+    await setMockAuth(page, "mock-admin-token");
+    await page.goto("/admin/reservations");
+    await expect(page.getByRole("heading", { name: "Reservas", exact: true })).toBeVisible();
+    await expect(page.getByText("Reservado", { exact: true }).first()).toBeVisible();
+  });
+
   test("Debe enviar mensajes de contacto y mostrarlos en administración", async ({ page }) => {
     await page.goto("/contacto");
 
@@ -124,7 +206,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await page.goto("/admin/contacts");
 
     await expect(page.getByRole("heading", { name: "Mensajes de Contacto" })).toBeVisible();
-    await expect(page.getByText("Cliente QA")).toBeVisible();
+    await expect(page.getByText("Cliente QA").first()).toBeVisible();
   });
 
   test("Debe guardar perfil persistente del cliente", async ({ page, request }) => {

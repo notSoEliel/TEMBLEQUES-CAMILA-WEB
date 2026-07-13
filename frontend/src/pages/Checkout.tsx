@@ -526,6 +526,7 @@ export default function Checkout() {
                 <div className="flex items-start gap-3">
                   <Checkbox
                     id="terms"
+                    data-testid="checkout-terms-checkbox"
                     checked={termsAccepted}
                     onCheckedChange={(v) => setTermsAccepted(v === true)}
                     className="mt-0.5"
@@ -537,6 +538,7 @@ export default function Checkout() {
 
                 {currentStep === 2 && (
                   <Button 
+                    data-testid="checkout-continue-review"
                     className="w-full border border-border/60 shadow-elegant  transition-all py-6 text-lg font-bold"
                     onClick={() => goToStep(3)}
                     disabled={!termsAccepted}

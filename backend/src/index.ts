@@ -87,9 +87,25 @@ app.route("/api/media", mediaRoutes);
 // Start server
 const PORT = Number(process.env.PORT) || 3000;
 
+function shouldRunSeed(): boolean {
+  if (process.env.APP_ENV === "production" || process.env.SEED_ENABLED === "false") {
+    return false;
+  }
+
+  if (process.env.SEED_ENABLED === "true") {
+    return true;
+  }
+
+  return process.env.APP_ENV === "local"
+    || process.env.APP_ENV === "ci"
+    || process.env.NODE_ENV === "development";
+}
+
 async function start() {
   await connectDB();
-  await seedDatabase();
+  if (shouldRunSeed()) {
+    await seedDatabase();
+  }
   await migrateToVariants();
 
   startCronJobs();
@@ -97,7 +113,10 @@ async function start() {
   console.log(`[Server] Tembleques Camila API running on port ${PORT}`);
 }
 
-start();
+start().catch((error: unknown) => {
+  console.error("[Server] No se pudo iniciar el backend:", error);
+  process.exitCode = 1;
+});
 
 export default {
   port: PORT,

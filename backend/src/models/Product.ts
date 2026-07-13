@@ -10,6 +10,7 @@ export interface ISizeVariant {
 }
 
 export interface IProduct extends Document {
+  seed_key?: string;
   name: string;
   name_en?: string;
   category: ProductCategory[];
@@ -38,6 +39,7 @@ const sizeVariantSchema = new Schema<ISizeVariant>(
 
 const productSchema = new Schema<IProduct>(
   {
+    seed_key: { type: String, trim: true, unique: true, sparse: true, select: false },
     name: { type: String, required: true, trim: true },
     name_en: { type: String, trim: true },
     category: [{

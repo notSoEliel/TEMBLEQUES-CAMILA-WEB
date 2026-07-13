@@ -39,7 +39,7 @@ products.get("/", async (c) => {
 
   // If there IS a date filter, we currently filter in memory
   // Optimization: Still use initial DB filter
-  let allMatchingProducts = await Product.find(filter).sort({ createdAt: -1 });
+  const allMatchingProducts = await Product.find(filter).sort({ createdAt: -1 });
 
   const start = new Date(startDate);
   const end = new Date(endDate);

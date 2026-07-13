@@ -8,6 +8,7 @@ import {
   calculateLateFeeAmount,
   calculateRentalDays,
   evaluateDeposit,
+  getMinimumRentalStartDate,
   getPanamaTodayUTC,
 } from "./payment-rules.js";
 import {
@@ -75,21 +76,9 @@ export async function createRental(params: {
     );
   }
 
-  // Validar usando la zona horaria de Panamá (UTC-5)
-  const now = new Date();
-  const panamaTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
-  const panamaHour = panamaTime.getUTCHours();
-  const panamaToday = new Date(
-    Date.UTC(
-      panamaTime.getUTCFullYear(),
-      panamaTime.getUTCMonth(),
-      panamaTime.getUTCDate(),
-    ),
-  );
-
-  const isPast6pm = panamaHour >= 18;
-  const minAllowedDate = new Date(panamaToday.getTime());
-  minAllowedDate.setUTCDate(minAllowedDate.getUTCDate() + (isPast6pm ? 2 : 1));
+  const minAllowedDate = getMinimumRentalStartDate();
+  const panamaTime = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const isPast6pm = panamaTime.getUTCHours() >= 18;
 
   if (startDate.getTime() < minAllowedDate.getTime()) {
     throw new AppError(

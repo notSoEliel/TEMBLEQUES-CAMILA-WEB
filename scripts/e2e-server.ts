@@ -41,7 +41,11 @@ async function waitForPort(port: number, timeoutMs: number): Promise<void> {
 }
 
 async function ensureLocalMongo(): Promise<void> {
-  if (process.env.E2E_MONGO_URI || await canOpenPort(27017)) return;
+  if (await canOpenPort(27017)) return;
+
+  const configuredMongoUri = process.env.E2E_MONGO_URI;
+  const usesRemoteMongo = configuredMongoUri && !configuredMongoUri.includes("localhost") && !configuredMongoUri.includes("127.0.0.1");
+  if (usesRemoteMongo) return;
 
   const dockerInfo = Bun.spawnSync(["docker", "info"], {
     stdout: "pipe",
@@ -71,9 +75,15 @@ async function main(): Promise<void> {
 
   const fallbackMongoUri = `mongodb://localhost:27017/tembleques_camila_e2e_${Date.now()}`;
   const mongoUri = process.env.E2E_MONGO_URI ?? fallbackMongoUri;
+  const seedProfile = process.env.E2E_SEED_PROFILE ?? "ci";
+  const seedMode = process.env.E2E_SEED_MODE ?? "reset";
 
   spawn(["bun", "run", "dev"], "backend", {
+    APP_ENV: "ci",
     MONGO_URI: mongoUri,
+    SEED_ENABLED: "true",
+    SEED_PROFILE: seedProfile,
+    SEED_MODE: seedMode,
     STRIPE_SECRET_KEY: process.env.E2E_STRIPE_SECRET_KEY ?? "sk_test_placeholder",
     STRIPE_WEBHOOK_SECRET: process.env.E2E_STRIPE_WEBHOOK_SECRET ?? "whsec_placeholder",
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY ?? "sk_test_placeholder",

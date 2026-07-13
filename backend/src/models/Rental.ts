@@ -22,6 +22,7 @@ export type DepositStatus =
 export type FeeStatus = "not_applicable" | "pending" | "charged" | "failed";
 
 export interface IRental extends Document {
+  fixture_key?: string;
   user_id: Types.ObjectId;
   product_id: Types.ObjectId;
   order_group_id: string;
@@ -62,6 +63,7 @@ export interface IRental extends Document {
 
 const rentalSchema = new Schema<IRental>(
   {
+    fixture_key: { type: String, trim: true, unique: true, sparse: true, select: false },
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     product_id: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     order_group_id: { type: String, required: false },

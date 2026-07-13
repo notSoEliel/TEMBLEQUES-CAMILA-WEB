@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const externalBaseURL = process.env.E2E_STAGING_URL;
+
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "**/*.spec.ts",
@@ -15,15 +17,17 @@ export default defineConfig({
     ["list"],
   ],
 
-  webServer: {
-    command: "bun run e2e:server",
-    url: "http://localhost:5173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: "bun run e2e:server",
+        url: "http://localhost:5173",
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: externalBaseURL ?? "http://localhost:5173",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

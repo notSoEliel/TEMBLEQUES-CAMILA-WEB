@@ -13,7 +13,7 @@ on:
 
 jobs:
   quality:
-    name: Typecheck, build and E2E
+    name: Lint, typecheck, build and E2E
     runs-on: ubuntu-latest
 
     services:
@@ -51,6 +51,9 @@ jobs:
         working-directory: mcp-server
         run: bun install
 
+      - name: Lint
+        run: bun run lint
+
       - name: Frontend typecheck
         working-directory: frontend
         run: bun x tsc --noEmit
@@ -82,8 +85,20 @@ jobs:
         run: bun run test:e2e
         env:
           VITE_CLERK_PUBLISHABLE_KEY: pk_test_your_clerk_publishable_key
-          E2E_MONGO_URI: mongodb://localhost:27017/tembleques_camila_ci
+          E2E_MONGO_URI: mongodb://localhost:27017/tembleques_camila_ci_${{ github.run_id }}
+          E2E_SEED_PROFILE: ci
+          E2E_SEED_MODE: reset
           E2E_STRIPE_SECRET_KEY: sk_test_placeholder
           E2E_STRIPE_WEBHOOK_SECRET: whsec_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
           CLERK_WEBHOOK_SECRET: whsec_placeholder
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
