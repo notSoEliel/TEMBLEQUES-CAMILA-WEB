@@ -90,6 +90,7 @@ jobs:
           E2E_STRIPE_TEST_CARD: ${{ secrets.E2E_STRIPE_TEST_CARD }}
           E2E_STRIPE_TEST_EXPIRY: ${{ secrets.E2E_STRIPE_TEST_EXPIRY }}
           E2E_STRIPE_TEST_CVC: ${{ secrets.E2E_STRIPE_TEST_CVC }}
+          E2E_STRIPE_TEST_EMAIL: ${{ secrets.E2E_STRIPE_TEST_EMAIL }}
 
       - name: Upload staging smoke artifacts
         if: always()

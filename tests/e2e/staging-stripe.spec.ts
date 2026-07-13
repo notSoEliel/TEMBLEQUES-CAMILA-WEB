@@ -38,6 +38,7 @@ test.describe("Staging - Stripe test real", () => {
     await loginWithClerk(page);
     const product = await getAvailableStagingProduct(request);
     await addAvailableProductToCheckout(page, product);
+    const stripeEmail = process.env.E2E_STRIPE_TEST_EMAIL || "qa.checkout@temblequescamila.com";
 
     let authorization: string | undefined;
     const checkoutRequestPromise = page.waitForRequest((requestEvent) => {
@@ -60,7 +61,7 @@ test.describe("Staging - Stripe test real", () => {
     await fillStripeField(page, 'input[name="cardCvc"], input[autocomplete="cc-csc"]',
       process.env.E2E_STRIPE_TEST_CVC || "123",
     );
-    await fillStripeField(page, 'input[type="email"], input[name="email"], input[autocomplete="email"], input[placeholder*="email"]', requireEnvironment("E2E_CLERK_EMAIL"));
+    await fillStripeField(page, 'input[type="email"], input[name="email"], input[autocomplete="email"], input[placeholder*="email"]', stripeEmail);
     await fillStripeField(page, 'input[autocomplete="cc-name"], input[name="billingName"], input[placeholder*="Full name"]', "QA Tembleques Camila");
     await fillStripeField(page, 'input[autocomplete="postal-code"], input[name="postalCode"], input[placeholder*="ZIP"]', "10001");
     await fillStripeField(page, 'input[type="tel"], input[autocomplete="tel"], input[name="phone"], input[placeholder*="phone"], input[placeholder*="Phone"]', "+12025550123");
