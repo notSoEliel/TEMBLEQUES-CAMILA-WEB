@@ -258,6 +258,26 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.locator("#main-content")).toBeFocused();
   });
 
+  test("Debe mostrar un error recuperable cuando falla el catálogo", async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (requestUrl.includes("/api/products")) {
+          return new Response(
+            JSON.stringify({ error: "El catálogo está temporalmente no disponible.", code: "SERVICE_UNAVAILABLE" }),
+            { status: 503, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return originalFetch(input, init);
+      };
+    });
+
+    await page.goto("/catalog");
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Intentar nuevamente" })).toBeVisible();
+  });
+
   test("Debe exponer módulos administrativos de cupones, reportes y reglas", async ({ page }) => {
     await setMockAuth(page, "mock-admin-token");
 

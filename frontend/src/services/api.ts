@@ -62,14 +62,64 @@ export interface ObservabilityOverview {
   alerts: ObservabilityAlert[];
 }
 
+export interface ApiErrorPayload {
+  error?: unknown;
+  message?: unknown;
+  code?: unknown;
+  details?: unknown;
+}
+
+export type ApiErrorKind = "network" | "timeout" | "unauthorized" | "forbidden" | "validation" | "server" | "generic";
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly requestId?: string;
+  readonly retryable: boolean;
+  readonly kind: ApiErrorKind;
+
+  constructor(
+    message: string,
+    options: {
+      status?: number;
+      code?: string;
+      requestId?: string;
+      retryable?: boolean;
+      kind?: ApiErrorKind;
+    } = {},
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status ?? 0;
+    this.code = options.code ?? "API_ERROR";
+    this.requestId = options.requestId;
+    this.retryable = options.retryable ?? false;
+    this.kind = options.kind ?? "generic";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+interface ClerkSession {
+  getToken: () => Promise<string | null>;
+}
+
+interface ClerkRuntime {
+  session?: ClerkSession;
+}
+
+interface ClerkWindow extends Window {
+  Clerk?: ClerkRuntime;
+}
+
 interface ApiOptions {
   method?: string;
-  body?: any;
+  body?: unknown;
   token?: string;
+  timeoutMs?: number;
 }
 
 async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body, token, timeoutMs = 15_000 } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -77,12 +127,15 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 
   let currentToken = token;
   
-  if (typeof window !== "undefined" && (window as any).Clerk?.session) {
+  if (typeof window !== "undefined" && (window as ClerkWindow).Clerk?.session) {
     try {
-      const freshToken = await (window as any).Clerk.session.getToken();
+      const freshToken = await (window as ClerkWindow).Clerk?.session?.getToken();
       if (freshToken) currentToken = freshToken;
-    } catch (e) {
-      console.warn("Failed to get fresh Clerk token", e);
+    } catch {
+      throw new ApiError("Tu sesión no pudo renovarse. Inicia sesión nuevamente.", {
+        code: "AUTH_TOKEN_REFRESH_FAILED",
+        kind: "unauthorized",
+      });
     }
   }
 
@@ -90,34 +143,95 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${currentToken}`;
   }
 
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
   let response: Response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
-  } catch {
-    throw new Error("No se pudo conectar con el servidor. Verifica tu conexión a internet.");
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError("La solicitud tardó demasiado. Puedes intentarlo nuevamente.", {
+        code: "NETWORK_TIMEOUT",
+        kind: "timeout",
+        retryable: true,
+      });
+    }
+    throw new ApiError("No se pudo conectar con el servidor. Verifica tu conexión a internet.", {
+      code: "NETWORK_UNAVAILABLE",
+      kind: "network",
+      retryable: true,
+    });
+  } finally {
+    window.clearTimeout(timeout);
   }
 
-  let data: any;
+  let data: unknown;
   try {
     data = await response.json();
   } catch {
     if (!response.ok) {
-      throw new Error(
-        `El servidor respondió con un error inesperado (${response.status}). Intenta de nuevo más tarde.`,
-      );
+      throw new ApiError(`El servidor respondió con un error inesperado (${response.status}). Intenta de nuevo más tarde.`, {
+        status: response.status,
+        code: "INVALID_ERROR_RESPONSE",
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        retryable: response.status >= 500,
+        kind: response.status >= 500 ? "server" : "generic",
+      });
     }
-    throw new Error("La respuesta del servidor no pudo ser procesada.");
+    throw new ApiError("La respuesta del servidor no pudo ser procesada.", {
+      code: "INVALID_RESPONSE",
+      retryable: true,
+      kind: "server",
+    });
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || "Ocurrió un error inesperado. Por favor, intenta de nuevo.");
+    const payload = isApiErrorPayload(data) ? data : {};
+    const message = typeof payload.error === "string"
+      ? payload.error
+      : typeof payload.message === "string"
+        ? payload.message
+        : getDefaultErrorMessage(response.status);
+    const code = typeof payload.code === "string" ? payload.code : `HTTP_${response.status}`;
+    const kind = getErrorKind(response.status);
+    throw new ApiError(message, {
+      status: response.status,
+      code,
+      requestId: response.headers.get("x-request-id") ?? undefined,
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+      kind,
+    });
   }
 
-  return data;
+  return data as T;
+}
+
+function isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+  return typeof value === "object" && value !== null;
+}
+
+function getDefaultErrorMessage(status: number): string {
+  if (status === 401) return "Tu sesión ha expirado. Inicia sesión nuevamente.";
+  if (status === 403) return "No tienes permisos para realizar esta acción.";
+  if (status === 404) return "No encontramos la información solicitada.";
+  if (status === 409) return "La información cambió. Revisa los datos e inténtalo nuevamente.";
+  if (status === 429) return "Se alcanzó el límite de solicitudes. Espera un momento e inténtalo nuevamente.";
+  if (status >= 500) return "El servidor no pudo completar la solicitud. Inténtalo nuevamente.";
+  return "Ocurrió un error inesperado. Por favor, intenta de nuevo.";
+}
+
+function getErrorKind(status: number): ApiErrorKind {
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  if (status === 400 || status === 409) return "validation";
+  if (status >= 500) return "server";
+  return "generic";
 }
 
 
