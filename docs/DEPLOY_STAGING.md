@@ -65,6 +65,7 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 - `MCP_CLIENT_API_KEY`
 - `MCP_BACKEND_ADMIN_TOKEN`
 - `MCP_BACKEND_CLIENT_TOKEN`
+- `MCP_CLIENT_IDENTITY=clerk`
 - `MCP_ALLOWED_ORIGIN`
 - `NIXPACKS_NODE_VERSION=22`
 - `NODE_ENV=production`
@@ -86,6 +87,8 @@ railway up ./backend --path-as-root --service backend
 railway up ./mcp-server --path-as-root --service mcp-server
 railway domain list --service mcp-server
 ```
+
+El workflow `MCP Staging Smoke` requiere además los secretos de GitHub Actions `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY`. El token de sesión Clerk se obtiene durante el smoke con la cuenta QA y se utiliza únicamente en memoria para validar la identidad real del cliente.
 
 ## Vercel
 

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 export type McpAuthMode = "admin" | "client";
+export type McpClientIdentity = "clerk" | "service";
 
 export type McpScope =
   | "audit.read"
@@ -9,6 +10,7 @@ export type McpScope =
   | "contacts.manage"
   | "dashboard.read"
   | "inventory.write"
+  | "observability.read"
   | "payments.reconcile"
   | "payments.create"
   | "products.write"
@@ -26,6 +28,11 @@ export interface McpPrincipal {
   id: string;
   mode: McpAuthMode;
   scopes: ReadonlySet<McpScope>;
+  /**
+   * Clerk session token supplied by the MCP caller. It is kept in memory only
+   * for the duration of the request and must never be logged or serialized.
+   */
+  identityToken?: string;
 }
 
 export interface McpAuthConfig {
@@ -33,6 +40,7 @@ export interface McpAuthConfig {
   allowedOrigins: ReadonlySet<string>;
   adminKey?: string;
   clientKey?: string;
+  clientIdentity: McpClientIdentity;
 }
 
 const ADMIN_SCOPES: ReadonlySet<McpScope> = new Set([
@@ -42,6 +50,7 @@ const ADMIN_SCOPES: ReadonlySet<McpScope> = new Set([
   "contacts.manage",
   "dashboard.read",
   "inventory.write",
+  "observability.read",
   "payments.reconcile",
   "payments.create",
   "products.write",
@@ -79,10 +88,17 @@ function parseOrigins(value: string | undefined): ReadonlySet<string> {
   );
 }
 
+function parseClientIdentity(value: string | undefined): McpClientIdentity {
+  if (value === undefined || value === "clerk") return "clerk";
+  if (value === "service") return "service";
+  throw new Error("MCP_CLIENT_IDENTITY debe ser clerk o service.");
+}
+
 export function loadMcpAuthConfig(env: NodeJS.ProcessEnv = process.env): McpAuthConfig {
   const required = parseBoolean(env.MCP_AUTH_REQUIRED, true);
   const adminKey = env.MCP_ADMIN_API_KEY?.trim() || undefined;
   const clientKey = env.MCP_CLIENT_API_KEY?.trim() || undefined;
+  const clientIdentity = parseClientIdentity(env.MCP_CLIENT_IDENTITY);
 
   if (required && !adminKey && !clientKey) {
     throw new Error(
@@ -98,6 +114,7 @@ export function loadMcpAuthConfig(env: NodeJS.ProcessEnv = process.env): McpAuth
     required,
     adminKey,
     clientKey,
+    clientIdentity,
     allowedOrigins: parseOrigins(env.MCP_ALLOWED_ORIGIN),
   };
 }
@@ -132,14 +149,15 @@ export function authenticateMcpRequest(
   }
 
   if (config.clientKey && safeEqual(token, config.clientKey)) {
-    return { id: "mcp-client-key", mode: "client", scopes: CLIENT_SCOPES };
+    const identityToken = request.headers.get("X-MCP-Clerk-Token")?.trim() || undefined;
+    return { id: "mcp-client-key", mode: "client", scopes: CLIENT_SCOPES, identityToken };
   }
 
   return null;
 }
 
 export function hasMcpScope(principal: McpPrincipal | undefined, scope: McpScope): boolean {
-  return !principal || principal.scopes.has(scope);
+  return Boolean(principal?.scopes.has(scope));
 }
 
 export function isMcpOriginAllowed(
@@ -157,7 +175,7 @@ export function getMcpCorsHeaders(
   const origin = request.headers.get("Origin");
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, Last-Event-ID, mcp-protocol-version, Authorization",
+    "Access-Control-Allow-Headers": "Content-Type, mcp-session-id, Last-Event-ID, mcp-protocol-version, Authorization, X-MCP-Clerk-Token",
     "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version",
     Vary: "Origin",
   };

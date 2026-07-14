@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import mongoose from "mongoose";
 import { authMiddleware, requirePermission, type AuthVariables } from "../middleware/auth.js";
 import { Rental } from "../models/Rental.js";
 import { Product } from "../models/Product.js";
@@ -10,6 +11,7 @@ interface InventoryReportFilters {
   from?: Date;
   to?: Date;
   category?: string;
+  productId?: string;
   search?: string;
 }
 
@@ -20,16 +22,21 @@ function parseReportDate(value: string | undefined, endOfDay = false): Date | un
   return date;
 }
 
-function getInventoryFilters(query: { from?: string; to?: string; category?: string; search?: string }): InventoryReportFilters {
+function getInventoryFilters(query: { from?: string; to?: string; category?: string; productId?: string; search?: string }): InventoryReportFilters {
   const from = parseReportDate(query.from);
   const to = parseReportDate(query.to, true);
   if (from && to && from > to) throw new AppError("La fecha inicial debe ser anterior a la fecha final.", 400, "REPORT_DATE_RANGE_INVALID");
-  return { from, to, category: query.category?.trim() || undefined, search: query.search?.trim() || undefined };
+  const productId = query.productId?.trim() || undefined;
+  if (productId && !mongoose.Types.ObjectId.isValid(productId)) {
+    throw new AppError("El producto indicado no es válido.", 400, "REPORT_PRODUCT_INVALID");
+  }
+  return { from, to, category: query.category?.trim() || undefined, productId, search: query.search?.trim() || undefined };
 }
 
 async function buildInventoryStats(filters: InventoryReportFilters) {
   const productFilter: Record<string, unknown> = {};
   if (filters.category) productFilter.category = filters.category;
+  if (filters.productId) productFilter._id = filters.productId;
   if (filters.search) {
     const escaped = filters.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     productFilter.$or = [{ name: { $regex: escaped, $options: "i" } }, { name_en: { $regex: escaped, $options: "i" } }];
@@ -61,11 +68,11 @@ const reports = new Hono<{ Variables: AuthVariables }>();
 reports.use("/*", authMiddleware, requirePermission("reports.read"));
 
 reports.get("/inventory-stats", async (c) => {
-  return c.json({ stats: await buildInventoryStats(getInventoryFilters({ from: c.req.query("from"), to: c.req.query("to"), category: c.req.query("category"), search: c.req.query("search") })) });
+  return c.json({ stats: await buildInventoryStats(getInventoryFilters({ from: c.req.query("from"), to: c.req.query("to"), category: c.req.query("category"), productId: c.req.query("productId"), search: c.req.query("search") })) });
 });
 
 reports.get("/export-csv", async (c) => {
-  const stats = await buildInventoryStats(getInventoryFilters({ from: c.req.query("from"), to: c.req.query("to"), category: c.req.query("category"), search: c.req.query("search") }));
+  const stats = await buildInventoryStats(getInventoryFilters({ from: c.req.query("from"), to: c.req.query("to"), category: c.req.query("category"), productId: c.req.query("productId"), search: c.req.query("search") }));
 
   let csv = "Producto,Talla,Stock,En Mantenimiento,Cantidad Alquileres,Total Dias Alquilados,Ingresos Totales (PAB)\n";
   for (const stat of stats) csv += `"${stat.name.replace(/"/g, '""')}","${stat.size}",${stat.stock},${stat.inMaintenance ? "Si" : "No"},${stat.rentalsCount},${stat.totalDaysRented},${stat.totalRevenue.toFixed(2)}\n`;

@@ -6,6 +6,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:staging": "E2E_REAL_INTEGRATIONS=true playwright test tests/e2e/staging-auth.spec.ts tests/e2e/staging-stripe.spec.ts tests/e2e/staging-phase6.spec.ts",
+    "test:e2e:mcp:staging": "E2E_MCP_SMOKE=true playwright test tests/e2e/mcp-staging.spec.ts",
     "test:staging:expiration": "bun scripts/staging-checkout-expiration-smoke.ts",
     "e2e:server": "bun scripts/e2e-server.ts",
     "mcp:start": "cd mcp-server && bun run start",

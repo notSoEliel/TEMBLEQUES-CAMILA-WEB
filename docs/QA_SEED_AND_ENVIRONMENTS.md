@@ -56,6 +56,8 @@ El flujo de confirmación y `GET /api/rentals/my` no modifican estados de pago. 
 
 El repositorio incluye `.github/workflows/staging-smoke.yml`, ejecutable manualmente desde GitHub Actions. Usa el environment `staging`, valida que existan la URL y las credenciales de Clerk, ejecuta los smoke de Clerk, Stripe, H70 y H71, y conserva los artefactos aunque fallen. Las claves y el webhook de Stripe permanecen configurados en Railway; nunca se copian al workflow.
 
+El repositorio incluye además `.github/workflows/mcp-staging-smoke.yml` para las historias H83-H100. Este workflow valida autenticación del transporte MCP, las 18 tools, scopes, identidad Clerk real, operaciones administrativas, redacción de datos y limpieza de fixtures. Requiere las secrets `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY`, `MCP_CLIENT_API_KEY`, `STAGING_BACKEND_URL`, `MCP_BACKEND_ADMIN_TOKEN`, `STAGING_FRONTEND_URL`, `E2E_CLERK_EMAIL`, `CLERK_SECRET_KEY` y `CLERK_PUBLISHABLE_KEY`. Nunca imprime sus valores.
+
 El workflow construye el frontend del commit exacto que se está verificando con `VITE_API_URL` apuntando al backend staging y lo sirve temporalmente en el runner. Así el smoke combina frontend versionado + backend staging + Clerk/Stripe reales, sin depender de que un alias de Vercel tenga desplegado el mismo commit. El dominio frontend configurado en `STAGING_FRONTEND_URL` queda reservado para comprobaciones manuales.
 
 Para la evidencia completa de H56/#61, el backend expone `GET /api/admin/seed-status` como lectura administrativa. Devuelve únicamente el ambiente, la configuración no secreta del seed y los conteos del namespace `seed_key`/`fixture_key`; no devuelve documentos ni credenciales.
