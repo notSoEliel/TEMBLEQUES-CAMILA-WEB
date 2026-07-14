@@ -5,7 +5,6 @@ const stagingURL = process.env.E2E_STAGING_URL ?? "http://localhost:5173";
 const realIntegrationsEnabled = process.env.E2E_REAL_INTEGRATIONS === "true";
 
 test.use({ baseURL: stagingURL });
-test.describe.configure({ mode: "serial" });
 
 interface ObservabilityOverview {
   health: {
@@ -62,7 +61,7 @@ test.describe("Staging - evidencia operativa de fase 3", () => {
   test.skip(!realIntegrationsEnabled, "Se ejecuta solo con E2E_REAL_INTEGRATIONS=true.");
   test.setTimeout(90_000);
 
-  test("H48-H51: observabilidad protegida y dashboard técnico visible", async ({ page, request }) => {
+  test("H48-H50: observabilidad protegida, métricas y alertas", async ({ request }) => {
     const base = backendURL();
     const unauthorized = await request.get(`${base}/api/admin/observability/metrics`);
     expect(unauthorized.status()).toBe(401);
@@ -85,6 +84,9 @@ test.describe("Staging - evidencia operativa de fase 3", () => {
     expect(overview.metrics.latency.requestCount).toBeGreaterThan(0);
     expect(Array.isArray(overview.alerts)).toBeTruthy();
 
+  });
+
+  test("H51: dashboard técnico visible para una cuenta administrativa", async ({ page }) => {
     await loginWithClerk(page);
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
