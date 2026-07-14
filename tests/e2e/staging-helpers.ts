@@ -27,6 +27,7 @@ export interface StagingRental {
   _id: string;
   order_group_id?: string;
   status: string;
+  payment_status?: string;
 }
 
 export interface StagingRentalListResponse {
@@ -46,6 +47,16 @@ export interface StagingReconciliationResponse {
     inconsistent: number;
     differences: StagingReconciliationDifference[];
   };
+}
+
+export interface StagingRefundResponse {
+  refund: {
+    _id: string;
+    status: "pending" | "succeeded" | "failed";
+    amount: number;
+  };
+  refundedTotal: number;
+  refundableRemaining: number;
 }
 
 export function requireEnvironment(name: string): string {

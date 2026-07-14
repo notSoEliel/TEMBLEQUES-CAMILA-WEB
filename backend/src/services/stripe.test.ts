@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCheckoutExpiredRentalFilter,
   getPaymentFailureRentalFilter,
   validateCheckoutSession,
 } from "./stripe.js";
@@ -43,5 +44,23 @@ describe("flujo de pagos de Stripe", () => {
     } as unknown as import("stripe").Stripe.Checkout.Session;
 
     expect(() => validateCheckoutSession(session)).not.toThrow();
+  });
+
+  it("limita la expiración al grupo, usuario, sesión y reservas pendientes", () => {
+    expect(getCheckoutExpiredRentalFilter({ orderGroupId: "group-1", userId: "user-1" }, "cs_test_1")).toEqual({
+      order_group_id: "group-1",
+      user_id: "user-1",
+      stripe_session_id: "cs_test_1",
+      status: "pending",
+    });
+  });
+
+  it("mantiene compatibilidad con sesiones antiguas que contienen rentalIds", () => {
+    expect(getCheckoutExpiredRentalFilter({ rentalIds: "rental-1,rental-2", userId: "user-1" }, "cs_test_2")).toEqual({
+      _id: { $in: ["rental-1", "rental-2"] },
+      user_id: "user-1",
+      stripe_session_id: "cs_test_2",
+      status: "pending",
+    });
   });
 });
