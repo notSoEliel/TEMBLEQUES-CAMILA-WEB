@@ -299,6 +299,19 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByRole("button", { name: "Intentar nuevamente" })).toBeVisible();
   });
 
+  test("Debe resolver las rutas públicas principales y conservar la navegación SPA", async ({ page }) => {
+    const publicRoutes = ["/", "/catalog", "/historia", "/credencial", "/mision-vision", "/faq", "/contacto"];
+
+    for (const route of publicRoutes) {
+      await page.goto(route);
+      await expect(page.locator("#main-content")).toBeVisible();
+      await expect(page.locator("#main-content")).toBeFocused();
+    }
+
+    await page.goto("/ruta-que-no-existe");
+    await expect(page.getByText("404", { exact: true })).toBeVisible();
+  });
+
   test("Debe exponer módulos administrativos de cupones, reportes y reglas", async ({ page }) => {
     await setMockAuth(page, "mock-admin-token");
 
