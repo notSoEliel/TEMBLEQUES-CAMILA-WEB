@@ -69,6 +69,22 @@ export interface BackupFileResult {
   deletedFiles: number;
 }
 
+export function buildIsolatedMongoUri(uri: string, databaseName: string): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(databaseName)) {
+    throw new AppError("RESTORE_DATABASE_NAME inválido.", 400, "RESTORE_DATABASE_NAME_INVALID");
+  }
+  const queryIndex = uri.indexOf("?");
+  const base = queryIndex === -1 ? uri : uri.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : uri.slice(queryIndex);
+  const schemeEnd = base.indexOf("://");
+  if (schemeEnd === -1) {
+    throw new AppError("MONGO_URI inválida para restauración aislada.", 400, "MONGO_URI_INVALID");
+  }
+  const authorityEnd = base.indexOf("/", schemeEnd + 3);
+  const authority = authorityEnd === -1 ? base : base.slice(0, authorityEnd);
+  return `${authority}/${databaseName}${query}`;
+}
+
 export async function writeEncryptedBackup(options: {
   outputDirectory: string;
   encryptionKey: string | undefined;
