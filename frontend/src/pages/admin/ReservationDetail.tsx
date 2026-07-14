@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, CheckCircle2, CreditCard, FileText, RefreshCw, UserRound } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,30 +33,47 @@ export default function AdminReservationDetail() {
   const [rental, setRental] = useState<AdminRentalDetail | null>(null);
   const [terms, setTerms] = useState<RentalTermsAcceptance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const loadDetail = useCallback(async () => {
-    if (!id || !token) return;
-    setLoading(true);
-    try {
-      const freshToken = await getToken();
-      const response = await adminApi.rentalDetail(id, freshToken || token);
-      setRental(response.rental);
-      setTerms(response.terms);
-    } catch (error) {
-      showError(error instanceof Error ? error.message : "No se pudo cargar el expediente.", "generic");
-    } finally {
-      setLoading(false);
-    }
-  }, [getToken, id, showError, token]);
+  useEffect(() => {
+    let cancelled = false;
 
-  useEffect(() => { void loadDetail(); }, [loadDetail]);
+    const loadDetail = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const freshToken = await getToken();
+        const currentToken = freshToken || token;
+        if (!currentToken) {
+          throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
+        }
+        const response = await adminApi.rentalDetail(id, currentToken);
+        if (!cancelled) {
+          setRental(response.rental);
+          setTerms(response.terms);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          showError(error instanceof Error ? error.message : "No se pudo cargar el expediente.", "generic");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadDetail();
+    return () => { cancelled = true; };
+  }, [id, reloadKey, token]);
 
   if (loading) {
     return <div className="min-h-56 animate-pulse rounded-[var(--radius)] border bg-muted/30 p-8"><div className="mx-auto h-8 max-w-sm rounded bg-muted" /><div className="mx-auto mt-4 h-4 max-w-xl rounded bg-muted" /></div>;
   }
 
   if (!rental) {
-    return <>{errorModal}<RequestState title="No se encontró la reserva" message="La reserva puede haber sido eliminada o no tienes permiso para consultarla." retryLabel="Reintentar" onRetry={() => void loadDetail()} /></>;
+    return <>{errorModal}<RequestState title="No se encontró la reserva" message="La reserva puede haber sido eliminada o no tienes permiso para consultarla." retryLabel="Reintentar" onRetry={() => setReloadKey((current) => current + 1)} /></>;
   }
 
   return (
@@ -109,7 +126,7 @@ export default function AdminReservationDetail() {
         </CardContent>
       </Card>
 
-      <Button variant="outline" onClick={() => void loadDetail()}><RefreshCw className="mr-2 h-4 w-4" />Actualizar expediente</Button>
+      <Button variant="outline" onClick={() => setReloadKey((current) => current + 1)}><RefreshCw className="mr-2 h-4 w-4" />Actualizar expediente</Button>
     </div>
   );
 }
