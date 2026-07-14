@@ -3,6 +3,9 @@ import { PaymentRefund, type IPaymentRefund } from "../models/PaymentRefund.js";
 import { Rental } from "../models/Rental.js";
 import { getStripeClient } from "./stripe.js";
 import { rentalPaidAmount } from "./cancellation-policy.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "./notifications.js";
+import { structuredLog } from "./observability.js";
 
 export interface RefundResult {
   refund: IPaymentRefund;
@@ -79,6 +82,27 @@ export async function createRentalRefund(params: {
     if (refund.status === "succeeded" && refundedTotal + amount >= paidAmount) {
       rental.payment_status = "refunded";
       await rental.save();
+    }
+
+    if (refund.status === "succeeded") {
+      void User.findById(rental.user_id).select("email").lean()
+        .then((user) => dispatchNotification({
+          userId: rental.user_id.toString(),
+          email: user?.email,
+          type: "refund_completed",
+          title: "Reembolso procesado",
+          message: `Se procesó un reembolso de $${amount.toFixed(2)} PAB para tu reserva.`,
+          idempotencyKey: `refund:completed:${refund._id.toString()}`,
+          metadata: { rentalId: rental._id.toString(), refundId: refund._id.toString() },
+        }))
+        .catch((error: unknown) => {
+          structuredLog("error", "notification.dispatch_failed", {
+            source: "refund",
+            rentalId: rental._id.toString(),
+            type: "refund_completed",
+            errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+          });
+        });
     }
 
     return {

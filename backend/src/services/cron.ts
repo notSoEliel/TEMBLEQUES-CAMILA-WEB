@@ -1,5 +1,7 @@
 import { Rental } from "../models/Rental.js";
 import { structuredLog } from "./observability.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "./notifications.js";
 
 let lastRunAt: string | undefined;
 let lastSuccessAt: string | undefined;
@@ -63,6 +65,24 @@ async function cleanAbandonedRentals() {
       rental.payment_status = getAbandonedPaymentStatus(rental.stripe_session_id);
       rental.deposit_status = rental.deposit_required ? "not_required" : rental.deposit_status;
       await rental.save();
+      void User.findById(rental.user_id).select("email").lean()
+        .then((user) => dispatchNotification({
+          userId: rental.user_id.toString(),
+          email: user?.email,
+          type: "payment_expired",
+          title: "Reserva pendiente expirada",
+          message: "La reserva pendiente superó el tiempo permitido y fue liberada automáticamente.",
+          idempotencyKey: `cron:payment-expired:${rental._id.toString()}`,
+          metadata: { rentalId: rental._id.toString() },
+        }))
+        .catch((error: unknown) => {
+          structuredLog("error", "notification.dispatch_failed", {
+            source: "cron.clean_abandoned_rentals",
+            rentalId: rental._id.toString(),
+            type: "payment_expired",
+            errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+          });
+        });
       structuredLog("info", "rental.cancelled_by_cron", { rentalId: rental._id.toString() });
     }
   }

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { User as UserIcon, LogOut, Menu, ShoppingCart, Flower, ShoppingBag, Settings, LayoutDashboard, Home, ChevronDown } from "lucide-react";
+import { User as UserIcon, LogOut, Menu, ShoppingCart, Flower, ShoppingBag, Settings, LayoutDashboard, Home, ChevronDown, Bell } from "lucide-react";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -274,6 +274,12 @@ export default function ClientLayout() {
                           <Link to="/profile/orders" className="w-full flex items-center gap-2.5">
                             <ShoppingBag className="h-4 w-4 opacity-70" />
                             <span>{t("nav.orders")}</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/notifications" className="w-full flex items-center gap-2.5">
+                            <Bell className="h-4 w-4 opacity-70" />
+                            <span>{t("nav.notifications")}</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuGroup>

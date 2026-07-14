@@ -4,6 +4,9 @@ import { AppError } from "../lib/errors.js";
 import { type IProduct } from "../models/Product.js";
 import { raiseSystemAlert } from "./alerts.js";
 import { recordMetric, structuredLog } from "./observability.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "./notifications.js";
+import type { NotificationType } from "../models/Notification.js";
 
 export type IPopulatedRental = Omit<IRental, "product_id"> & {
   product_id: IProduct;
@@ -58,6 +61,33 @@ export function getCheckoutExpiredRentalFilter(
 
 function toCents(amount: number): number {
   return Math.max(0, Math.round(amount * 100));
+}
+
+function notifyRentalUser(
+  rental: IRental,
+  type: NotificationType,
+  title: string,
+  message: string,
+  idempotencyKey: string,
+): void {
+  void User.findById(rental.user_id).select("email").lean()
+    .then((user) => dispatchNotification({
+      userId: rental.user_id.toString(),
+      email: user?.email,
+      type,
+      title,
+      message,
+      idempotencyKey,
+      metadata: { rentalId: rental._id.toString(), orderGroupId: rental.order_group_id },
+    }))
+    .catch((error: unknown) => {
+      structuredLog("error", "notification.dispatch_failed", {
+        source: "stripe",
+        rentalId: rental._id.toString(),
+        type,
+        errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+      });
+    });
 }
 
 // We import Stripe lazily so demo mode does not crash at startup.
@@ -298,6 +328,13 @@ async function processStripeEvent(
             "El depósito no se cobra automáticamente: el checkout no guarda métodos de pago.";
           await rental.save();
         }
+        notifyRentalUser(
+          rental,
+          "payment_confirmed",
+          "Pago confirmado",
+          "Tu pago fue confirmado. Tu reserva ya está registrada y en preparación.",
+          `stripe:payment-confirmed:${event.id}:${rental._id.toString()}`,
+        );
       }
       recordMetric("checkout_completed_total", rentalsToUpdate.length, { mode: "stripe", requestId: requestId ?? "unknown" });
       break;
@@ -317,6 +354,13 @@ async function processStripeEvent(
         rental.payment_status = "expired";
         rental.deposit_status = rental.deposit_required ? "not_required" : rental.deposit_status;
         await rental.save();
+        notifyRentalUser(
+          rental,
+          "payment_expired",
+          "Sesión de pago expirada",
+          "La sesión de pago expiró y la disponibilidad de la reserva fue liberada.",
+          `stripe:payment-expired:${event.id}:${rental._id.toString()}`,
+        );
       }
       recordMetric("checkout_expired_total", rentalsToCancel.length);
       break;
@@ -332,6 +376,16 @@ async function processStripeEvent(
       const result = await Rental.updateMany(rentalFilter, {
         payment_status: "failed",
       });
+      const failedRentals = await Rental.find(rentalFilter);
+      for (const rental of failedRentals) {
+        notifyRentalUser(
+          rental,
+          "payment_failed",
+          "No se pudo confirmar el pago",
+          "Stripe informó que el pago no pudo completarse. Puedes revisar la reserva e intentarlo nuevamente.",
+          `stripe:payment-failed:${event.id}:${rental._id.toString()}`,
+        );
+      }
       recordMetric("payment_failed_total", result.modifiedCount);
       void raiseSystemAlert({
         type: "payment_failed",

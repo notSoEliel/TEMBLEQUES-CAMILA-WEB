@@ -33,6 +33,7 @@ import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
 import AdminCoupons from "@/pages/admin/CouponsAdmin";
 import AdminReports from "@/pages/admin/Reports";
+import Notifications from "@/pages/Notifications";
 import { RouteFocusManager } from "@/components/ui/AccessibilityTools";
 
 /**
@@ -166,6 +167,14 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <Orders />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <Notifications />
                     </ProtectedRoute>
                   }
                 />

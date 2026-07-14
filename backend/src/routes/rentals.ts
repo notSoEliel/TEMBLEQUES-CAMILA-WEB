@@ -8,6 +8,9 @@ import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.
 import { calculateCancellationDecision } from "../services/cancellation-policy.js";
 import { createRentalRefund } from "../services/refunds.js";
 import { generatePaymentReceiptPdf } from "../services/receipts.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "../services/notifications.js";
+import { structuredLog } from "../services/observability.js";
 
 const rentals = new Hono<{ Variables: AuthVariables }>();
 
@@ -193,6 +196,25 @@ rentals.delete("/:id", async (c) => {
   rental.status = "cancelled";
   if (!hasConfirmedPayment) rental.payment_status = "cancelled";
   await rental.save();
+
+  void User.findById(rental.user_id).select("email").lean()
+    .then((recipient) => dispatchNotification({
+      userId: rental.user_id.toString(),
+      email: recipient?.email,
+      type: "reservation_cancelled",
+      title: "Reserva cancelada",
+      message: "Tu reserva fue cancelada correctamente. Revisa el estado del reembolso si correspondía.",
+      idempotencyKey: `rental:cancelled:${rental._id.toString()}`,
+      metadata: { rentalId: rental._id.toString() },
+    }))
+    .catch((error: unknown) => {
+      structuredLog("error", "notification.dispatch_failed", {
+        source: "rental.cancel",
+        rentalId: rental._id.toString(),
+        type: "reservation_cancelled",
+        errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+      });
+    });
 
   return c.json({ message: "Reserva cancelada exitosamente.", rental, refund });
 });
