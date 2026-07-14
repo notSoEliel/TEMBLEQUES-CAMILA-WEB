@@ -166,6 +166,7 @@ async function findAvailableDateRange(
 
   for (let start = new Date(firstDay); start < lastStart; start = addDays(start, 1)) {
     const end = addDays(start, 1);
+    if (start.getUTCFullYear() !== end.getUTCFullYear() || start.getUTCMonth() !== end.getUTCMonth()) continue;
     if (rangeIsAvailable(start, end, payload.booked ?? [], size, stock)) {
       return { start: isoDate(start), end: isoDate(end) };
     }
