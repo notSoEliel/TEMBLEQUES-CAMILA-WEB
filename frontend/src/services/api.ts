@@ -387,9 +387,10 @@ export const adminApi = {
     api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
 
   // Rentals
-  rentals: (token: string, params: { status?: string; page?: number; limit?: number; sort?: string } = {}) => {
+  rentals: (token: string, params: { status?: string; search?: string; page?: number; limit?: number; sort?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.status) searchParams.set("status", params.status);
+    if (params.search) searchParams.set("search", params.search);
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
     if (params.sort) searchParams.set("sort", params.sort);
@@ -408,8 +409,9 @@ export const adminApi = {
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
 
   // Users
-  users: (token: string, params: { page?: number; limit?: number } = {}) => {
+  users: (token: string, params: { search?: string; page?: number; limit?: number } = {}) => {
     const searchParams = new URLSearchParams();
+    if (params.search) searchParams.set("search", params.search);
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
