@@ -17,6 +17,16 @@ export interface StagingProductResponse {
   data: StagingProduct[];
 }
 
+interface StagingBookedRange {
+  start: string;
+  end: string;
+  size: string;
+}
+
+interface StagingAvailabilityResponse {
+  booked: StagingBookedRange[];
+}
+
 export interface CheckoutRequestBody {
   rentalIds?: string[];
   orderGroupId?: string;
@@ -109,8 +119,69 @@ export function futureDate(daysAhead: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function addDays(value: Date, days: number): Date {
+  const result = new Date(value);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+function isoDate(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function rangeIsAvailable(
+  start: Date,
+  end: Date,
+  booked: StagingBookedRange[],
+  size: string,
+  stock: number,
+): boolean {
+  for (let current = new Date(start); current <= end; current = addDays(current, 1)) {
+    const day = isoDate(current);
+    const bookedUnits = booked.filter((range) => {
+      const rangeStart = range.start.slice(0, 10);
+      const rangeEnd = range.end.slice(0, 10);
+      return (range.size === size || range.size === "Único") && day >= rangeStart && day <= rangeEnd;
+    }).length;
+    if (bookedUnits >= stock) return false;
+  }
+  return true;
+}
+
+async function findAvailableDateRange(
+  request: APIRequestContext,
+  productId: string,
+  size: string,
+  stock: number,
+): Promise<{ start: string; end: string }> {
+  const from = futureDate(3);
+  const to = futureDate(180);
+  const response = await request.get(
+    `${getStagingBackendURL()}/api/products/${productId}/availability?from=${from}&to=${to}`,
+  );
+  expect(response.ok()).toBeTruthy();
+  const payload = await response.json() as StagingAvailabilityResponse;
+  const firstDay = new Date(`${from}T12:00:00.000Z`);
+  const lastStart = new Date(`${to}T12:00:00.000Z`);
+
+  for (let start = new Date(firstDay); start < lastStart; start = addDays(start, 1)) {
+    const end = addDays(start, 1);
+    if (rangeIsAvailable(start, end, payload.booked ?? [], size, stock)) {
+      return { start: isoDate(start), end: isoDate(end) };
+    }
+  }
+
+  throw new Error("Staging no tiene un rango consecutivo disponible para el smoke test.");
+}
+
+const MONTH_NAMES_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
 export async function addAvailableProductToCheckout(
   page: Page,
+  request: APIRequestContext,
   product: StagingProduct,
 ): Promise<void> {
   const variant = product.variants.find((candidate) =>
@@ -120,6 +191,8 @@ export async function addAvailableProductToCheckout(
     throw new Error("El producto seleccionado no tiene una variante disponible.");
   }
 
+  const selectedRange = await findAvailableDateRange(request, product._id, variant.size, variant.stock);
+
   await page.goto(`/product/${product._id}`);
   await page.getByRole("button", { name: variant.size, exact: true }).click();
 
@@ -128,11 +201,22 @@ export async function addAvailableProductToCheckout(
     await expect(availabilityLoading).toBeHidden({ timeout: 15_000 });
   }
 
-  const dayButtons = page.locator("div.grid-cols-7 button:not([disabled])");
-  await expect(dayButtons.first()).toBeEnabled({ timeout: 15_000 });
-  await dayButtons.nth(0).click();
-  await expect(dayButtons.nth(1)).toBeEnabled({ timeout: 15_000 });
-  await dayButtons.nth(1).click();
+  const now = new Date();
+  const target = new Date(`${selectedRange.start}T12:00:00.000Z`);
+  const monthDelta = (target.getUTCFullYear() - now.getUTCFullYear()) * 12
+    + target.getUTCMonth() - now.getUTCMonth();
+  for (let month = 0; month < monthDelta; month += 1) {
+    await page.getByRole("button", { name: "Mes siguiente" }).click();
+  }
+  await expect(page.getByText(`${MONTH_NAMES_ES[target.getUTCMonth()]} ${target.getUTCFullYear()}`, { exact: true }))
+    .toBeVisible();
+
+  const startButton = page.getByRole("button", { name: new RegExp(`^${selectedRange.start}(?: |$)`) });
+  const endButton = page.getByRole("button", { name: new RegExp(`^${selectedRange.end}(?: |$)`) });
+  await expect(startButton).toBeEnabled({ timeout: 15_000 });
+  await startButton.click();
+  await expect(endButton).toBeEnabled({ timeout: 15_000 });
+  await endButton.click();
 
   await page.getByRole("button", { name: "Añadir al Carrito" }).click();
   await page.getByRole("button", { name: "Ir al Carrito", exact: true }).click();
