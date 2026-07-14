@@ -4,6 +4,7 @@ export interface AppConfig {
   appEnv: AppEnvironment;
   authMocksEnabled: boolean;
   integrationsMode: "real" | "demo";
+  stripeMode: "test" | "live" | "unset";
   frontendUrl?: string;
 }
 
@@ -29,6 +30,12 @@ function isPlaceholder(value: string | undefined): boolean {
   return value === undefined || PLACEHOLDER_VALUES.has(value);
 }
 
+function stripeModeForKey(value: string | undefined): AppConfig["stripeMode"] {
+  if (value?.startsWith("sk_test_")) return "test";
+  if (value?.startsWith("sk_live_")) return "live";
+  return "unset";
+}
+
 function requiredVariables(environment: AppEnvironment, env: Record<string, string | undefined>): string[] {
   if (environment !== "staging" && environment !== "production") return [];
 
@@ -48,6 +55,17 @@ function requiredVariables(environment: AppEnvironment, env: Record<string, stri
   ];
 
   if (environment === "production") names.push("BACKUP_ENCRYPTION_KEY");
+
+  const stripeMode = stripeModeForKey(env.STRIPE_SECRET_KEY);
+  if (environment === "staging" && stripeMode !== "test") {
+    names.push("STRIPE_SECRET_KEY debe comenzar con sk_test_");
+  }
+  if (environment === "production" && stripeMode !== "live") {
+    names.push("STRIPE_SECRET_KEY debe comenzar con sk_live_");
+  }
+  if (environment === "staging" || environment === "production") {
+    if (env.INTEGRATIONS_MODE === "demo") names.push("INTEGRATIONS_MODE debe ser real");
+  }
 
   return names.filter((name) => isPlaceholder(env[name]));
 }
@@ -72,6 +90,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     appEnv,
     authMocksEnabled,
     integrationsMode,
+    stripeMode: stripeModeForKey(env.STRIPE_SECRET_KEY),
     frontendUrl: env.FRONTEND_URL,
   };
 }

@@ -11,6 +11,7 @@ import {
   createStripeSession,
   handleStripeWebhook,
   isStripeConfigured,
+  isStripeDemoAllowed,
   type IPopulatedRental,
 } from "../services/stripe.js";
 import { recordMetric, structuredLog } from "../services/observability.js";
@@ -150,8 +151,17 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     }
   }
 
-  // Demo mode
+  // El modo demo solo es válido para desarrollo local y CI. Staging y producción
+  // deben fallar de forma explícita si Stripe no está configurado.
   if (!isStripeConfigured()) {
+    if (!isStripeDemoAllowed()) {
+      throw new AppError(
+        "Stripe debe estar configurado en staging y producción.",
+        503,
+        "STRIPE_NOT_CONFIGURED",
+      );
+    }
+
     for (const rental of rentals) {
       rental.status = "paid";
       rental.payment_status = "completed";
@@ -215,8 +225,15 @@ stripe.get("/verify-session", authMiddleware, async (c) => {
 // so that Stripe can verify the webhook signature. Hono reads the body lazily,
 // so `c.req.text()` returns the unaltered bytes — this is correct.
 stripe.post("/webhook", async (c) => {
-  // Demo mode: ignore webhook calls
+  // Nunca aceptar webhooks simulados fuera de local/CI.
   if (!isStripeConfigured()) {
+    if (!isStripeDemoAllowed()) {
+      throw new AppError(
+        "Stripe debe estar configurado para recibir webhooks.",
+        503,
+        "STRIPE_WEBHOOK_NOT_CONFIGURED",
+      );
+    }
     return c.json({ received: true, mode: "demo" });
   }
 
