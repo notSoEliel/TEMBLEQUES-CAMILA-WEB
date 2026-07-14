@@ -87,7 +87,7 @@ test.describe("Staging - evidencia operativa de fase 3", () => {
   });
 
   test("H51: dashboard técnico visible para una cuenta administrativa", async ({ page }) => {
-    await loginWithClerk(page);
+    await loginWithClerk(page, requireEnvironment("E2E_CLERK_ADMIN_EMAIL"));
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.getByText("Salud técnica", { exact: true })).toBeVisible();
