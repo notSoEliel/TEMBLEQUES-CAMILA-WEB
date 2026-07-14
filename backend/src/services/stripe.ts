@@ -88,6 +88,7 @@ export async function createStripeSession(
 export async function handleStripeWebhook(
   rawBody: string,
   signature: string,
+  requestId?: string,
 ): Promise<{ received: boolean; event?: string }> {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret || webhookSecret === "whsec_placeholder") {
@@ -111,22 +112,20 @@ export async function handleStripeWebhook(
     );
   }
 
-  try {
-    await StripeWebhookEvent.create({
-      event_id: event.id,
-      event_type: event.type,
-    });
-  } catch (error: unknown) {
-    if (isDuplicateKeyError(error)) {
-      return { received: true, event: event.type };
-    }
-    throw error;
-  }
+  const claimed = await claimWebhookEvent(event.id, event.type, requestId);
+  if (!claimed) return { received: true, event: event.type };
 
   try {
-    await processStripeEvent(event);
+    await processStripeEvent(event, requestId);
+    await StripeWebhookEvent.updateOne(
+      { event_id: event.id },
+      { $set: { status: "processed", processed_at: new Date(), last_error: undefined } },
+    );
   } catch (error: unknown) {
-    await StripeWebhookEvent.deleteOne({ event_id: event.id });
+    await StripeWebhookEvent.updateOne(
+      { event_id: event.id },
+      { $set: { status: "failed", last_error: errorMessage(error) } },
+    );
     throw error;
   }
 
@@ -140,10 +139,52 @@ function isDuplicateKeyError(error: unknown): boolean {
     && error.code === 11000;
 }
 
-async function processStripeEvent(event: import("stripe").Stripe.Event): Promise<void> {
+function errorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : "Error desconocido").slice(0, 500);
+}
+
+async function claimWebhookEvent(
+  eventId: string,
+  eventType: string,
+  requestId?: string,
+): Promise<boolean> {
+  try {
+    await StripeWebhookEvent.create({
+      event_id: eventId,
+      event_type: eventType,
+      status: "processing",
+      attempts: 1,
+      request_id: requestId,
+    });
+    return true;
+  } catch (error: unknown) {
+    if (!isDuplicateKeyError(error)) throw error;
+  }
+
+  const existing = await StripeWebhookEvent.findOne({ event_id: eventId });
+  if (!existing || existing.status === "processed" || existing.status === "processing") {
+    return false;
+  }
+
+  const retried = await StripeWebhookEvent.findOneAndUpdate(
+    { event_id: eventId, status: "failed" },
+    {
+      $set: { status: "processing", event_type: eventType, request_id: requestId, last_error: undefined },
+      $inc: { attempts: 1 },
+    },
+    { new: true },
+  );
+  return Boolean(retried);
+}
+
+async function processStripeEvent(
+  event: import("stripe").Stripe.Event,
+  requestId?: string,
+): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
+      validateCheckoutSession(session);
       const orderGroupId = session.metadata?.orderGroupId;
       
       let rentalsToUpdate: IRental[] = [];
@@ -159,6 +200,11 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
         }
       }
 
+      if (rentalsToUpdate.length === 0) {
+        throw new AppError("No se encontraron reservas para la sesión de Stripe.", 404, "STRIPE_RENTALS_NOT_FOUND");
+      }
+      validateCheckoutOwnershipAndAmount(session, rentalsToUpdate);
+
       for (const rental of rentalsToUpdate) {
         rental.status = rental.payment_type === "full" ? "paid" : "reserved";
         rental.payment_status = "completed";
@@ -172,7 +218,7 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
           await rental.save();
         }
       }
-      recordMetric("checkout_completed_total", rentalsToUpdate.length, { mode: "stripe" });
+      recordMetric("checkout_completed_total", rentalsToUpdate.length, { mode: "stripe", requestId: requestId ?? "unknown" });
       break;
     }
 
@@ -227,6 +273,41 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
 
     default:
       break;
+  }
+}
+
+function validateCheckoutSession(session: import("stripe").Stripe.Checkout.Session): void {
+  if (session.status !== "complete" || session.payment_status !== "paid") {
+    throw new AppError("La sesión de Stripe no confirma un pago completado.", 409, "STRIPE_PAYMENT_NOT_CONFIRMED");
+  }
+  if (!session.metadata?.userId) {
+    throw new AppError("La sesión de Stripe no identifica al usuario.", 400, "STRIPE_SESSION_METADATA_INVALID");
+  }
+  if (typeof session.amount_total !== "number" || session.amount_total <= 0) {
+    throw new AppError("La sesión de Stripe no contiene un monto válido.", 400, "STRIPE_SESSION_AMOUNT_INVALID");
+  }
+  if (session.currency && session.currency.toLowerCase() !== "pab") {
+    throw new AppError("La moneda de la sesión de Stripe no es PAB.", 400, "STRIPE_SESSION_CURRENCY_INVALID");
+  }
+}
+
+function validateCheckoutOwnershipAndAmount(
+  session: import("stripe").Stripe.Checkout.Session,
+  rentals: IRental[],
+): void {
+  const expectedUserId = session.metadata?.userId;
+  const hasForeignRental = rentals.some((rental) => rental.user_id.toString() !== expectedUserId);
+  if (hasForeignRental) {
+    throw new AppError("La sesión de Stripe no pertenece a las reservas indicadas.", 403, "STRIPE_SESSION_OWNER_MISMATCH");
+  }
+
+  const expectedAmount = rentals.reduce((sum, rental) => {
+    const discountedTotal = Math.max(0, rental.total - (rental.discount_amount ?? 0));
+    const amount = rental.payment_type === "full" ? discountedTotal : rental.deposit_amount;
+    return sum + toCents(amount);
+  }, 0);
+  if (session.amount_total !== expectedAmount) {
+    throw new AppError("El monto de Stripe no coincide con las reservas internas.", 409, "STRIPE_SESSION_AMOUNT_MISMATCH");
   }
 }
 
