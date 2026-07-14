@@ -65,6 +65,7 @@ function requiredScopeFor(
   if (path.includes("/maintenance")) return "inventory.write";
   if (path.startsWith("/api/admin/products")) return "products.write";
   if (path.includes("/reports")) return "reports.read";
+  if (path === "/api/admin/payments/reconcile") return "payments.reconcile";
   if (path.includes("/settings")) return "settings.write";
   if (path.startsWith("/api/admin/rentals")) return "reservations.read";
   return undefined;
@@ -376,14 +377,13 @@ server.registerTool(
   "payments.reconcile.run",
   {
     title: "Conciliacion de pagos",
-    description: "Lista reservas administrativas para detectar estados de pago inconsistentes.",
-    inputSchema: { page: z.number().default(1), limit: z.number().default(50) },
+    description: "Compara reservas internas, Checkout Sessions, PaymentIntents y evidencia de webhooks de Stripe.",
+    inputSchema: {},
   },
-  async (input) => response(await api(
-    `/api/admin/rentals${toQuery(input)}`,
+  async () => response(await api(
+    "/api/admin/payments/reconcile",
     "admin",
-    {},
-    "payments.reconcile",
+    { method: "POST" },
   )),
 );
 
