@@ -88,8 +88,7 @@ async function ensureClerkSetup(): Promise<void> {
   await clerkSetupPromise;
 }
 
-export async function loginWithClerk(page: Page): Promise<void> {
-  const email = requireEnvironment("E2E_CLERK_EMAIL");
+export async function loginWithClerk(page: Page, email = requireEnvironment("E2E_CLERK_EMAIL")): Promise<void> {
 
   await ensureClerkSetup();
   await page.goto("/");
