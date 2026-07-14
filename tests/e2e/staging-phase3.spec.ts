@@ -109,8 +109,11 @@ test.describe("Staging - evidencia operativa de fase 3", () => {
 
     const alreadyAnonymized = /^deleted-[a-f0-9]{24}@privacy\.invalid$/.test(before.profile.email);
     if (alreadyAnonymized) {
-      expect(before.profile.name).toBe("Usuario anonimizado");
-      for (const acceptance of before.termsAcceptances) {
+      const reapplyResponse = await request.delete(`${backendURL()}/api/privacy`, { headers });
+      expect(reapplyResponse.status()).toBe(200);
+      const after = await fetchJson<PrivacyExport>(request, "/api/privacy/export", headers);
+      expect(after.profile.name).toBe("Usuario anonimizado");
+      for (const acceptance of after.termsAcceptances) {
         expect(acceptance.ip_address).toBe("anonimizada");
         expect(acceptance.user_agent).toBe("anonimizado");
       }
