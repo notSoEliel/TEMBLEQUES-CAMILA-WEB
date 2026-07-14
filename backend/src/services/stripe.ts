@@ -112,7 +112,7 @@ export async function handleStripeWebhook(
     );
   }
 
-  const claimed = await claimWebhookEvent(event.id, event.type, requestId);
+  const claimed = await claimWebhookEvent(event.id, event.type, getStripeObjectId(event), requestId);
   if (!claimed) return { received: true, event: event.type };
 
   try {
@@ -146,12 +146,14 @@ function errorMessage(error: unknown): string {
 async function claimWebhookEvent(
   eventId: string,
   eventType: string,
+  stripeObjectId: string | undefined,
   requestId?: string,
 ): Promise<boolean> {
   try {
     await StripeWebhookEvent.create({
       event_id: eventId,
       event_type: eventType,
+      stripe_object_id: stripeObjectId,
       status: "processing",
       attempts: 1,
       request_id: requestId,
@@ -169,12 +171,23 @@ async function claimWebhookEvent(
   const retried = await StripeWebhookEvent.findOneAndUpdate(
     { event_id: eventId, status: "failed" },
     {
-      $set: { status: "processing", event_type: eventType, request_id: requestId, last_error: undefined },
+      $set: {
+        status: "processing",
+        event_type: eventType,
+        stripe_object_id: stripeObjectId,
+        request_id: requestId,
+        last_error: undefined,
+      },
       $inc: { attempts: 1 },
     },
     { new: true },
   );
   return Boolean(retried);
+}
+
+function getStripeObjectId(event: import("stripe").Stripe.Event): string | undefined {
+  const object = event.data.object as { id?: unknown };
+  return typeof object.id === "string" ? object.id : undefined;
 }
 
 async function processStripeEvent(
@@ -355,11 +368,8 @@ async function hydrateRentalPaymentSources(
     rental.stripe_customer_id = intent.customer;
   }
 
-  if (typeof intent.payment_method === "string") {
-    rental.stripe_payment_method_id = intent.payment_method;
-  } else if (intent.payment_method && typeof intent.payment_method === "object") {
-    rental.stripe_payment_method_id = intent.payment_method.id;
-  }
+  // No persistimos el método de pago: el checkout no solicita consentimiento
+  // para reutilizarlo ni implementa Faster Checkout/contactos guardados.
 }
 
 function assertReusablePaymentSource(rental: IRental, operationCode: string): void {

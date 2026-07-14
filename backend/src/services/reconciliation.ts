@@ -35,7 +35,11 @@ export async function reconcilePayments(params: { requestId?: string }): Promise
       const [session, intent, webhook] = await Promise.all([
         stripe.checkout.sessions.retrieve(rental.stripe_session_id),
         stripe.paymentIntents.retrieve(rental.stripe_payment_intent_id),
-        StripeWebhookEvent.findOne({ event_type: "checkout.session.completed", status: "processed" }).lean(),
+        StripeWebhookEvent.findOne({
+          event_type: "checkout.session.completed",
+          status: "processed",
+          stripe_object_id: rental.stripe_session_id,
+        }).lean(),
       ]);
       const stripeAmount = (session.amount_total ?? intent.amount) / 100;
       if (Math.abs(stripeAmount - expectedAmount) > 0.01) {
