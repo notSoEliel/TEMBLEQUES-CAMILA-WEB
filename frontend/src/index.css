@@ -221,6 +221,13 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-serif);
   }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 3px;
+  }
+  :where(a, button, input, select, textarea, [tabindex]):focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 /* === Utilidades de marca globales === */

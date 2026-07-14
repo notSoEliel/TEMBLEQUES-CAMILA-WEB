@@ -18,6 +18,7 @@ import {
   Ticket,
   BarChart3,
 } from "lucide-react";
+import { SkipLink } from "@/components/ui/AccessibilityTools";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -44,6 +45,7 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-muted/30">
+      <SkipLink />
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-background border-r border-border/60 h-[100dvh] sticky top-0 overflow-y-auto shadow-elegant">
         {/* Brand */}
@@ -83,6 +85,7 @@ export default function AdminLayout() {
                     ? "bg-primary/10 text-primary border-l-2 border-primary pl-[calc(0.875rem-2px)]"
                     : "text-muted-foreground hover:bg-primary/5 hover:text-foreground border-l-2 border-transparent pl-[calc(0.875rem-2px)]"
                 }`}
+                aria-current={isActive ? "page" : undefined}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
@@ -174,6 +177,7 @@ export default function AdminLayout() {
                         ? "bg-primary/10 text-primary border-l-2 border-primary pl-[calc(0.875rem-2px)]"
                         : "text-muted-foreground hover:bg-primary/5 hover:text-foreground border-l-2 border-transparent pl-[calc(0.875rem-2px)]"
                     }`}
+                    aria-current={isActive ? "page" : undefined}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     {item.label}
@@ -204,7 +208,7 @@ export default function AdminLayout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-w-0">
+      <main id="main-content" tabIndex={-1} className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-w-0 outline-none">
         <div className="max-w-7xl mx-auto">
           <Outlet />
         </div>

@@ -29,6 +29,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
+import { SkipLink } from "@/components/ui/AccessibilityTools";
 
 export default function ClientLayout() {
   const { user, logout } = useAuth();
@@ -43,6 +44,7 @@ export default function ClientLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <SkipLink />
       {/* Navbar Premium */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -212,6 +214,7 @@ export default function ClientLayout() {
               <LanguageToggle className="hidden md:flex" />
               <Link
                 to="/cart"
+                aria-label={`${t("nav.cart")}${items.length > 0 ? `, ${items.length} ${t("nav.cartItems")}` : ""}`}
                 className="group relative p-2.5 hover:bg-primary/5 rounded-full transition-all duration-300 flex items-center justify-center"
               >
                 <ShoppingCart className="h-5.5 w-5.5 text-foreground group-hover:text-primary" />
@@ -327,7 +330,7 @@ export default function ClientLayout() {
 
 
       {/* Main content */}
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
         <Outlet />
       </main>
 
