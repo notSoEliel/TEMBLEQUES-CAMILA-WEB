@@ -226,6 +226,18 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByText("Stripe", { exact: false })).toBeVisible();
   });
 
+  test("Debe permitir registrar y revisar una incidencia operativa", async ({ page }) => {
+    await setMockAuth(page, "mock-admin-token");
+    await page.goto("/admin/incidents");
+    await expect(page.getByRole("heading", { name: "Incidencias", exact: true })).toBeVisible();
+    const description = `Incidencia E2E ${Date.now()} con seguimiento administrativo.`;
+    await page.getByLabel("Descripción").fill(description);
+    await page.getByRole("button", { name: "Registrar incidencia" }).click();
+    await expect(page.getByText(description, { exact: true })).toBeVisible();
+    await page.locator('select[aria-label^="Estado de incidencia"]').last().selectOption("in_review");
+    await expect(page.locator('select[aria-label^="Estado de incidencia"]').last()).toHaveValue("in_review");
+  });
+
   test("Debe enviar mensajes de contacto y mostrarlos en administración", async ({ page }) => {
     await page.goto("/contacto");
 
