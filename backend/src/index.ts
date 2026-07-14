@@ -21,6 +21,7 @@ import mediaRoutes from "./routes/media.js";
 import observabilityRoutes from "./routes/observability.js";
 import incidentRoutes from "./routes/incidents.js";
 import privacyRoutes from "./routes/privacy.js";
+import notificationRoutes from "./routes/notifications.js";
 import { startCronJobs } from "./services/cron.js";
 import { loadConfig } from "./config.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
@@ -125,6 +126,7 @@ app.route("/api/media", mediaRoutes);
 app.route("/api/admin/observability", observabilityRoutes);
 app.route("/api/admin/incidents", incidentRoutes);
 app.route("/api/privacy", privacyRoutes);
+app.route("/api/notifications", notificationRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;

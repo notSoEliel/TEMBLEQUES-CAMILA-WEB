@@ -8,6 +8,8 @@ import { Product } from "../models/Product.js";
 import { AppError } from "../lib/errors.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
 import { adminAuditMiddleware } from "../services/audit.js";
+import { dispatchNotification } from "../services/notifications.js";
+import { structuredLog } from "../services/observability.js";
 
 const incidents = new Hono<{ Variables: AuthVariables }>();
 incidents.use("/*", authMiddleware, adminAuditMiddleware);
@@ -19,6 +21,7 @@ incidents.patch("/:id", requirePermission("incidents.write"));
 const typeSchema = z.enum(["damage", "late_return", "payment_issue", "customer_complaint", "maintenance", "other"]);
 const severitySchema = z.enum(["low", "medium", "high", "critical"]);
 const statusSchema = z.enum(["open", "in_review", "resolved", "closed"]);
+const STATUS_LABELS: Record<IncidentStatus, string> = { open: "abierta", in_review: "en revisión", resolved: "resuelta", closed: "cerrada" };
 const attachmentSchema = z.object({ label: z.string().trim().min(1).max(160), url: z.string().url().max(1000) });
 const createSchema = z.object({
   rentalId: z.string().optional(),
@@ -102,6 +105,27 @@ incidents.post("/", async (c) => {
     created_by: actor._id,
     updated_by: actor._id,
   });
+  const recipientId = incident.user_id?.toString();
+  if (recipientId) {
+    void User.findById(recipientId).select("email").lean()
+      .then((recipient) => dispatchNotification({
+        userId: recipientId,
+        email: recipient?.email,
+        type: "incident_created",
+        title: "Incidencia registrada",
+        message: "Registramos una incidencia relacionada con tu reserva. Nuestro equipo dará seguimiento al caso.",
+        idempotencyKey: `incident:created:${incident._id.toString()}`,
+        metadata: { incidentId: incident._id.toString() },
+      }))
+      .catch((error: unknown) => {
+        structuredLog("error", "notification.dispatch_failed", {
+          source: "incident.create",
+          incidentId: incident._id.toString(),
+          type: "incident_created",
+          errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+        });
+      });
+  }
   return c.json({ incident }, 201);
 });
 
@@ -120,6 +144,27 @@ incidents.patch("/:id", async (c) => {
   if (body.resolution !== undefined) incident.resolution = body.resolution ?? undefined;
   incident.updated_by = actor._id;
   await incident.save();
+  const recipientId = incident.user_id?.toString();
+  if (recipientId) {
+    void User.findById(recipientId).select("email").lean()
+      .then((recipient) => dispatchNotification({
+        userId: recipientId,
+        email: recipient?.email,
+        type: "incident_updated",
+        title: "Incidencia actualizada",
+        message: `La incidencia relacionada con tu reserva ahora está: ${STATUS_LABELS[nextStatus]}.`,
+        idempotencyKey: `incident:updated:${incident._id.toString()}:${incident.updatedAt.toISOString()}`,
+        metadata: { incidentId: incident._id.toString(), status: nextStatus },
+      }))
+      .catch((error: unknown) => {
+        structuredLog("error", "notification.dispatch_failed", {
+          source: "incident.update",
+          incidentId: incident._id.toString(),
+          type: "incident_updated",
+          errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+        });
+      });
+  }
   return c.json({ incident });
 });
 

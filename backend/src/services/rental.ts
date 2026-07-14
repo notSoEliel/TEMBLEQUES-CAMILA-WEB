@@ -17,6 +17,9 @@ import {
   isStripeConfigured,
   releaseDepositHold,
 } from "./stripe.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "./notifications.js";
+import { structuredLog } from "./observability.js";
 
 /**
  * Calculates the total rental cost based on price per day and the date range.
@@ -265,6 +268,27 @@ export async function updateRentalStatus(
   }
 
   await rental.save();
+
+  if (newStatus === "cancelled") {
+    void User.findById(rental.user_id).select("email").lean()
+      .then((recipient) => dispatchNotification({
+        userId: rental.user_id.toString(),
+        email: recipient?.email,
+        type: "reservation_cancelled",
+        title: "Reserva cancelada",
+        message: "Tu reserva fue cancelada por el equipo de Tembleques Camila. Contacta al equipo si necesitas más información.",
+        idempotencyKey: `admin:rental-cancelled:${rental._id.toString()}`,
+        metadata: { rentalId: rental._id.toString() },
+      }))
+      .catch((error: unknown) => {
+        structuredLog("error", "notification.dispatch_failed", {
+          source: "admin.rental_status",
+          rentalId: rental._id.toString(),
+          type: "reservation_cancelled",
+          errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+        });
+      });
+  }
 
   if (newStatus === "late" && rental.late_fee_amount > 0) {
     if (!isStripeConfigured()) {

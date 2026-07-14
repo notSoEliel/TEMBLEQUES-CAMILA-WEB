@@ -114,6 +114,27 @@ export interface AdminIncident {
   timeline: Array<{ status: AdminIncidentStatus; note?: string; timestamp: string; actor_id?: { name?: string; email?: string } }>;
 }
 
+export type NotificationType =
+  | "payment_confirmed"
+  | "payment_failed"
+  | "payment_expired"
+  | "reservation_cancelled"
+  | "refund_completed"
+  | "incident_created"
+  | "incident_updated"
+  | "low_stock";
+
+export interface UserNotification {
+  _id: string;
+  type: NotificationType;
+  channel: "in_app";
+  title: string;
+  message: string;
+  read_at?: string;
+  delivery_status: "sent";
+  createdAt: string;
+}
+
 export interface ApiErrorPayload {
   error?: unknown;
   message?: unknown;
@@ -293,6 +314,19 @@ export const authApi = {
     api<{ user: IUserProfile }>("/auth/me", { token }),
   updateMe: (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }, token: string) =>
     api<{ user: IUserProfile }>("/auth/me", { method: "PATCH", body: data, token }),
+};
+
+export const notificationsApi = {
+  list: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<UserNotification> & { unreadCount: number }>(`/notifications${query}`, { token });
+  },
+
+  markRead: (id: string, token: string) =>
+    api<{ notification: UserNotification }>(`/notifications/${id}/read`, { method: "PATCH", token }),
 };
 
 // Contact

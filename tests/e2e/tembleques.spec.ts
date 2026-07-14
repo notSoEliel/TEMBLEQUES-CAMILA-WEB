@@ -238,6 +238,60 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.locator('select[aria-label^="Estado de incidencia"]').last()).toHaveValue("in_review");
   });
 
+  test("Debe crear una notificación interna sin exponerla a otro usuario", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
+    const size = product.variants.find((variant) => !variant.in_maintenance && variant.stock > 0)?.size;
+    if (!size) throw new Error("El producto semilla no tiene talla disponible.");
+
+    const createRentalResponse = await request.post("http://localhost:3000/api/rentals", {
+      headers: { Authorization: "Bearer mock-client-token" },
+      data: {
+        productId: product._id,
+        selectedSize: size,
+        startDate: futureDate(250),
+        endDate: futureDate(252),
+        termsAccepted: true,
+        paymentType: "reservation",
+        orderGroupId: `phase6-notifications-${Date.now()}`,
+      },
+    });
+    expect(createRentalResponse.ok()).toBeTruthy();
+    const created = await createRentalResponse.json() as RentalResponse & { rental: { _id: string } };
+
+    const incidentResponse = await request.post("http://localhost:3000/api/admin/incidents", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: {
+        rentalId: created.rental._id,
+        type: "customer_complaint",
+        severity: "medium",
+        description: `Notificación E2E ${Date.now()} con reserva asociada.`,
+      },
+    });
+    expect(incidentResponse.ok()).toBeTruthy();
+
+    await expect.poll(async () => {
+      const response = await request.get("http://localhost:3000/api/notifications?page=1&limit=20", {
+        headers: { Authorization: "Bearer mock-client-token" },
+      });
+      if (!response.ok()) return false;
+      const payload = await response.json() as { data: Array<{ title: string; read_at?: string }> };
+      return payload.data.some((notification) => notification.title === "Incidencia registrada");
+    }, { timeout: 10_000 }).toBeTruthy();
+
+    const forbiddenResponse = await request.get("http://localhost:3000/api/notifications?page=1&limit=20", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+    });
+    expect(forbiddenResponse.ok()).toBeTruthy();
+    const adminPayload = await forbiddenResponse.json() as { data: Array<{ title: string }> };
+    expect(adminPayload.data.some((notification) => notification.title === "Incidencia registrada")).toBeFalsy();
+
+    await setMockAuth(page, "mock-client-token");
+    await page.goto("/notifications");
+    await expect(page.getByRole("heading", { name: /Notificaciones|Notifications/ })).toBeVisible();
+    await expect(page.getByText("Incidencia registrada", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: /Marcar como leída|Mark as read/ }).first().click();
+  });
+
   test("Debe enviar mensajes de contacto y mostrarlos en administración", async ({ page }) => {
     await page.goto("/contacto");
 
