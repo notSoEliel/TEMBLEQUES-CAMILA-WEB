@@ -46,6 +46,28 @@ describe("autenticación HTTP del MCP", () => {
     expect(principal?.mode).toBe("client");
     expect(hasMcpScope(principal ?? undefined, "catalog.read")).toBe(true);
     expect(hasMcpScope(principal ?? undefined, "dashboard.read")).toBe(false);
+    expect(hasMcpScope(principal ?? undefined, "observability.read")).toBe(false);
+  });
+
+  it("captura el token Clerk sin incluirlo en la identidad pública", () => {
+    const config = loadMcpAuthConfig(environment);
+    const principal = authenticateMcpRequest(
+      new Request("http://localhost/mcp", {
+        headers: {
+          Authorization: "Bearer client-secret-key",
+          "X-MCP-Clerk-Token": "clerk-session-token",
+        },
+      }),
+      config,
+    );
+
+    expect(principal?.identityToken).toBe("clerk-session-token");
+    expect(principal?.id).toBe("mcp-client-key");
+  });
+
+  it("no permite scopes protegidos sin principal autenticado", () => {
+    expect(hasMcpScope(undefined, "dashboard.read")).toBe(false);
+    expect(hasMcpScope(undefined, "catalog.read")).toBe(false);
   });
 
   it("rechaza credenciales ausentes o inválidas", () => {

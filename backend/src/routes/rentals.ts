@@ -113,6 +113,55 @@ rentals.get("/my", async (c) => {
   return c.json(createPaginatedResponse(myRentals, total, page, limit));
 });
 
+// POST /api/rentals/:id/cancel-pending - MCP-safe cancellation without refund policy
+rentals.post("/:id/cancel-pending", async (c) => {
+  const user = c.get("user");
+  const rental = await Rental.findOne({
+    _id: c.req.param("id"),
+    user_id: user._id,
+  });
+
+  if (!rental) {
+    throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  }
+
+  if (rental.status !== "pending") {
+    throw new AppError(
+      "La tool MCP solo puede cancelar reservas en estado pendiente.",
+      409,
+      "RENTAL_PENDING_CANCELLATION_ONLY",
+    );
+  }
+
+  rental.status = "cancelled";
+  rental.payment_status = "cancelled";
+  await rental.save();
+
+  void User.findById(rental.user_id).select("email").lean()
+    .then((recipient) => dispatchNotification({
+      userId: rental.user_id.toString(),
+      email: recipient?.email,
+      type: "reservation_cancelled",
+      title: "Reserva cancelada",
+      message: "Tu reserva pendiente fue cancelada correctamente.",
+      idempotencyKey: `rental:pending-cancelled:${rental._id.toString()}`,
+      metadata: { rentalId: rental._id.toString(), source: "mcp" },
+    }))
+    .catch((error: unknown) => {
+      structuredLog("error", "notification.dispatch_failed", {
+        source: "mcp.rental.pending_cancel",
+        rentalId: rental._id.toString(),
+        type: "reservation_cancelled",
+        errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+      });
+    });
+
+  return c.json({
+    message: "Reserva pendiente cancelada correctamente.",
+    rental,
+  });
+});
+
 // GET /api/rentals/:id - Single rental
 rentals.get("/:id", async (c) => {
   const user = c.get("user") as any;

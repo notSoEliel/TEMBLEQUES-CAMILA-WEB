@@ -1,113 +1,157 @@
 # Servidor MCP
 
-## Objetivo
+## Objetivo y estado
 
-El servidor MCP expone herramientas autenticadas para que Codex o Claude Code consulten y operen capacidades clave de Tembleques Camila. Las tools corresponden a historias marcadas como `[MCP]` en el documento A13 y cubren catalogo, reservas, pagos, administracion, reportes, auditoria y salud tecnica.
+El servidor MCP expone las historias H83–H100 como tools para Codex o Claude Code. El endpoint remoto está desplegado en Railway dentro del proyecto académico `tembleques-camila-staging`; aunque Railway etiqueta técnicamente el entorno como `production`, en este proyecto se trata como staging.
 
-## Despliegue remoto
+El endpoint HTTP `/mcp` exige una API key MCP incluso para tools de catálogo público. “Público” describe el permiso de la tool, no la apertura del transporte. `/health` es el único endpoint público del servicio y solo confirma que el proceso está vivo.
 
-- MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
-- Healthcheck: https://mcp-server-production-321a.up.railway.app/health
-- Plataforma: Railway, servicio `mcp-server`.
-- Transporte: Streamable HTTP.
-- Backend consumido: https://backend-production-e696.up.railway.app
+## Identidad y autorización
 
-El endpoint `/mcp` acepta JSON-RPC MCP por HTTP y exige `Authorization: Bearer <MCP_API_KEY>`. El endpoint `/health` permite verificar que el servicio esta vivo sin exponer la configuración interna.
+La autenticación tiene dos capas:
 
-## Ejecucion local HTTP
+1. `Authorization: Bearer <MCP_API_KEY>` autentica al consumidor MCP y determina sus scopes.
+2. `X-MCP-Clerk-Token: <token-de-sesión-Clerk>` identifica al usuario real para las tools de cliente.
+
+El token Clerk se valida posteriormente en el backend Hono. El servidor MCP no lo guarda en MongoDB, no lo imprime y no lo incluye en respuestas o logs. Las tools `rentals.*` y `payments.checkout.create` fallan si se usa la API key cliente sin identidad Clerk.
+
+Variables externas:
+
+- `MCP_ADMIN_API_KEY`: key con scopes administrativos, técnicos y financieros.
+- `MCP_CLIENT_API_KEY`: key con scopes de cliente.
+
+Variables internas:
+
+- `MCP_BACKEND_ADMIN_TOKEN`: credencial MCP hacia el usuario de servicio administrativo del backend.
+- `MCP_BACKEND_CLIENT_TOKEN`: compatibilidad para ejecución local explícita con identidad de servicio.
+- `MCP_CLIENT_IDENTITY=clerk`: obligatorio para HTTP remoto de staging.
+
+No se crean tokens separados de finanzas o diagnóstico en esta fase; esa separación queda modelada mediante scopes y pruebas negativas.
+
+## Matriz de scopes
+
+| Grupo | Scopes |
+|---|---|
+| Catálogo | `catalog.read`, `availability.read` |
+| Cliente | `rentals.create`, `rentals.read.own`, `rentals.cancel.own`, `payments.create` |
+| Administración | `dashboard.read`, `reservations.read`, `reservations.write`, `products.write`, `inventory.write`, `users.read`, `reports.read`, `audit.read`, `observability.read`, `payments.reconcile` |
+
+La autorización se verifica antes de llamar al backend. Un principal inexistente nunca recibe scopes implícitos.
+
+## Configuración local HTTP
 
 ```bash
 cd mcp-server
 bun install
 MCP_BACKEND_URL=http://localhost:3000 \
 MCP_AUTH_REQUIRED=true \
+MCP_CLIENT_IDENTITY=clerk \
 MCP_ADMIN_API_KEY='clave-admin-larga' \
 MCP_CLIENT_API_KEY='clave-cliente-larga' \
 MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
-MCP_BACKEND_CLIENT_TOKEN='credencial-interna-cliente' \
 MCP_ALLOWED_ORIGIN=http://localhost:5173 \
 PORT=3900 \
 bun run start
 ```
 
-URLs locales:
+Para ejecutar tools cliente desde una integración HTTP, la petición debe llevar además el token Clerk vigente:
 
-- Healthcheck: http://localhost:3900/health
-- MCP: http://localhost:3900/mcp
+```bash
+curl -sS http://localhost:3900/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "Authorization: Bearer $MCP_CLIENT_API_KEY" \
+  -H "X-MCP-Clerk-Token: $CLERK_SESSION_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rentals.mine.list","arguments":{}}}'
+```
 
-## Ejecucion local stdio
+## Configuración local stdio
 
-El modo `stdio` se mantiene para importarlo directamente desde Codex o Claude Code.
+El transporte stdio está reservado para uso local explícito. No debe utilizarse como configuración remota de staging.
 
 ```bash
 cd mcp-server
 MCP_BACKEND_URL=http://localhost:3000 \
 MCP_AUTH_REQUIRED=false \
+MCP_CLIENT_IDENTITY=service \
 MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
 MCP_BACKEND_CLIENT_TOKEN='credencial-interna-cliente' \
 bun run start:stdio
 ```
 
-Comando importable:
+## Contrato operativo común
 
-```bash
-bun /ruta/al/repo/mcp-server/src/index.ts
-```
-
-## Variables requeridas
-
-- `MCP_BACKEND_URL`: URL del backend Hono.
-- `MCP_ADMIN_API_KEY`: API key externa con scopes administrativos.
-- `MCP_CLIENT_API_KEY`: API key externa con scopes de cliente.
-- `MCP_BACKEND_ADMIN_TOKEN`: credencial interna del MCP hacia el backend.
-- `MCP_BACKEND_CLIENT_TOKEN`: credencial interna de cliente hacia el backend.
-- `PORT`: puerto HTTP para Railway o desarrollo local.
-- `MCP_AUTH_REQUIRED`: debe ser `true` en staging y producción; solo se puede desactivar en stdio/local explícitamente.
-- `MCP_ALLOWED_ORIGIN`: lista separada por comas de orígenes permitidos; no se acepta `*` en staging ni producción.
-
-## Seguridad
-
-Todas las solicitudes HTTP a `/mcp`, incluidas `tools/list`, requieren una API key externa. Las tools administrativas y de cliente aplican scopes separados. El MCP usa credenciales internas distintas para llamar al backend y nunca imprime tokens.
-
-## Prueba rapida remota
-
-Listar tools:
-
-```bash
-curl -sS https://mcp-server-production-321a.up.railway.app/mcp \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -H "Authorization: Bearer $MCP_ADMIN_API_KEY" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-```
-
-Ejecutar health tool:
-
-```bash
-curl -sS https://mcp-server-production-321a.up.railway.app/mcp \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -H "Authorization: Bearer $MCP_ADMIN_API_KEY" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ops.health.check","arguments":{}}}'
-```
+- Cada llamada genera un `requestId` con formato `mcp-<UUID>`.
+- El `requestId` se propaga como `x-request-id` al backend y vuelve en la respuesta de la tool.
+- Las llamadas de lectura tienen timeout de 15 segundos.
+- Checkout y conciliación tienen timeout de 30 segundos.
+- Los errores de backend se normalizan sin stacks, tokens ni mensajes internos.
+- 401, 403, 404, 409 y 5xx conservan un código seguro y el `requestId`.
+- Los DTO administrativos son de lista blanca; no se devuelven IP, User-Agent, tokens ni datos de tarjeta innecesarios.
 
 ## Tools implementadas
 
-- `admin.dashboard.summary`
-- `catalog.products.search`
-- `catalog.availability.check`
-- `rentals.draft.create`
-- `payments.checkout.create`
-- `rentals.mine.list`
-- `rentals.pending.cancel`
-- `admin.rentals.list`
-- `admin.rentals.status.update`
-- `admin.calendar.range`
-- `admin.products.upsert`
-- `admin.inventory.variantMaintenance.set`
-- `admin.users.search`
-- `admin.users.detail`
-- `reports.operations.generate`
-- `security.audit.search`
-- `ops.health.check`
-- `payments.reconcile.run`
+- H83 / issue #109 — `admin.dashboard.summary`
+- H84 / issue #110 — `catalog.products.search`
+- H85 / issue #111 — `catalog.availability.check`
+- H86 / issue #112 — `rentals.draft.create`
+- H87 / issue #113 — `payments.checkout.create`
+- H88 / issue #114 — `rentals.mine.list`
+- H89 / issue #115 — `rentals.pending.cancel`
+- H90 / issue #116 — `admin.rentals.list`
+- H91 / issue #117 — `admin.rentals.status.update`
+- H92 / issue #118 — `admin.calendar.range`
+- H93 / issue #119 — `admin.products.upsert`
+- H94 / issue #120 — `admin.inventory.variantMaintenance.set`
+- H95 / issue #121 — `admin.users.search`
+- H96 / issue #122 — `admin.users.detail`
+- H97 / issue #123 — `reports.operations.generate`
+- H98 / issue #124 — `security.audit.search`
+- H99 / issue #125 — `ops.health.check`
+- H100 / issue #126 — `payments.reconcile.run`
+
+H89 usa una ruta específica que solo cancela reservas `pending` y no ejecuta reembolsos. H94 cambia el flag permanente de la variante y no crea un bloqueo temporal de fechas. H97 ofrece `json`, `csv` y `summary`, sin sustituir los reportes fiscales.
+
+## Smoke remoto reproducible
+
+El smoke transversal corresponde a `APOYO - QA - Smoke tests de herramientas MCP`, issue #64. Se ejecuta manualmente mediante GitHub Actions:
+
+```bash
+E2E_MCP_SMOKE=true \
+E2E_STAGING_URL=https://frontend-staging.example \
+E2E_MCP_REMOTE_URL=https://mcp-server-staging.example/mcp \
+E2E_MCP_BACKEND_URL=https://backend-staging.example \
+MCP_ADMIN_API_KEY='...' \
+MCP_CLIENT_API_KEY='...' \
+E2E_MCP_BACKEND_ADMIN_TOKEN='...' \
+E2E_CLERK_EMAIL='...' \
+bun run test:e2e:mcp:staging
+```
+
+El workflow valida:
+
+- `/mcp` sin token devuelve 401.
+- `tools/list` devuelve las 18 tools.
+- catálogo público y disponibilidad;
+- identidad Clerk obligatoria para cliente;
+- creación de reserva con términos explícitos;
+- checkout de Stripe en modo test;
+- consulta y cancelación de reservas propias;
+- consultas administrativas;
+- actualización de estado y auditoría;
+- upsert y mantenimiento de producto;
+- reportes JSON, CSV y resumen;
+- salud técnica protegida;
+- conciliación real H100;
+- limpieza de productos y reservas temporales.
+
+Los secretos se inyectan desde GitHub Actions y nunca se imprimen, guardan en el repositorio ni se incluyen en issues o artefactos.
+
+## Despliegue
+
+```bash
+railway status
+railway up ./mcp-server --path-as-root --service mcp-server
+```
+
+Antes de mover una historia a `Done` se exige CI verde, typecheck, pruebas, deployment exitoso, smoke remoto y evidencia enlazada entre historia, issue, PR, commit, workflow y deployment.

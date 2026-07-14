@@ -1,33 +1,43 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
-import { hasMcpScope, type McpPrincipal, type McpScope } from "./auth.js";
+import {
+  hasMcpScope,
+  MCP_ADMIN_SCOPES,
+  type McpPrincipal,
+  type McpScope,
+} from "./auth.js";
 
 type AuthMode = "public" | "client" | "admin";
-
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 type ApiResult = {
-  ok: boolean;
   status: number;
   data: JsonValue;
+  requestId: string;
+};
+
+type BackendErrorPayload = {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+  code?: string;
+  message?: string;
 };
 
 const backendUrl = (process.env.MCP_BACKEND_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const adminToken = process.env.MCP_BACKEND_ADMIN_TOKEN ?? process.env.MCP_ADMIN_TOKEN;
 const clientToken = process.env.MCP_BACKEND_CLIENT_TOKEN ?? process.env.MCP_CLIENT_TOKEN;
+const clientIdentity = process.env.MCP_CLIENT_IDENTITY ?? "clerk";
+const DEFAULT_TIMEOUT_MS = 15_000;
+const PAYMENT_TIMEOUT_MS = 30_000;
 
 function tokenFor(mode: AuthMode): string | undefined {
   if (mode === "admin") return adminToken;
-  if (mode === "client") return clientToken;
+  if (mode === "client" && clientIdentity === "service") return clientToken;
   return undefined;
-}
-
-function ensureToken(mode: AuthMode): void {
-  if (mode !== "public" && !tokenFor(mode)) {
-    throw new Error(`La tool requiere MCP_${mode.toUpperCase()}_TOKEN.`);
-  }
 }
 
 function toQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -39,11 +49,7 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   return value ? `?${value}` : "";
 }
 
-function requiredScopeFor(
-  path: string,
-  mode: AuthMode,
-  method: string,
-): McpScope | undefined {
+function requiredScopeFor(path: string, mode: AuthMode, method: string): McpScope | undefined {
   if (mode === "public") {
     if (path.includes("/availability")) return "availability.read";
     if (path.startsWith("/api/products")) return "catalog.read";
@@ -53,7 +59,7 @@ function requiredScopeFor(
   if (mode === "client") {
     if (path === "/api/rentals" && method === "POST") return "rentals.create";
     if (path.startsWith("/api/rentals/my")) return "rentals.read.own";
-    if (path.startsWith("/api/rentals/") && method === "DELETE") return "rentals.cancel.own";
+    if (path.startsWith("/api/rentals/") && method === "POST") return "rentals.cancel.own";
     if (path.startsWith("/api/stripe/")) return "payments.create";
     return undefined;
   }
@@ -65,20 +71,58 @@ function requiredScopeFor(
   if (path.includes("/maintenance")) return "inventory.write";
   if (path.startsWith("/api/admin/products")) return "products.write";
   if (path.includes("/reports")) return "reports.read";
+  if (path.includes("/observability")) return "observability.read";
   if (path === "/api/admin/payments/reconcile") return "payments.reconcile";
   if (path.includes("/settings")) return "settings.write";
+  if (path.endsWith("/status") && path.startsWith("/api/admin/rentals/")) return "reservations.write";
   if (path.startsWith("/api/admin/rentals")) return "reservations.read";
   return undefined;
 }
 
-function createBackendApi(principal?: McpPrincipal) {
+function safeBackendMessage(status: number): { code: string; message: string } {
+  if (status === 400) return { code: "BACKEND_VALIDATION_ERROR", message: "La solicitud no es válida." };
+  if (status === 401) return { code: "BACKEND_AUTHENTICATION_ERROR", message: "La autenticación del backend fue rechazada." };
+  if (status === 403) return { code: "BACKEND_FORBIDDEN", message: "La identidad no tiene permisos para esta operación." };
+  if (status === 404) return { code: "BACKEND_NOT_FOUND", message: "El recurso solicitado no existe." };
+  if (status === 409) return { code: "BACKEND_CONFLICT", message: "La operación entra en conflicto con el estado actual." };
+  if (status >= 500) return { code: "BACKEND_UNAVAILABLE", message: "El backend no pudo completar la operación." };
+  return { code: "BACKEND_REQUEST_FAILED", message: "El backend rechazó la operación." };
+}
+
+function normalizeBackendError(status: number, data: JsonValue, requestId: string): McpError {
+  const fallback = safeBackendMessage(status);
+  const payload = typeof data === "object" && data !== null && !Array.isArray(data)
+    ? data as BackendErrorPayload
+    : {};
+  const backendCode = payload.error?.code ?? payload.code;
+  const code = backendCode && /^[A-Z][A-Z0-9_]{2,60}$/.test(backendCode)
+    ? backendCode
+    : fallback.code;
+
+  return new McpError(
+    ErrorCode.InvalidRequest,
+    `${fallback.message} Código: ${code}. requestId: ${requestId}`,
+  );
+}
+
+function response(data: JsonValue, requestId: string) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify({ requestId, data }, null, 2),
+      },
+    ],
+  };
+}
+
+function createBackendApi(principal: McpPrincipal) {
   return async function api(
     path: string,
     mode: AuthMode = "public",
     init: RequestInit = {},
     scopeOverride?: McpScope,
   ): Promise<ApiResult> {
-    ensureToken(mode);
     const method = (init.method ?? "GET").toUpperCase();
     const scope = scopeOverride ?? requiredScopeFor(path, mode, method);
     if (scope && !hasMcpScope(principal, scope)) {
@@ -88,304 +132,476 @@ function createBackendApi(principal?: McpPrincipal) {
       );
     }
 
+    const requestId = `mcp-${crypto.randomUUID()}`;
     const headers = new Headers(init.headers);
     headers.set("Accept", "application/json");
+    headers.set("x-request-id", requestId);
     if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-    const token = tokenFor(mode);
-    if (token) headers.set("Authorization", `Bearer ${token}`);
 
-    const response = await fetch(`${backendUrl}${path}`, { ...init, headers });
-    const contentType = response.headers.get("content-type") ?? "";
-    const data = contentType.includes("application/json")
-      ? await response.json() as JsonValue
-      : { text: await response.text() };
+    if (mode === "client" && clientIdentity === "clerk") {
+      if (!principal.identityToken) {
+        throw new McpError(
+          ErrorCode.InvalidRequest,
+          `La tool requiere identidad Clerk del usuario. requestId: ${requestId}`,
+        );
+      }
+      headers.set("Authorization", `Bearer ${principal.identityToken}`);
+    } else {
+      const token = tokenFor(mode);
+      if (mode !== "public" && !token) {
+        throw new McpError(
+          ErrorCode.InternalError,
+          `La configuración interna no tiene credencial para ${mode}. requestId: ${requestId}`,
+        );
+      }
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
 
-    return { ok: response.ok, status: response.status, data };
+    const controller = new AbortController();
+    const timeoutMs = path.includes("/stripe/") || path.includes("/reconcile")
+      ? PAYMENT_TIMEOUT_MS
+      : DEFAULT_TIMEOUT_MS;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const backendResponse = await fetch(`${backendUrl}${path}`, {
+        ...init,
+        headers,
+        signal: controller.signal,
+      });
+      const raw = await backendResponse.text();
+      let data: JsonValue;
+      try {
+        data = raw ? JSON.parse(raw) as JsonValue : null;
+      } catch {
+        data = { text: raw.slice(0, 2000) };
+      }
+
+      if (!backendResponse.ok) {
+        throw normalizeBackendError(backendResponse.status, data, requestId);
+      }
+
+      return { status: backendResponse.status, data, requestId };
+    } catch (error) {
+      if (error instanceof McpError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new McpError(
+          ErrorCode.InternalError,
+          `El backend tardó demasiado en responder. requestId: ${requestId}`,
+        );
+      }
+      throw new McpError(
+        ErrorCode.InternalError,
+        `No fue posible comunicarse con el backend. requestId: ${requestId}`,
+      );
+    } finally {
+      clearTimeout(timeout);
+    }
   };
 }
 
-function response(result: JsonValue) {
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: JSON.stringify(result, null, 2),
-      },
-    ],
-  };
-}
-
-export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
-const api = createBackendApi(principal);
-const server = new McpServer({
-  name: "tembleques-camila",
-  version: "1.0.0",
+const pageSchema = z.number().int().min(1).max(1000).default(1);
+const limitSchema = z.number().int().min(1).max(100).default(10);
+const productCategorySchema = z.enum([
+  "pollera",
+  "vestuario_masculino",
+  "infantil",
+  "tembleques",
+  "accesorios",
+  "paquete_completo",
+]);
+const variantSchema = z.object({
+  size: z.string().min(1).max(50),
+  stock: z.number().min(0).max(100_000),
+  price_override: z.number().min(0).nullable().optional(),
+  in_maintenance: z.boolean().default(false),
+});
+const productSchema = z.object({
+  name: z.string().min(1).max(200),
+  name_en: z.string().max(200).optional(),
+  description: z.string().min(1).max(5000),
+  description_en: z.string().max(5000).optional(),
+  category: z.array(productCategorySchema).min(1),
+  rental_price: z.number().min(0).max(1_000_000),
+  variants: z.array(variantSchema).min(1),
+  images: z.array(z.string().url()).max(20).optional(),
+  deposit_settings: z.object({
+    required: z.boolean().default(false),
+    overrideAmount: z.number().min(0).nullable().optional(),
+  }).optional(),
 });
 
-server.registerTool(
-  "admin.dashboard.summary",
-  {
+export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
+  const effectivePrincipal: McpPrincipal = principal ?? {
+    id: "stdio-local",
+    mode: "admin",
+    scopes: MCP_ADMIN_SCOPES,
+  };
+  const api = createBackendApi(effectivePrincipal);
+  const server = new McpServer({ name: "tembleques-camila", version: "1.1.0" });
+
+  server.registerTool("admin.dashboard.summary", {
     title: "Resumen administrativo",
-    description: "Consulta KPIs del dashboard administrativo.",
+    description: "Consulta KPIs agregados del dashboard administrativo. Requiere dashboard.read.",
     inputSchema: {},
-  },
-  async () => response(await api("/api/admin/dashboard", "admin")),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async () => {
+    const result = await api("/api/admin/dashboard", "admin");
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "catalog.products.search",
-  {
+  server.registerTool("catalog.products.search", {
     title: "Buscar productos",
-    description: "Busca productos del catalogo por texto, categoria, talla, precio y fechas.",
+    description: "Busca productos del catálogo por texto, categoría, talla, precio y fechas.",
     inputSchema: {
-      search: z.string().optional(),
-      category: z.string().optional(),
-      size: z.string().optional(),
-      minPrice: z.number().optional(),
-      maxPrice: z.number().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-      page: z.number().default(1),
-      limit: z.number().default(10),
+      search: z.string().trim().max(100).optional(),
+      category: z.string().trim().max(100).optional(),
+      size: z.string().trim().max(50).optional(),
+      minPrice: z.number().min(0).optional(),
+      maxPrice: z.number().min(0).optional(),
+      startDate: z.string().trim().optional(),
+      endDate: z.string().trim().optional(),
+      page: pageSchema,
+      limit: limitSchema,
     },
-  },
-  async (input) => response(await api(`/api/products${toQuery(input)}`)),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/products${toQuery(input)}`);
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "catalog.availability.check",
-  {
+  server.registerTool("catalog.availability.check", {
     title: "Consultar disponibilidad",
     description: "Consulta fechas reservadas o bloqueadas de un producto.",
     inputSchema: {
-      productId: z.string(),
-      from: z.string().optional(),
-      to: z.string().optional(),
+      productId: z.string().min(1),
+      from: z.string().trim().optional(),
+      to: z.string().trim().optional(),
     },
-  },
-  async ({ productId, from, to }) => response(await api(`/api/products/${productId}/availability${toQuery({ from, to })}`)),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ productId, from, to }) => {
+    const result = await api(`/api/products/${productId}/availability${toQuery({ from, to })}`);
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "rentals.draft.create",
-  {
+  server.registerTool("rentals.draft.create", {
     title: "Crear reserva pendiente",
-    description: "Crea una reserva pendiente para el cliente autenticado.",
+    description: "Crea una reserva pendiente para el usuario Clerk autenticado. Requiere consentimiento explícito.",
     inputSchema: {
-      productId: z.string(),
-      selectedSize: z.string(),
-      startDate: z.string(),
-      endDate: z.string(),
+      productId: z.string().min(1),
+      selectedSize: z.string().min(1),
+      startDate: z.string().min(1),
+      endDate: z.string().min(1),
+      termsAccepted: z.literal(true),
       paymentType: z.enum(["reservation", "full"]).default("reservation"),
       orderGroupId: z.string().optional(),
     },
-  },
-  async (input) => response(await api("/api/rentals", "client", {
-    method: "POST",
-    body: JSON.stringify({ ...input, termsAccepted: true }),
-  })),
-);
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async (input) => {
+    const result = await api("/api/rentals", "client", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "payments.checkout.create",
-  {
+  server.registerTool("payments.checkout.create", {
     title: "Crear checkout",
-    description: "Crea una sesion de checkout para reservas pendientes.",
+    description: "Crea una sesión de Stripe para reservas propias pendientes.",
     inputSchema: {
       rentalId: z.string().optional(),
-      rentalIds: z.array(z.string()).optional(),
+      rentalIds: z.array(z.string()).min(1).optional(),
       orderGroupId: z.string().optional(),
       paymentType: z.enum(["reservation", "full"]).optional(),
-      couponCode: z.string().optional(),
+      couponCode: z.string().trim().max(100).optional(),
     },
-  },
-  async (input) => response(await api("/api/stripe/create-checkout-session", "client", {
-    method: "POST",
-    body: JSON.stringify(input),
-  })),
-);
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async (input) => {
+    const result = await api("/api/stripe/create-checkout-session", "client", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "rentals.mine.list",
-  {
+  server.registerTool("rentals.mine.list", {
     title: "Listar mis reservas",
-    description: "Lista reservas del cliente autenticado.",
+    description: "Lista reservas del usuario Clerk autenticado.",
     inputSchema: {
       view: z.enum(["active", "cancelled"]).default("active"),
-      page: z.number().default(1),
-      limit: z.number().default(10),
+      page: pageSchema,
+      limit: limitSchema,
     },
-  },
-  async (input) => response(await api(`/api/rentals/my${toQuery(input)}`, "client")),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/rentals/my${toQuery(input)}`, "client");
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "rentals.pending.cancel",
-  {
+  server.registerTool("rentals.pending.cancel", {
     title: "Cancelar reserva pendiente",
-    description: "Cancela una reserva pendiente del cliente autenticado.",
-    inputSchema: { rentalId: z.string() },
-  },
-  async ({ rentalId }) => response(await api(`/api/rentals/${rentalId}`, "client", { method: "DELETE" })),
-);
+    description: "Cancela únicamente una reserva propia en estado pending y no genera reembolso.",
+    inputSchema: { rentalId: z.string().min(1) },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+  }, async ({ rentalId }) => {
+    const result = await api(`/api/rentals/${rentalId}/cancel-pending`, "client", { method: "POST" });
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.rentals.list",
-  {
-    title: "Listar reservas admin",
-    description: "Lista reservas administrativas con filtros basicos.",
+  server.registerTool("admin.rentals.list", {
+    title: "Listar reservas administrativas",
+    description: "Lista reservas administrativas con filtros por estado, texto y paginación.",
     inputSchema: {
-      status: z.string().optional(),
+      status: z.string().trim().max(50).optional(),
+      search: z.string().trim().max(100).optional(),
       sort: z.enum(["asc", "desc"]).default("desc"),
-      page: z.number().default(1),
-      limit: z.number().default(10),
+      page: pageSchema,
+      limit: limitSchema,
     },
-  },
-  async (input) => response(await api(`/api/admin/rentals${toQuery(input)}`, "admin")),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/admin/rentals${toQuery(input)}`, "admin");
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.rentals.status.update",
-  {
+  server.registerTool("admin.rentals.status.update", {
     title: "Actualizar estado de reserva",
-    description: "Actualiza el estado operativo de una reserva.",
-    inputSchema: { rentalId: z.string(), status: z.string() },
-  },
-  async ({ rentalId, status }) => response(await api(`/api/admin/rentals/${rentalId}/status`, "admin", {
-    method: "PATCH",
-    body: JSON.stringify({ status }),
-  })),
-);
+    description: "Actualiza el estado operativo aplicando las transiciones de negocio y auditando la acción.",
+    inputSchema: {
+      rentalId: z.string().min(1),
+      status: z.enum(["pending", "reserved", "paid", "confirmed", "delivered", "returned", "late", "damaged", "cancelled"]),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+  }, async ({ rentalId, status }) => {
+    const result = await api(`/api/admin/rentals/${rentalId}/status`, "admin", {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }, "reservations.write");
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.calendar.range",
-  {
-    title: "Consultar calendario admin",
+  server.registerTool("admin.calendar.range", {
+    title: "Consultar calendario administrativo",
     description: "Consulta eventos de reservas por rango de fechas.",
-    inputSchema: { from: z.string(), to: z.string() },
-  },
-  async (input) => response(await api(`/api/admin/rentals/calendar${toQuery(input)}`, "admin")),
-);
+    inputSchema: {
+      from: z.string().min(1),
+      to: z.string().min(1),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/admin/rentals/calendar${toQuery(input)}`, "admin");
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.products.upsert",
-  {
+  server.registerTool("admin.products.upsert", {
     title: "Crear o editar producto",
-    description: "Crea o edita productos usando las validaciones del backend.",
+    description: "Crea o edita un producto con esquema explícito y validaciones de inventario.",
     inputSchema: {
       productId: z.string().optional(),
-      product: z.record(z.unknown()),
+      product: productSchema,
     },
-  },
-  async ({ productId, product }) => response(await api(
-    productId ? `/api/admin/products/${productId}` : "/api/admin/products",
-    "admin",
-    { method: productId ? "PUT" : "POST", body: JSON.stringify(product) },
-  )),
-);
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false },
+  }, async ({ productId, product }) => {
+    const result = await api(
+      productId ? `/api/admin/products/${productId}` : "/api/admin/products",
+      "admin",
+      { method: productId ? "PUT" : "POST", body: JSON.stringify(product) },
+    );
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.inventory.variantMaintenance.set",
-  {
-    title: "Crear bloqueo de mantenimiento",
-    description: "Crea un bloqueo temporal de mantenimiento para producto y talla.",
+  server.registerTool("admin.inventory.variantMaintenance.set", {
+    title: "Marcar variante en mantenimiento",
+    description: "Activa o desactiva el mantenimiento permanente de una variante, separado de los bloqueos temporales.",
     inputSchema: {
-      productId: z.string(),
-      selectedSize: z.string(),
-      startDate: z.string(),
-      endDate: z.string(),
-      reason: z.string().optional(),
+      productId: z.string().min(1),
+      selectedSize: z.string().min(1),
+      inMaintenance: z.boolean(),
+      reason: z.string().trim().min(5).max(500).optional(),
     },
-  },
-  async (input) => response(await api("/api/admin/maintenance", "admin", {
-    method: "POST",
-    body: JSON.stringify(input),
-  })),
-);
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  }, async ({ productId, selectedSize, inMaintenance, reason }) => {
+    const result = await api(
+      `/api/admin/products/${productId}/variants/${encodeURIComponent(selectedSize)}/maintenance`,
+      "admin",
+      { method: "PATCH", body: JSON.stringify({ inMaintenance, reason }) },
+      "inventory.write",
+    );
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "admin.users.search",
-  {
+  server.registerTool("admin.users.search", {
     title: "Buscar clientes",
-    description: "Lista clientes paginados para busqueda administrativa.",
-    inputSchema: { page: z.number().default(1), limit: z.number().default(10) },
-  },
-  async (input) => response(await api(`/api/admin/users${toQuery(input)}`, "admin")),
-);
-
-server.registerTool(
-  "admin.users.detail",
-  {
-    title: "Detalle de cliente",
-    description: "Consulta perfil, estadisticas, auditoria e historial paginado de un cliente.",
+    description: "Busca clientes por nombre, correo o teléfono con paginación.",
     inputSchema: {
-      userId: z.string(),
-      page: z.number().default(1),
-      limit: z.number().default(10),
+      search: z.string().trim().max(100).optional(),
+      page: pageSchema,
+      limit: limitSchema,
     },
-  },
-  async ({ userId, page, limit }) => {
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/admin/users${toQuery(input)}`, "admin");
+    return response(result.data, result.requestId);
+  });
+
+  server.registerTool("admin.users.detail", {
+    title: "Detalle de cliente",
+    description: "Consulta perfil, estadísticas e historial paginado con datos sensibles filtrados.",
+    inputSchema: {
+      userId: z.string().min(1),
+      page: pageSchema,
+      limit: limitSchema,
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ userId, page, limit }) => {
     const [user, stats, audit, rentals] = await Promise.all([
       api(`/api/admin/users/${userId}`, "admin"),
       api(`/api/admin/users/${userId}/stats`, "admin"),
       api(`/api/admin/users/${userId}/audit`, "admin"),
       api(`/api/admin/users/${userId}/rentals${toQuery({ page, limit })}`, "admin"),
     ]);
-    return response({ user, stats, audit, rentals });
-  },
-);
+    return response({
+      user: redactUser(user.data),
+      stats: stats.data,
+      audit: redactUserAudit(audit.data),
+      rentals: redactRentals(rentals.data),
+    }, user.requestId);
+  });
 
-server.registerTool(
-  "reports.operations.generate",
-  {
+  server.registerTool("reports.operations.generate", {
     title: "Generar reporte operativo",
-    description: "Genera estadisticas de inventario y rotacion comercial.",
-    inputSchema: {},
-  },
-  async () => response(await api("/api/admin/reports/inventory-stats", "admin")),
-);
-
-server.registerTool(
-  "security.audit.search",
-  {
-    title: "Consultar auditoria",
-    description: "Consulta el registro global de acciones administrativas con filtros y paginacion.",
+    description: "Genera reportes de inventario y rotación en JSON, CSV o resumen textual.",
     inputSchema: {
-      action: z.string().optional(),
-      entity: z.string().optional(),
-      success: z.enum(["true", "false"]).optional(),
-      page: z.number().default(1),
-      limit: z.number().default(20),
+      from: z.string().optional(),
+      to: z.string().optional(),
+      category: z.string().trim().max(100).optional(),
+      productId: z.string().optional(),
+      search: z.string().trim().max(100).optional(),
+      format: z.enum(["json", "csv", "summary"]).default("json"),
     },
-  },
-  async (input) => response(await api(`/api/admin/audit${toQuery(input)}`, "admin")),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ format, ...filters }) => {
+    const path = format === "csv"
+      ? "/api/admin/reports/export-csv"
+      : "/api/admin/reports/inventory-stats";
+    const result = await api(`${path}${toQuery(filters)}`, "admin");
+    if (format === "summary") return response(createReportSummary(result.data), result.requestId);
+    return response(result.data, result.requestId);
+  });
 
-server.registerTool(
-  "ops.health.check",
-  {
-    title: "Salud tecnica",
-    description: "Verifica salud del backend y dependencias configuradas.",
+  server.registerTool("security.audit.search", {
+    title: "Consultar auditoría",
+    description: "Consulta el registro global de acciones administrativas con filtros y paginación.",
+    inputSchema: {
+      action: z.string().trim().max(100).optional(),
+      entity: z.string().trim().max(100).optional(),
+      success: z.enum(["true", "false"]).optional(),
+      page: pageSchema,
+      limit: z.number().int().min(1).max(100).default(20),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async (input) => {
+    const result = await api(`/api/admin/audit${toQuery(input)}`, "admin");
+    return response(redactAudit(result.data), result.requestId);
+  });
+
+  server.registerTool("ops.health.check", {
+    title: "Salud técnica",
+    description: "Consulta observabilidad protegida de backend y dependencias configuradas.",
     inputSchema: {},
-  },
-  async () => response({
-    backend: await api("/health"),
-  }),
-);
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async () => {
+    const result = await api("/api/admin/observability/overview", "admin", {}, "observability.read");
+    return response(redactObservability(result.data), result.requestId);
+  });
 
-server.registerTool(
-  "payments.reconcile.run",
-  {
-    title: "Conciliacion de pagos",
-    description: "Compara reservas internas, Checkout Sessions, PaymentIntents y evidencia de webhooks de Stripe.",
+  server.registerTool("payments.reconcile.run", {
+    title: "Conciliación de pagos",
+    description: "Compara reservas internas, Checkout Sessions, PaymentIntents y webhooks de Stripe.",
     inputSchema: {},
-  },
-  async () => response(await api(
-    "/api/admin/payments/reconcile",
-    "admin",
-    { method: "POST" },
-  )),
-);
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async () => {
+    const result = await api("/api/admin/payments/reconcile", "admin", { method: "POST" });
+    return response(result.data, result.requestId);
+  });
 
-return server;
+  return server;
+}
+
+function redactUser(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return data;
+  const user = isRecord(data.user) ? data.user : data;
+  return {
+    user: pick(user, ["_id", "name", "email", "phone", "preferredLanguage", "role", "createdAt", "updatedAt"]),
+  };
+}
+
+function redactUserAudit(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return data;
+  const audit = isRecord(data.audit) ? data.audit : data;
+  return { audit: omit(audit, ["ip_address", "user_agent", "clerkId", "preferredAddress", "lastRental"]) };
+}
+
+function redactRentals(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return data;
+  const items = Array.isArray(data.data) ? data.data : [];
+  return {
+    ...data,
+    data: items.map((item) => isRecord(item)
+      ? omit(item, ["terms", "ip_address", "user_agent", "stripe_session_id", "stripe_payment_intent_id"])
+      : item),
+  };
+}
+
+function redactAudit(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return data;
+  const items = Array.isArray(data.data) ? data.data : [];
+  return {
+    ...data,
+    data: items.map((item) => isRecord(item)
+      ? omit(item, ["ip_address", "user_agent", "metadata.stack", "metadata.token"])
+      : item),
+  };
+}
+
+function redactObservability(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return data;
+  return omit(data, ["secrets", "credentials", "stack", "stackTrace"]);
+}
+
+function createReportSummary(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return { summary: "No se encontraron datos para el reporte." };
+  const stats = Array.isArray(data.stats) ? data.stats : [];
+  const totalRentals = stats.reduce<number>((total, item) => {
+    if (!isRecord(item) || typeof item.rentalsCount !== "number") return total;
+    return total + item.rentalsCount;
+  }, 0);
+  const totalRevenue = stats.reduce<number>((total, item) => {
+    if (!isRecord(item) || typeof item.totalRevenue !== "number") return total;
+    return total + item.totalRevenue;
+  }, 0);
+  return {
+    summary: `El reporte contiene ${stats.length} variantes, ${totalRentals} alquileres y ${totalRevenue.toFixed(2)} PAB de ingresos acumulados.`,
+    variants: stats.length,
+    rentalsCount: totalRentals,
+    totalRevenue,
+  };
+}
+
+function isRecord(value: JsonValue): value is { [key: string]: JsonValue } {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function pick(record: { [key: string]: JsonValue }, keys: string[]): JsonValue {
+  const result: { [key: string]: JsonValue } = {};
+  for (const key of keys) {
+    if (record[key] !== undefined) result[key] = record[key];
+  }
+  return result;
+}
+
+function omit(record: { [key: string]: JsonValue }, keys: string[]): JsonValue {
+  const result: { [key: string]: JsonValue } = { ...record };
+  for (const key of keys) delete result[key];
+  return result;
 }

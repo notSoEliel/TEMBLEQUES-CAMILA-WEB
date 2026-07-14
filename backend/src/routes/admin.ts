@@ -218,6 +218,41 @@ admin.get("/dashboard", async (c) => {
 
 // --- Product CRUD ---
 
+const variantMaintenanceSchema = z.object({
+  inMaintenance: z.boolean(),
+  reason: z.string().trim().min(5).max(500).optional(),
+});
+
+// PATCH /api/admin/products/:id/variants/:size/maintenance
+// Permanent variant state; temporal date blocks remain in /api/admin/maintenance.
+admin.patch("/products/:id/variants/:size/maintenance", requirePermission("inventory.write"), async (c) => {
+  const body = variantMaintenanceSchema.parse(await c.req.json());
+  const product = await Product.findById(c.req.param("id"));
+  if (!product) {
+    throw new AppError("Producto no encontrado", 404, "PRODUCT_NOT_FOUND");
+  }
+
+  const rawSize = c.req.param("size");
+  if (!rawSize) {
+    throw new AppError("La talla de la variante es requerida", 400, "PRODUCT_VARIANT_REQUIRED");
+  }
+  const selectedSize = decodeURIComponent(rawSize);
+  const variant = product.variants.find((item) => item.size === selectedSize);
+  if (!variant) {
+    throw new AppError("La variante solicitada no existe", 404, "PRODUCT_VARIANT_NOT_FOUND");
+  }
+
+  variant.in_maintenance = body.inMaintenance;
+  await product.save();
+
+  return c.json({
+    productId: product._id,
+    selectedSize,
+    inMaintenance: variant.in_maintenance,
+    available: variant.stock > 0 && !variant.in_maintenance,
+  });
+});
+
 const sizeVariantSchema = z.object({
   size: z.string().min(1, "El nombre de la talla es requerido"),
   stock: z.number().min(0, "El stock no puede ser negativo"),

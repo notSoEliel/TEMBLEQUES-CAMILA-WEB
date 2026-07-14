@@ -365,7 +365,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   test("Debe conservar el formulario de contacto si el backend no responde", async ({ page }) => {
     await page.addInitScript(() => {
       const originalFetch = window.fetch.bind(window);
-      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
         if (requestUrl.includes("/api/contact")) {
           return new Response(JSON.stringify({ error: "El servicio de contacto no está disponible.", code: "SERVICE_UNAVAILABLE" }), {
@@ -374,7 +374,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
           });
         }
         return originalFetch(input, init);
-      };
+      }) as typeof window.fetch;
     });
 
     await page.goto("/contacto");
@@ -462,7 +462,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   test("Debe mostrar un error recuperable cuando falla el catálogo", async ({ page }) => {
     await page.addInitScript(() => {
       const originalFetch = window.fetch.bind(window);
-      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
         if (requestUrl.includes("/api/products")) {
           return new Response(
@@ -471,7 +471,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
           );
         }
         return originalFetch(input, init);
-      };
+      }) as typeof window.fetch;
     });
 
     await page.goto("/catalog");
