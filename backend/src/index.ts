@@ -26,6 +26,7 @@ import { startCronJobs } from "./services/cron.js";
 import { loadConfig } from "./config.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { recordRecentError, requestObservabilityMiddleware, structuredLog } from "./services/observability.js";
+import { startBackupScheduler } from "./services/backup-scheduler.js";
 
 const appConfig = loadConfig();
 
@@ -153,6 +154,7 @@ async function start() {
   await migrateToVariants();
 
   startCronJobs();
+  startBackupScheduler();
 
   console.log(`[Server] Tembleques Camila API running on port ${PORT}`);
 }

@@ -1,4 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { EJSON } from "bson";
 import mongoose from "mongoose";
 import { AppError } from "../lib/errors.js";
@@ -59,4 +61,45 @@ export async function exportDatabase(): Promise<Record<string, unknown>> {
     data[collection.name] = await database.collection(collection.name).find({}).toArray();
   }
   return { database: database.databaseName, collections: data };
+}
+
+export interface BackupFileResult {
+  filename: string;
+  path: string;
+  deletedFiles: number;
+}
+
+export async function writeEncryptedBackup(options: {
+  outputDirectory: string;
+  encryptionKey: string | undefined;
+  now?: Date;
+  retentionDays?: number;
+}): Promise<BackupFileResult> {
+  const now = options.now ?? new Date();
+  const outputDirectory = resolve(options.outputDirectory);
+  const retentionDays = options.retentionDays ?? 30;
+  if (!Number.isInteger(retentionDays) || retentionDays < 1) {
+    throw new AppError("BACKUP_RETENTION_DAYS debe ser un entero positivo.", 503, "BACKUP_RETENTION_INVALID");
+  }
+
+  await mkdir(outputDirectory, { recursive: true });
+  const backup = encryptBackup(await exportDatabase(), options.encryptionKey);
+  const filename = `tembleques-${now.toISOString().replaceAll(":", "-")}.json.enc`;
+  const path = join(outputDirectory, filename);
+  await writeFile(path, JSON.stringify(backup), { encoding: "utf8", mode: 0o600 });
+
+  const cutoff = now.getTime() - retentionDays * 24 * 60 * 60 * 1000;
+  const files = await readdir(outputDirectory, { withFileTypes: true });
+  let deletedFiles = 0;
+  for (const file of files) {
+    if (!file.isFile() || !file.name.endsWith(".json.enc") || file.name === filename) continue;
+    const filePath = join(outputDirectory, file.name);
+    const metadata = await stat(filePath);
+    if (metadata.mtimeMs < cutoff) {
+      await unlink(filePath);
+      deletedFiles += 1;
+    }
+  }
+
+  return { filename, path, deletedFiles };
 }
