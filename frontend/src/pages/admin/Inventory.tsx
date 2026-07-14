@@ -32,6 +32,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useErrorModal } from "@/components/ErrorModal";
+
+interface LowStockItem {
+  _id: string;
+  name: string;
+  variants: Array<{ size: string; stock: number }>;
+}
 
 interface ProductForm {
   name: string;
@@ -76,6 +83,9 @@ export default function AdminInventory() {
   const [maintenanceEnd, setMaintenanceEnd] = useState("");
   const [maintenanceReason, setMaintenanceReason] = useState("");
   const [creatingMaintenance, setCreatingMaintenance] = useState(false);
+  const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(1);
+  const { errorModal, showError } = useErrorModal();
 
   const openMaintenance = async (product: any) => {
     setMaintenanceProduct(product);
@@ -88,8 +98,8 @@ export default function AdminInventory() {
         setLoadingMaintenance(true);
         const res = await adminApi.listMaintenance(token);
         setMaintenanceBlocks(res.blocks || []);
-      } catch (err) {
-        console.error(err);
+      } catch (error: unknown) {
+        showError(error instanceof Error ? error.message : "No se pudieron cargar los mantenimientos.", "generic");
       } finally {
         setLoadingMaintenance(false);
       }
@@ -115,8 +125,8 @@ export default function AdminInventory() {
       
       const res = await adminApi.listMaintenance(token);
       setMaintenanceBlocks(res.blocks || []);
-    } catch (err: any) {
-      alert(err.message || "Error al programar mantenimiento");
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "Error al programar mantenimiento.", "validation");
     } finally {
       setCreatingMaintenance(false);
     }
@@ -124,13 +134,12 @@ export default function AdminInventory() {
 
   const handleDeleteMaintenance = async (blockId: string) => {
     if (!token) return;
-    if (!window.confirm("¿Seguro que deseas eliminar este bloqueo de mantenimiento?")) return;
     try {
       await adminApi.deleteMaintenance(blockId, token);
       const res = await adminApi.listMaintenance(token);
       setMaintenanceBlocks(res.blocks || []);
-    } catch (err: any) {
-      alert(err.message || "Error al eliminar mantenimiento");
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "Error al eliminar mantenimiento.", "generic");
     }
   };
   
@@ -155,6 +164,7 @@ export default function AdminInventory() {
   useEffect(() => { 
     loadSettings();
     loadProducts(); 
+    void loadLowStock();
   }, [searchParams]);
 
   const loadSettings = async () => {
@@ -193,6 +203,17 @@ export default function AdminInventory() {
       setPagination(response.pagination);
     } catch (err) { console.error(err); }
     setLoading(false);
+  };
+
+  const loadLowStock = async () => {
+    if (!token) return;
+    try {
+      const response = await adminApi.lowStock(token, { page: 1, limit: 20 });
+      setLowStockItems(response.data);
+      setLowStockThreshold(response.threshold);
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "No se pudo cargar el control de bajo stock.", "generic");
+    }
   };
 
   const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
@@ -320,6 +341,7 @@ export default function AdminInventory() {
 
   return (
     <div className="space-y-6">
+      {errorModal}
       <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2" role="search">
         <label htmlFor="admin-product-search" className="sr-only">Buscar productos</label>
         <Input id="admin-product-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre de producto" />
@@ -517,6 +539,19 @@ export default function AdminInventory() {
         </div>
       ) : (
         <>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5 text-primary" />Control de bajo stock</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Tallas con {lowStockThreshold} o menos de unidades, excluyendo mantenimiento activo.</p>
+              </div>
+              <Badge variant={lowStockItems.length > 0 ? "destructive" : "secondary"}>{lowStockItems.length} producto{lowStockItems.length === 1 ? "" : "s"}</Badge>
+            </CardHeader>
+            <CardContent>
+              {lowStockItems.length === 0 ? <p className="text-sm text-muted-foreground">No hay tallas en nivel de alerta.</p> : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{lowStockItems.map((item) => <div key={item._id} className="rounded-xl border border-border/60 bg-background p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.variants.map((variant) => `${variant.size}: ${variant.stock}`).join(" · ")}</p></div>)}</div>}
+            </CardContent>
+          </Card>
+
           <div className="space-y-3">
             {products.map((product) => {
               const stock = totalStock(product);
@@ -750,14 +785,17 @@ export default function AdminInventory() {
                           {new Date(b.start_date).toLocaleDateString("es-PA")} al {new Date(b.end_date).toLocaleDateString("es-PA")}
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteMaintenance(b._id)}
-                        className="text-destructive hover:bg-destructive/8 rounded-full h-8 w-8"
+                      <ConfirmModal
+                        title="Eliminar bloqueo de mantenimiento"
+                        description="¿Seguro que deseas eliminar este bloqueo? La talla volverá a poder reservarse si no existe otro conflicto."
+                        confirmText="Eliminar bloqueo"
+                        variant="destructive"
+                        onConfirm={() => void handleDeleteMaintenance(b._id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/8 rounded-full h-8 w-8" aria-label="Eliminar bloqueo de mantenimiento">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </ConfirmModal>
                     </div>
                   ))}
               </div>

@@ -544,13 +544,24 @@ export const adminApi = {
 
   // Maintenance Blocks
   listMaintenance: (token: string) =>
-    api<{ blocks: any[] }>("/admin/maintenance", { token }),
+    api<{ blocks: any[]; pagination: PaginationMetadata }>("/admin/maintenance?limit=100", { token }),
 
   createMaintenance: (data: any, token: string) =>
     api<{ block: any }>("/admin/maintenance", { method: "POST", body: data, token }),
 
   deleteMaintenance: (id: string, token: string) =>
     api<{ message: string; block: any }>(`/admin/maintenance/${id}`, { method: "DELETE", token }),
+
+  lowStock: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<{ data: Array<{ _id: string; name: string; variants: Array<{ size: string; stock: number }> }>; pagination: PaginationMetadata; threshold: number }>(`/admin/maintenance/low-stock${query}`, { token });
+  },
+
+  updateLowStockThreshold: (threshold: number, token: string) =>
+    api<{ threshold: number }>("/admin/maintenance/threshold", { method: "PATCH", body: { threshold }, token }),
 
   // Reports
   getInventoryStats: (token: string, params: { from?: string; to?: string; search?: string; category?: string } = {}) => {

@@ -14,6 +14,7 @@ export interface ISizeGroupConfig {
 export interface ISettings extends Document {
   categories: ICategoryConfig[];
   size_groups: ISizeGroupConfig[];
+  low_stock_threshold: number;
 }
 
 const categorySchema = new Schema<ICategoryConfig>({
@@ -30,6 +31,7 @@ const settingsSchema = new Schema<ISettings>(
   {
     categories: { type: [categorySchema], default: [] },
     size_groups: { type: [sizeGroupSchema], default: [] },
+    low_stock_threshold: { type: Number, min: 0, max: 1000, default: 1 },
   },
   {
     timestamps: true,

@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
     { label: "Infantil", sizes: ["2-4", "4-6", "6-8", "8-10", "10-12"] },
     { label: "Generales", sizes: ["Único"] },
   ],
+  low_stock_threshold: 1,
 };
 
 // GET /api/settings - Public access to read settings
@@ -50,6 +51,7 @@ const settingsSchema = z.object({
       sizes: z.array(z.string().min(1)),
     })
   ),
+  low_stock_threshold: z.number().int().min(0).max(1000).optional(),
 });
 
 settings.put("/", authMiddleware, requirePermission("settings.write"), async (c) => {
@@ -59,7 +61,7 @@ settings.put("/", authMiddleware, requirePermission("settings.write"), async (c)
   let config = await Settings.findOne();
   
   if (!config) {
-    config = new Settings(body);
+    config = new Settings({ ...body, low_stock_threshold: body.low_stock_threshold ?? 1 });
   } else {
     // Check for ID migrations before saving
     const oldCategories = config.categories;
@@ -80,6 +82,7 @@ settings.put("/", authMiddleware, requirePermission("settings.write"), async (c)
 
     config.categories = body.categories as any;
     config.size_groups = body.size_groups as any;
+    if (body.low_stock_threshold !== undefined) config.low_stock_threshold = body.low_stock_threshold;
   }
   
   await config.save();

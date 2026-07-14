@@ -94,6 +94,7 @@ export interface ISizeGroupConfig {
 export interface ISettings {
   categories: ICategoryConfig[];
   size_groups: ISizeGroupConfig[];
+  low_stock_threshold?: number;
 }
 
 export interface PaginationMetadata {
