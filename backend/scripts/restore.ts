@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import mongoose from "mongoose";
-import { connectDB } from "../src/db.js";
-import { buildIsolatedMongoUri, decryptBackup, type EncryptedBackup } from "../src/services/backup.js";
+import { connectDB, validateMongoDatabaseName } from "../src/db.js";
+import { decryptBackup, type EncryptedBackup } from "../src/services/backup.js";
 import { structuredLog } from "../src/services/observability.js";
 
 if (process.env.APP_ENV === "production") {
@@ -12,7 +12,8 @@ if (process.env.RESTORE_CONFIRMATION !== "isolated") {
 }
 
 if (process.env.RESTORE_DATABASE_NAME) {
-  process.env.MONGO_URI = buildIsolatedMongoUri(process.env.MONGO_URI ?? "", process.env.RESTORE_DATABASE_NAME);
+  validateMongoDatabaseName(process.env.RESTORE_DATABASE_NAME);
+  process.env.MONGO_DATABASE_NAME = process.env.RESTORE_DATABASE_NAME;
 }
 
 const inputFile = process.env.BACKUP_FILE;
