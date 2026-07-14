@@ -38,6 +38,7 @@ export interface IRental extends Document {
   terms_accepted: boolean;
   stripe_session_id?: string;
   stripe_payment_intent_id?: string;
+  stripe_payment_amount?: number;
   stripe_deposit_intent_id?: string;
   stripe_late_fee_intent_id?: string;
   stripe_customer_id?: string;
@@ -87,6 +88,7 @@ const rentalSchema = new Schema<IRental>(
     terms_accepted: { type: Boolean, required: true, default: false },
     stripe_session_id: { type: String },
     stripe_payment_intent_id: { type: String },
+    stripe_payment_amount: { type: Number, min: 0 },
     stripe_deposit_intent_id: { type: String },
     stripe_late_fee_intent_id: { type: String },
     stripe_customer_id: { type: String },

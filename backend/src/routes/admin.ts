@@ -16,6 +16,7 @@ import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.
 import type { Role } from "../models/User.js";
 import { AdminAuditLog } from "../models/AdminAuditLog.js";
 import { adminAuditMiddleware } from "../services/audit.js";
+import { createRentalRefund } from "../services/refunds.js";
 
 const admin = new Hono<{ Variables: AuthVariables }>();
 
@@ -30,12 +31,36 @@ admin.use("/products/*", requirePermission("products.write"));
 admin.use("/rentals", requirePermission("reservations.read"));
 admin.use("/rentals/*", requirePermission("reservations.read"));
 admin.use("/rentals/:id/status", requirePermission("reservations.write"));
+admin.use("/rentals/:id/refund", requirePermission("payments.refund"));
 admin.use("/users", requirePermission("users.read"));
 admin.use("/users/*", requirePermission("users.read"));
 admin.use("/contacts", requirePermission("contacts.manage"));
 admin.use("/contacts/*", requirePermission("contacts.manage"));
 
 const contactStatusSchema = z.enum(["unread", "read", "archived"]);
+const refundSchema = z.object({
+  amount: z.number().positive().optional(),
+  reason: z.string().trim().min(5).max(500),
+});
+
+admin.post("/rentals/:id/refund", async (c) => {
+  const body = refundSchema.parse(await c.req.json());
+  const user = c.get("user");
+  const result = await createRentalRefund({
+    rentalId: c.req.param("id"),
+    requestedBy: user._id.toString(),
+    amount: body.amount,
+    reason: body.reason,
+    idempotencyKey: c.req.header("idempotency-key") ?? crypto.randomUUID(),
+    requestId: c.req.header("x-request-id"),
+  });
+  return c.json({
+    refund: result.refund,
+    refundedTotal: result.refundedTotal,
+    refundableRemaining: result.refundableRemaining,
+  }, 201);
+});
+
 
 // GET /api/admin/audit - immutable administrative activity log
 admin.get("/audit", requirePermission("audit.read"), async (c) => {

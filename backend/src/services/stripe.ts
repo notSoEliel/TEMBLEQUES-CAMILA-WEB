@@ -208,6 +208,9 @@ async function processStripeEvent(
       for (const rental of rentalsToUpdate) {
         rental.status = rental.payment_type === "full" ? "paid" : "reserved";
         rental.payment_status = "completed";
+        const discountedTotal = Math.max(0, rental.total - (rental.discount_amount ?? 0));
+        const expectedRentalAmount = rental.payment_type === "full" ? discountedTotal : rental.deposit_amount;
+        rental.stripe_payment_amount = toCents(expectedRentalAmount) / 100;
         await hydrateRentalPaymentSources(rental, session);
         await rental.save();
 
