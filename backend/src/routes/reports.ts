@@ -3,6 +3,7 @@ import { authMiddleware, requirePermission, type AuthVariables } from "../middle
 import { Rental } from "../models/Rental.js";
 import { Product } from "../models/Product.js";
 import { calculateRentalDays } from "../services/payment-rules.js";
+import { generateFinancialCsv, generateFinancialPdf, parseFinancialFilters } from "../services/financial-reports.js";
 
 const reports = new Hono<{ Variables: AuthVariables }>();
 
@@ -83,6 +84,25 @@ reports.get("/export-csv", async (c) => {
   c.header("Content-Type", "text/csv; charset=utf-8");
   c.header("Content-Disposition", "attachment; filename=reporte_rotacion_inventario.csv");
   return c.body(csv);
+});
+
+reports.get("/financial/export-csv", requirePermission("reports.fiscal"), async (c) => {
+  const csv = await generateFinancialCsv(parseFinancialFilters({ from: c.req.query("from"), to: c.req.query("to") }));
+  c.header("Content-Type", "text/csv; charset=utf-8");
+  c.header("Content-Disposition", "attachment; filename=reporte-financiero-academico.csv");
+  return c.body(csv);
+});
+
+reports.get("/financial/export.pdf", requirePermission("reports.fiscal"), async (c) => {
+  const pdf = await generateFinancialPdf(parseFinancialFilters({ from: c.req.query("from"), to: c.req.query("to") }));
+  return new Response(new Uint8Array(pdf), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "attachment; filename=reporte-financiero-academico.pdf",
+      "Cache-Control": "no-store",
+    },
+  });
 });
 
 export default reports;
