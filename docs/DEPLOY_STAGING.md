@@ -11,6 +11,8 @@
 
 El backend esta desplegado en Railway desde la carpeta `backend` como raiz del servicio, con `bun run start` y healthcheck en `/health`. El MCP esta desplegado en Railway desde la carpeta `mcp-server`, con transporte Streamable HTTP en `/mcp` y healthcheck en `/health`. El frontend esta desplegado en Vercel desde `frontend` y consume la API mediante `VITE_API_URL`.
 
+En el proyecto actual, el proyecto Railway se llama `tembleques-camila-staging`. Su entorno técnico aparece etiquetado como `production`, pero se utiliza como el staging académico actual. La separación real entre staging y producción se documentará y ejecutará posteriormente; no se debe interpretar esta etiqueta como producción real.
+
 ## Estrategia
 
 Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railway simplifica logs, variables, dominios y despliegue por CLI. La base de datos recomendada a mediano plazo es MongoDB Atlas M0 si se requiere separacion mas clara entre staging y produccion.
@@ -26,6 +28,9 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 - `CLOUDINARY_UPLOAD_PRESET=tembleques_products_signed`
+- `RESEND_API_KEY` (opcional)
+- `RESEND_FROM_EMAIL` (opcional; remitente verificado en Resend)
+- `RESEND_REPLY_TO` (opcional)
 - `FRONTEND_URL`
 - `CORS_ALLOWED_ORIGINS`
 - `TRUST_PROXY=true`
@@ -75,8 +80,8 @@ Railway inyecta `PORT` automaticamente. El dominio del servicio MCP debe apuntar
 ```bash
 railway status
 railway service list
-railway variables --service backend
-railway variables --service mcp-server
+railway variable list --service backend
+railway variable list --service mcp-server
 railway up ./backend --path-as-root --service backend
 railway up ./mcp-server --path-as-root --service mcp-server
 railway domain list --service mcp-server
@@ -107,3 +112,34 @@ curl -H "Authorization: Bearer $MCP_BACKEND_ADMIN_TOKEN" \
 ```
 
 La respuesta informa el ambiente, perfil, modo y conteos de `products`, `rentals`, `users` y `termsAcceptances`. Esta comprobación debe ejecutarse después de un deploy de staging y conservarse como evidencia del issue H56/#61.
+
+## Notificaciones y Resend
+
+H70 — OPS: Notificaciones transaccionales — issue #96 incorpora notificaciones internas protegidas para pagos, expiraciones, cancelaciones, reembolsos, incidencias y bajo stock.
+
+El correo externo es opcional. Si Railway no tiene `RESEND_API_KEY` y `RESEND_FROM_EMAIL`, el backend conserva la notificación interna y registra el canal de email como:
+
+```text
+delivery_status=skipped
+error_code=EMAIL_PROVIDER_NOT_CONFIGURED
+```
+
+Cuando las variables están configuradas, el flujo es:
+
+```text
+pending -> sent
+pending -> failed
+```
+
+La integración usa la API de Resend, una clave de idempotencia y un timeout de ocho segundos. Los errores se registran de forma sanitizada y no deben interrumpir pagos, webhooks, cancelaciones o incidencias.
+
+Para activar Resend en staging se debe verificar primero el dominio/remitente en Resend, configurar las variables como secretos del servicio backend y ejecutar un smoke controlado que confirme el estado `sent` y la recepción en el buzón. No se deben colocar valores reales en este documento.
+
+## H70 y H71: evidencia remota
+
+El workflow manual `Staging Smoke` también ejecuta:
+
+- H70: creación de una incidencia para la cuenta QA, notificación aislada, lectura autenticada y comprobación de que otro usuario no la recibe.
+- H71: consulta de bajo stock, comprobación de permisos, actualización del umbral y rechazo de mantenimientos solapados.
+
+El smoke final de la fase se ejecutó en el workflow `29314726243` sobre el commit `249d9db`.
