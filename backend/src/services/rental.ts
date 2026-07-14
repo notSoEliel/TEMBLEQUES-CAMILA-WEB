@@ -194,8 +194,9 @@ export async function updateRentalStatus(
   newStatus: RentalStatus,
 ) {
   const validTransitions: Record<string, string[]> = {
-    // paid/reserved solo los confirma un webhook válido de Stripe.
-    pending: ["cancelled"],
+    // paid solo lo confirma un webhook válido de Stripe. reserved puede
+    // representar una gestión operativa sin convertir el pago en completed.
+    pending: ["reserved", "cancelled"],
     reserved: ["delivered", "cancelled"],
     paid: ["confirmed", "delivered", "cancelled"],
     confirmed: ["delivered", "cancelled"],
