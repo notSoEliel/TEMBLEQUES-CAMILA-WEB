@@ -17,6 +17,7 @@ import type { Role } from "../models/User.js";
 import { AdminAuditLog } from "../models/AdminAuditLog.js";
 import { adminAuditMiddleware } from "../services/audit.js";
 import { createRentalRefund } from "../services/refunds.js";
+import { reconcilePayments } from "../services/reconciliation.js";
 
 const admin = new Hono<{ Variables: AuthVariables }>();
 
@@ -32,6 +33,7 @@ admin.use("/rentals", requirePermission("reservations.read"));
 admin.use("/rentals/*", requirePermission("reservations.read"));
 admin.use("/rentals/:id/status", requirePermission("reservations.write"));
 admin.use("/rentals/:id/refund", requirePermission("payments.refund"));
+admin.use("/payments/reconcile", requirePermission("payments.reconcile"));
 admin.use("/users", requirePermission("users.read"));
 admin.use("/users/*", requirePermission("users.read"));
 admin.use("/contacts", requirePermission("contacts.manage"));
@@ -59,6 +61,11 @@ admin.post("/rentals/:id/refund", async (c) => {
     refundedTotal: result.refundedTotal,
     refundableRemaining: result.refundableRemaining,
   }, 201);
+});
+
+admin.post("/payments/reconcile", async (c) => {
+  const result = await reconcilePayments({ requestId: c.req.header("x-request-id") });
+  return c.json({ reconciliation: result });
 });
 
 
