@@ -13,7 +13,9 @@ import {
   ChevronLeft,
   Info,
   X,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -49,7 +51,7 @@ interface OrderGroup {
 
 export default function Orders() {
   const { token } = useAuth();
-  const { errorModal } = useErrorModal();
+  const { errorModal, showError } = useErrorModal();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t, language } = useI18n();
   
@@ -57,6 +59,7 @@ export default function Orders() {
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderGroup | null>(null);
+  const [actionLoading, setActionLoading] = useState<"receipt" | "cancel" | null>(null);
   
   const view = searchParams.get("view") || "active";
   const page = Number(searchParams.get("page")) || 1;
@@ -120,6 +123,32 @@ export default function Orders() {
     params.set("view", newView);
     params.set("page", "1");
     setSearchParams(params);
+  };
+
+  const handleReceipt = async () => {
+    if (!token || !selectedOrder) return;
+    setActionLoading("receipt");
+    try {
+      await Promise.all(selectedOrder.rentals.map((rental) => rentalsApi.downloadReceipt(rental._id, token)));
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "No se pudo descargar el comprobante.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!token || !selectedOrder) return;
+    setActionLoading("cancel");
+    try {
+      await Promise.all(selectedOrder.rentals.map((rental) => rentalsApi.cancel(rental._id, token)));
+      setSelectedOrder(null);
+      await loadOrders();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "No se pudo cancelar la reserva.");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const locale = language === "en" ? "en-US" : "es-PA";
@@ -375,6 +404,18 @@ export default function Orders() {
                   {selectedOrder.status === "pending" && (
                     <Button className="flex-1 sm:flex-none rounded-full px-10 shadow-elegant font-bold">
                       {t("orders.payRentalBtn")}
+                    </Button>
+                  )}
+                  {selectedOrder.rentals.every((rental) => ["completed", "refunded"].includes(rental.payment_status)) && (
+                    <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40" onClick={handleReceipt} disabled={actionLoading !== null}>
+                      {actionLoading === "receipt" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                      Comprobante
+                    </Button>
+                  )}
+                  {selectedOrder.rentals.every((rental) => ["pending", "reserved", "paid", "confirmed"].includes(rental.status)) && (
+                    <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-destructive/30 text-destructive" onClick={handleCancel} disabled={actionLoading !== null}>
+                      {actionLoading === "cancel" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
+                      Cancelar reserva
                     </Button>
                   )}
                   <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40">

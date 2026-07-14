@@ -186,6 +186,34 @@ export const rentalsApi = {
 
   cancel: (id: string, token: string) =>
     api<{ message: string; rental: any }>(`/rentals/${id}`, { method: "DELETE", token }),
+
+  cancellationPreview: (id: string, token: string) =>
+    api<{ cancellable: boolean; paid: boolean; daysUntilStart: number; refundPercentage: number; refundableAmount: number; policyLabel: string }>(`/rentals/${id}/cancellation-preview`, { token }),
+
+  downloadReceipt: async (rentalId: string, token: string) => {
+    const response = await fetch(`${API_URL}/rentals/${rentalId}/receipt.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      let message = "No se pudo generar el comprobante.";
+      try {
+        const data = await response.json();
+        message = data?.error || message;
+      } catch {
+        message = `No se pudo generar el comprobante (${response.status}).`;
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `comprobante-${rentalId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // Stripe
@@ -316,6 +344,38 @@ export const adminApi = {
     });
     if (!res.ok) throw new Error("Error al exportar reporte");
     return res.text();
+  },
+
+  exportFinancialCsv: async (token: string, from?: string, to?: string): Promise<string> => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${API_URL}/admin/reports/financial/export-csv${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("No se pudo exportar el reporte financiero.");
+    return res.text();
+  },
+
+  downloadFinancialPdf: async (token: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${API_URL}/admin/reports/financial/export.pdf${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("No se pudo exportar el PDF financiero.");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "reporte-financiero-academico.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   },
 
   // Contacts
