@@ -96,6 +96,17 @@ jobs:
           E2E_STRIPE_TEST_EMAIL: ${{ secrets.E2E_STRIPE_TEST_EMAIL }}
           E2E_MCP_BACKEND_ADMIN_TOKEN: ${{ secrets.MCP_BACKEND_ADMIN_TOKEN }}
 
+      - name: Run phase 3 operational evidence
+        run: bunx playwright test tests/e2e/staging-phase3.spec.ts
+        env:
+          E2E_STAGING_URL: http://localhost:5173
+          E2E_BACKEND_URL: ${{ secrets.STAGING_BACKEND_URL }}
+          E2E_REAL_INTEGRATIONS: "true"
+          E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          E2E_MCP_BACKEND_ADMIN_TOKEN: ${{ secrets.MCP_BACKEND_ADMIN_TOKEN }}
+
       - name: Upload staging smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
