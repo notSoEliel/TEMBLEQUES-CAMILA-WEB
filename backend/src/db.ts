@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/tembleques_camila";
 const DB_CONNECT_RETRIES = Number(process.env.DB_CONNECT_RETRIES || 20);
 const DB_RETRY_DELAY_MS = Number(process.env.DB_RETRY_DELAY_MS || 3000);
 
@@ -8,7 +7,7 @@ export async function connectDB(): Promise<void> {
   let retries = DB_CONNECT_RETRIES;
   while (retries > 0) {
     try {
-      await mongoose.connect(MONGO_URI);
+      await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/tembleques_camila");
       console.log("[DB] Connected to MongoDB successfully");
       return;
     } catch (error) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decryptBackup, encryptBackup } from "./backup.js";
+import { buildIsolatedMongoUri, decryptBackup, encryptBackup } from "./backup.js";
 
 const key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -13,5 +13,12 @@ describe("backup cifrado", () => {
 
   it("rechaza claves con tamaño incorrecto", () => {
     expect(() => encryptBackup({}, "short")).toThrow("BACKUP_ENCRYPTION_KEY debe ser");
+  });
+
+  it("construye una URI de restauración sin modificar credenciales ni parámetros", () => {
+    expect(buildIsolatedMongoUri(
+      "mongodb://user:password@mongodb.railway.internal:27017?authSource=admin",
+      "tembleques_restore",
+    )).toBe("mongodb://user:password@mongodb.railway.internal:27017/tembleques_restore?authSource=admin");
   });
 });
