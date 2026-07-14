@@ -70,7 +70,7 @@ test.describe("Staging - Stripe test real", () => {
   test("completa Checkout test y espera el estado producido por el webhook", async ({ page, request }) => {
     await loginWithClerk(page);
     const product = await getAvailableStagingProduct(request);
-    await addAvailableProductToCheckout(page, product);
+    await addAvailableProductToCheckout(page, request, product);
     const stripeEmail = process.env.E2E_STRIPE_TEST_EMAIL || "qa.checkout@temblequescamila.com";
 
     let authorization: string | undefined;
