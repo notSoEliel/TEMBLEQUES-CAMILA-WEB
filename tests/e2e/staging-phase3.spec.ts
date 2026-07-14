@@ -104,9 +104,20 @@ test.describe("Staging - evidencia operativa de fase 3", () => {
     const headers = { Authorization: authorization };
 
     const before = await fetchJson<PrivacyExport>(request, "/api/privacy/export", headers);
-    expect(before.profile.email).toBe(requireEnvironment("E2E_CLERK_EMAIL"));
     expect(Array.isArray(before.rentals)).toBeTruthy();
     expect(Array.isArray(before.termsAcceptances)).toBeTruthy();
+
+    const alreadyAnonymized = /^deleted-[a-f0-9]{24}@privacy\.invalid$/.test(before.profile.email);
+    if (alreadyAnonymized) {
+      expect(before.profile.name).toBe("Usuario anonimizado");
+      for (const acceptance of before.termsAcceptances) {
+        expect(acceptance.ip_address).toBe("anonimizada");
+        expect(acceptance.user_agent).toBe("anonimizado");
+      }
+      return;
+    }
+
+    expect(before.profile.email).toBe(requireEnvironment("E2E_CLERK_EMAIL"));
 
     const anonymizeResponse = await request.delete(`${backendURL()}/api/privacy`, { headers });
     expect(anonymizeResponse.status()).toBe(200);
