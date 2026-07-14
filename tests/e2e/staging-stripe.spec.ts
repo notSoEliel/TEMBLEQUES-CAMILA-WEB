@@ -20,7 +20,7 @@ async function waitForWebhookState(
   page: Page,
   request: APIRequestContext,
   rentalIds: string[],
-): Promise<void> {
+): Promise<string> {
   await expect.poll(async () => {
     const authorization = await getCurrentAuthorization(page);
     if (!authorization) return "request-failed";
@@ -32,6 +32,12 @@ async function waitForWebhookState(
     const payload = await response.json() as StagingRentalListResponse;
     return payload.data.find((rental) => rentalIds.includes(rental._id))?.status ?? "not-found";
   }, { timeout: 60_000, intervals: [2_000, 5_000] }).toMatch(/reserved|paid/);
+
+  const currentAuthorization = await getCurrentAuthorization(page);
+  if (!currentAuthorization) {
+    throw new Error("No se pudo renovar el token de Clerk después de confirmar el webhook.");
+  }
+  return currentAuthorization;
 }
 
 async function getCurrentAuthorization(page: Page): Promise<string | null> {
@@ -97,13 +103,15 @@ test.describe("Staging - Stripe test real", () => {
 
     expect(authorization).toMatch(/^Bearer\s+/);
     expect(checkoutBody.rentalIds?.length).toBeGreaterThan(0);
-    await waitForWebhookState(page, request, checkoutBody.rentalIds!);
+    const currentAuthorization = await waitForWebhookState(page, request, checkoutBody.rentalIds!);
 
     const receiptResponse = await request.get(
       `${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/${checkoutBody.rentalIds![0]}/receipt.pdf`,
-      { headers: { Authorization: authorization! } },
+      { headers: { Authorization: currentAuthorization } },
     );
-    expect(receiptResponse.status()).toBe(200);
+    if (receiptResponse.status() !== 200) {
+      throw new Error(`El comprobante respondió ${receiptResponse.status()}: ${await receiptResponse.text()}`);
+    }
     expect(receiptResponse.headers()["content-type"]).toContain("application/pdf");
 
     const reconciliationResponse = await request.post(
