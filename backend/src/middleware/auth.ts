@@ -17,7 +17,7 @@ function safeTokenEquals(left: string, right: string | undefined): boolean {
   return timingSafeEqual(leftBytes, rightBytes);
 }
 
-function serviceRoleForToken(token: string): "admin" | "client" | null {
+function serviceIdentityForToken(token: string): "admin" | "client" | null {
   if (safeTokenEquals(token, process.env.MCP_BACKEND_ADMIN_TOKEN)) return "admin";
   if (safeTokenEquals(token, process.env.MCP_BACKEND_CLIENT_TOKEN)) return "client";
   return null;
@@ -37,13 +37,13 @@ export const authMiddleware = async (c: AuthContext, next: Next) => {
 
   const token = authHeader.split(" ")[1];
 
-  const serviceRole = serviceRoleForToken(token);
-  if (serviceRole) {
-    const clerkId = `mcp_service_${serviceRole}`;
-    const role: Role = serviceRole === "admin" ? "owner" : "client";
+  const serviceIdentity = serviceIdentityForToken(token);
+  if (serviceIdentity) {
+    const clerkId = `mcp_service_${serviceIdentity}`;
+    const role: Role = serviceIdentity === "admin" ? "owner" : "client";
     const user = await User.findOneAndUpdate(
       { clerkId },
-      { $set: { role }, $setOnInsert: { clerkId, name: `MCP ${serviceRole}`, email: `${serviceRole}@mcp.internal` } },
+      { $set: { role }, $setOnInsert: { clerkId, name: `MCP ${serviceIdentity}`, email: `${serviceIdentity}@mcp.internal` } },
       { upsert: true, new: true },
     );
     c.set("user", user);
@@ -52,8 +52,8 @@ export const authMiddleware = async (c: AuthContext, next: Next) => {
   }
 
   // Clerk Mock Auth Bypass for E2E Testing
-  if (process.env.AUTH_MOCKS_ENABLED === "true" && (token === "mock-admin-token" || token === "mock-client-token")) {
-    const role: Role = token === "mock-admin-token" ? "owner" : "client";
+  if (process.env.AUTH_MOCKS_ENABLED === "true" && (token === "mock-owner-token" || token === "mock-client-token")) {
+    const role: Role = token === "mock-owner-token" ? "owner" : "client";
     const email = `${role}@test.com`;
     const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
     const clerkId = `mock_${role}_id`;
@@ -112,6 +112,12 @@ export const authMiddleware = async (c: AuthContext, next: Next) => {
     });
   }
 
+  const normalizedRole = normalizeRole(user.role);
+  if (user.role !== normalizedRole) {
+    user.role = normalizedRole;
+    await user.save();
+  }
+
   c.set("user", user);
   await next();
 };
@@ -126,6 +132,6 @@ export const requirePermission = (permission: Permission) => async (c: AuthConte
 
 export const requireAdmin = requirePermission("dashboard.read");
 
-export function effectiveRole(user: IUser): Exclude<Role, "admin"> {
+export function effectiveRole(user: IUser): Role {
   return normalizeRole(user.role);
 }

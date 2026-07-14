@@ -7,6 +7,7 @@
     "start": "bun src/index.ts",
     "test": "vitest run",
     "seed": "bun src/seed.ts",
+    "migrate:legacy-roles": "bun scripts/migrate-legacy-admin-role.ts",
     "backup": "bun scripts/backup.ts",
     "restore": "bun scripts/restore.ts",
     "tunnel": "bunx localtunnel --port 3000 --subdomain tembleques-camila"

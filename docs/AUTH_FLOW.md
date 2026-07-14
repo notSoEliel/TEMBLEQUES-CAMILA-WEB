@@ -78,16 +78,16 @@ event = wh.verify(rawBody, {
 
 ## 5. Gestión de Roles (RBAC)
 
-La autorización se basa en el campo `role` ("client" | "admin"). 
+La autorización se basa en el campo `role` (`client`, `owner`, `operator`, `inventory` o `support`).
 
 1.  **Source of Truth**: El rol se define en el `publicMetadata` del usuario dentro del dashboard de Clerk.
 2.  **Propagación**: El rol viaja dentro de los claims del JWT y también se sincroniza en el campo `role` de la colección `users` en MongoDB.
-3.  **Protección de Rutas**: Utilizamos el middleware `requireAdmin` para bloquear el acceso a la API de administración:
+3.  **Protección de Rutas**: Utilizamos permisos por operación para bloquear el acceso a la API administrativa. `requireAdmin` se conserva como alias histórico para el permiso mínimo del dashboard:
 
 ```typescript
 export const requireAdmin = async (c: Context, next: Next) => {
   const user = c.get("user");
-  if (user.role !== "admin") {
+  if (!hasPermission(user.role, "dashboard.read")) {
     throw new AppError("Acceso denegado", 403, "AUTH_FORBIDDEN");
   }
   await next();

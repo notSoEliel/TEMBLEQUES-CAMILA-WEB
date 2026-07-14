@@ -28,7 +28,7 @@ El proyecto integra funcionalidades de cliente, administracion, checkout, invent
 1. Abrir https://frontend-navy-five-22.vercel.app y navegar a catalogo.
 2. Filtrar una pieza, abrir detalle, elegir talla y fechas.
 3. Agregar al carrito, aceptar terminos y completar pago demo.
-4. Entrar como admin mock o usuario admin y revisar reservas.
+4. Entrar como owner mock o usuario con rol `owner` y revisar reservas.
 5. Descargar contrato PDF desde una reserva.
 6. Revisar mensajes de contacto, clientes, reportes y cupones.
 7. Ejecutar una tool MCP de lectura, por ejemplo `ops.health.check` o `catalog.products.search`, usando https://mcp-server-production-321a.up.railway.app/mcp.

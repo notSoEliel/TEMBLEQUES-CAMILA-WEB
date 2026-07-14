@@ -33,7 +33,7 @@ Clerk `publicMetadata.role` es la fuente de sincronización; la decisión final 
 - `support`: consultas de clientes, reservas y contactos.
 - `client`: operaciones B2C propias.
 
-El valor legado `admin` se normaliza a `owner` durante la migración. No se permite que un propietario se quite a sí mismo el último acceso de propietario.
+El valor legacy `admin` solo se acepta como entrada de compatibilidad y se normaliza inmediatamente a `owner`; no forma parte del tipo ni del enum persistido. La conversión de datos existentes se ejecuta con `cd backend && bun run migrate:legacy-roles --dry-run` y, después de revisar los conteos, `cd backend && bun run migrate:legacy-roles --apply`. El comando está bloqueado en producción salvo que se habilite explícitamente `LEGACY_ROLE_MIGRATION_ALLOW_PRODUCTION=true`. No se permite que un propietario se quite a sí mismo el último acceso de propietario.
 
 ## MCP remoto
 

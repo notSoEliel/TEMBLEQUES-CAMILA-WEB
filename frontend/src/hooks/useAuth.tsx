@@ -7,7 +7,7 @@ interface User {
   clerkId: string;
   name: string;
   email: string;
-  role: "client" | "owner" | "operator" | "inventory" | "support" | "admin";
+  role: "client" | "owner" | "operator" | "inventory" | "support";
   phone?: string;
   preferredAddress?: string;
   preferredLanguage?: "es" | "en";
@@ -115,7 +115,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const mockToken = localStorage.getItem("mock_auth_token");
     if (mockToken) {
-      const role = mockToken === "mock-admin-token" ? "owner" : "client";
+      const role = mockToken === "mock-owner-token" ? "owner" : "client";
       const email = `${role}@test.com`;
       const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
       const clerkId = `mock_${role}_id`;

@@ -45,7 +45,7 @@ async function getAvailableProduct(request: APIRequestContext): Promise<E2EProdu
   return product;
 }
 
-async function setMockAuth(page: Page, token: "mock-client-token" | "mock-admin-token"): Promise<void> {
+async function setMockAuth(page: Page, token: "mock-client-token" | "mock-owner-token"): Promise<void> {
   await page.evaluate((mockToken) => {
     localStorage.setItem("mock_auth_token", mockToken);
   }, token);
@@ -85,7 +85,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.locator("h1").last()).toContainText("comienza aquí, Test");
     await expect(page.locator('input[disabled]')).toHaveValue("client@test.com");
 
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto("/admin");
 
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
@@ -144,7 +144,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe permitir al administrador gestionar el panel de control", async ({ page }) => {
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
 
     await page.goto("/admin");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
@@ -163,7 +163,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     const product = await getAvailableProduct(request);
     const searchTerm = product.name.split(/\s+/)[0];
 
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto(`/admin/inventory?search=${encodeURIComponent(searchTerm)}&page=1&limit=10`);
     await expect(page.getByRole("heading", { name: product.name, exact: true })).toBeVisible();
 
@@ -208,14 +208,14 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     const created = await createResponse.json() as RentalResponse;
 
     const updateResponse = await request.patch(`http://localhost:3000/api/admin/rentals/${created.rental._id}/status`, {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: { status: "reserved" },
     });
     expect(updateResponse.ok()).toBeTruthy();
     const updated = await updateResponse.json() as RentalResponse;
     expect(updated.rental.status).toBe("reserved");
 
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto("/admin/reservations");
     await expect(page.getByRole("heading", { name: "Reservas", exact: true })).toBeVisible();
     await expect(page.getByText("Reservado", { exact: true }).first()).toBeVisible();
@@ -227,7 +227,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe permitir registrar y revisar una incidencia operativa", async ({ page }) => {
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto("/admin/incidents");
     await expect(page.getByRole("heading", { name: "Incidencias", exact: true })).toBeVisible();
     const description = `Incidencia E2E ${Date.now()} con seguimiento administrativo.`;
@@ -259,7 +259,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     const created = await createRentalResponse.json() as RentalResponse & { rental: { _id: string } };
 
     const incidentResponse = await request.post("http://localhost:3000/api/admin/incidents", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: {
         rentalId: created.rental._id,
         type: "customer_complaint",
@@ -279,7 +279,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     }, { timeout: 10_000 }).toBeTruthy();
 
     const forbiddenResponse = await request.get("http://localhost:3000/api/notifications?page=1&limit=20", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
     });
     expect(forbiddenResponse.ok()).toBeTruthy();
     const adminPayload = await forbiddenResponse.json() as { data: Array<{ title: string }> };
@@ -298,7 +298,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     if (!size) throw new Error("El producto semilla no tiene talla para mantenimiento.");
 
     const lowStockResponse = await request.get("http://localhost:3000/api/admin/maintenance/low-stock?page=1&limit=20", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
     });
     expect(lowStockResponse.ok()).toBeTruthy();
     const lowStockPayload = await lowStockResponse.json() as { threshold: number; data: unknown[] };
@@ -315,32 +315,32 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     const endDate = futureDate(startOffset + 2);
     const maintenancePayload = { productId: product._id, selectedSize: size, startDate, endDate, reason: "Prueba de mantenimiento H71" };
     const createdResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: maintenancePayload,
     });
     expect(createdResponse.status()).toBe(201);
     const created = await createdResponse.json() as { block: { _id: string } };
 
     const overlapResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: { ...maintenancePayload, reason: "Solapamiento inválido" },
     });
     expect(overlapResponse.status()).toBe(409);
     await expect(overlapResponse.json()).resolves.toMatchObject({ code: "MAINTENANCE_OVERLAP" });
 
     const invalidRangeResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: { ...maintenancePayload, startDate: endDate, endDate: startDate },
     });
     expect(invalidRangeResponse.status()).toBe(400);
     await expect(invalidRangeResponse.json()).resolves.toMatchObject({ code: "MAINTENANCE_DATE_RANGE_INVALID" });
 
     const deleteResponse = await request.delete(`http://localhost:3000/api/admin/maintenance/${created.block._id}`, {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
     });
     expect(deleteResponse.ok()).toBeTruthy();
 
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto("/admin/inventory");
     await expect(page.getByText("Control de bajo stock", { exact: true })).toBeVisible();
   });
@@ -355,7 +355,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
 
     await expect(page.getByText("Mensaje recibido correctamente", { exact: false })).toBeVisible();
 
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     await page.goto("/admin/contacts");
 
     await expect(page.getByRole("heading", { name: "Mensajes de Contacto" })).toBeVisible();
@@ -493,7 +493,7 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe exponer módulos administrativos de cupones, reportes y reglas", async ({ page }) => {
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
 
     await page.goto("/admin/coupons");
     await expect(page.getByRole("heading", { name: "Gestión de Cupones" })).toBeVisible();
@@ -506,8 +506,8 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe validar el rango de fechas de los reportes administrativos", async ({ page, request }) => {
-    await setMockAuth(page, "mock-admin-token");
-    const response = await request.get("http://localhost:3000/api/admin/reports/inventory-stats?from=2026-09-10&to=2026-09-01", { headers: { Authorization: "Bearer mock-admin-token" } });
+    await setMockAuth(page, "mock-owner-token");
+    const response = await request.get("http://localhost:3000/api/admin/reports/inventory-stats?from=2026-09-10&to=2026-09-01", { headers: { Authorization: "Bearer mock-owner-token" } });
     expect(response.status()).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ code: "REPORT_DATE_RANGE_INVALID" });
     await page.goto("/admin/reports?from=2026-09-10&to=2026-09-01");
@@ -516,9 +516,9 @@ test.describe("Tembleques Camila - E2E Tests", () => {
   });
 
   test("Debe rechazar promociones con un porcentaje imposible", async ({ page, request }) => {
-    await setMockAuth(page, "mock-admin-token");
+    await setMockAuth(page, "mock-owner-token");
     const response = await request.post("http://localhost:3000/api/coupons", {
-      headers: { Authorization: "Bearer mock-admin-token" },
+      headers: { Authorization: "Bearer mock-owner-token" },
       data: { code: `INVALID${Date.now()}`, discount_type: "percentage", value: 101 },
     });
     expect(response.status()).toBe(400);

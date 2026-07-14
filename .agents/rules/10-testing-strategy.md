@@ -11,7 +11,7 @@ La plataforma debe incluir cobertura de calidad automatizada en dos niveles: uni
   - Cálculo de total de alquiler.
   - Validaciones de fechas.
   - Lógica de aceptación de términos.
-  - Permisos por rol (cliente vs admin).
+  - Permisos por rol (cliente, propietario y roles operativos).
 
 ## 2. Testing End-to-End (E2E)
 - **Herramienta**: Playwright.

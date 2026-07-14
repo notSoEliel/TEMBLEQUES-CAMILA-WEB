@@ -18,6 +18,7 @@ import { AdminAuditLog } from "../models/AdminAuditLog.js";
 import { adminAuditMiddleware } from "../services/audit.js";
 import { createRentalRefund } from "../services/refunds.js";
 import { reconcilePayments } from "../services/reconciliation.js";
+import { normalizeRole } from "../security/permissions.js";
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -474,7 +475,7 @@ const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY 
 // PATCH /api/admin/users/:id/role - owner-only role assignment
 admin.patch("/users/:id/role", requirePermission("users.roles.write"), async (c) => {
   const body = await c.req.json();
-  const role = roleSchema.parse(body.role) as Exclude<Role, "admin">;
+  const role = roleSchema.parse(body.role) as Role;
   const actor = c.get("user");
   const target = await User.findById(c.req.param("id"));
 
@@ -486,7 +487,8 @@ admin.patch("/users/:id/role", requirePermission("users.roles.write"), async (c)
     throw new AppError("No puedes quitarte tu propio acceso de propietario.", 400, "OWNER_SELF_DEMOTION_FORBIDDEN");
   }
 
-  if ((target.role === "owner" || target.role === "admin") && role !== "owner") {
+  if (normalizeRole(target.role) === "owner" && role !== "owner") {
+    // The legacy value is included only while old documents are being migrated.
     const ownerCount = await User.countDocuments({ role: { $in: ["owner", "admin"] } });
     if (ownerCount <= 1) {
       throw new AppError("Debe existir al menos un propietario activo.", 400, "LAST_OWNER_FORBIDDEN");

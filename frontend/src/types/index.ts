@@ -31,7 +31,7 @@ export interface IUserProfile {
   clerkId: string;
   name: string;
   email: string;
-  role: "client" | "owner" | "operator" | "inventory" | "support" | "admin";
+  role: "client" | "owner" | "operator" | "inventory" | "support";
   phone?: string;
   preferredAddress?: string;
   preferredLanguage?: "es" | "en";

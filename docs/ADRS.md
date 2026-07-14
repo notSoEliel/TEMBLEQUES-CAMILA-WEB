@@ -154,7 +154,7 @@ Adoptar **Clerk** como proveedor de identidad gestionado (IdP).
 
 ### Impacto en Código (Code-Level Impact)
 - **Middleware de Hono**: Validador de JWT que intercepta el header `Authorization`.
-- **Metadata de Usuario**: Uso de `publicMetadata` en Clerk para roles de `admin`.
+- **Metadata de Usuario**: Uso de `publicMetadata.role` en Clerk para roles operativos; `owner` reemplaza al rol legacy `admin`.
 
 ### Trade-offs y Consecuencias
 - **Pros**: Seguridad de vanguardia desde el día 1.

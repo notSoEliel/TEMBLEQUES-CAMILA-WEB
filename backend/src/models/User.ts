@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
-export type Role = "client" | "owner" | "operator" | "inventory" | "support" | "admin";
+export type Role = "client" | "owner" | "operator" | "inventory" | "support";
 export type PreferredLanguage = "es" | "en";
 
 export interface IUser extends Document {
@@ -20,7 +20,7 @@ const userSchema = new Schema<IUser>(
     clerkId: { type: String, required: true, unique: true, trim: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    role: { type: String, enum: ["client", "owner", "operator", "inventory", "support", "admin"], default: "client" },
+    role: { type: String, enum: ["client", "owner", "operator", "inventory", "support"], default: "client" },
     phone: { type: String, trim: true },
     preferredAddress: { type: String, trim: true },
     preferredLanguage: { type: String, enum: ["es", "en"], default: "es" },

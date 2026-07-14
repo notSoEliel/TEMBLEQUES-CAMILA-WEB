@@ -66,7 +66,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
       user = await User.create({
         clerkId,
         email: clerkUser.emailAddresses[0].emailAddress,
-        role: clerkUser.publicMetadata?.role || "user"
+        role: clerkUser.publicMetadata?.role || "client"
       });
     }
     c.set("user", user); // Inyectar usuario en el contexto
