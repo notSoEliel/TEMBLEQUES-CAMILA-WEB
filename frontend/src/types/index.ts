@@ -34,6 +34,7 @@ export interface IUserProfile {
   role: "client" | "owner" | "operator" | "inventory" | "support" | "admin";
   phone?: string;
   preferredAddress?: string;
+  preferredLanguage?: "es" | "en";
   createdAt?: string;
 }
 

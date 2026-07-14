@@ -10,6 +10,7 @@ interface User {
   role: "client" | "owner" | "operator" | "inventory" | "support" | "admin";
   phone?: string;
   preferredAddress?: string;
+  preferredLanguage?: "es" | "en";
   avatarUrl?: string;
   createdAt?: string;
 }
@@ -18,7 +19,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   getToken: () => Promise<string | null>;
-  updateProfile: (data: { name: string; phone?: string; preferredAddress?: string }) => Promise<User>;
+  updateProfile: (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -67,7 +68,7 @@ function MockAuthProvider({ children }: { children: ReactNode }) {
     return mockToken;
   };
 
-  const updateProfile = async (data: { name: string; phone?: string; preferredAddress?: string }) => {
+  const updateProfile = async (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => {
     const currentToken = token ?? await getToken();
     if (!currentToken) {
       throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
@@ -202,7 +203,7 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
     return t;
   };
 
-  const updateProfile = async (data: { name: string; phone?: string; preferredAddress?: string }) => {
+  const updateProfile = async (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => {
     const currentToken = token ?? await getToken();
     if (!currentToken) {
       throw new Error("Sesión no disponible. Inicia sesión nuevamente.");

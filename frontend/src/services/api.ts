@@ -239,7 +239,7 @@ function getErrorKind(status: number): ApiErrorKind {
 export const authApi = {
   me: (token: string) =>
     api<{ user: IUserProfile }>("/auth/me", { token }),
-  updateMe: (data: { name: string; phone?: string; preferredAddress?: string }, token: string) =>
+  updateMe: (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }, token: string) =>
     api<{ user: IUserProfile }>("/auth/me", { method: "PATCH", body: data, token }),
 };
 
