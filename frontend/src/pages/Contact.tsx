@@ -8,7 +8,7 @@ import { MapPin, Mail, Phone, ExternalLink, Send } from "lucide-react";
 import { MapContainer, TileLayer, Marker, ZoomControl } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { contactApi } from "@/services/api";
+import { ApiError, contactApi } from "@/services/api";
 import { useErrorModal } from "@/components/ErrorModal";
 import { useI18n } from "@/i18n";
 
@@ -26,6 +26,8 @@ export default function Contact() {
   const { t } = useI18n();
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleOpenMaps = () => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${position[0]},${position[1]}`, "_blank");
@@ -34,13 +36,20 @@ export default function Contact() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
+    setSubmitError(null);
+    setSubmitted(false);
     try {
       const response = await contactApi.submit(form);
       setForm({ name: "", email: "", message: "" });
+      setSubmitted(true);
       showError(response.message, "success");
-    } catch (error) {
+    } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "No se pudo enviar el mensaje.";
-      showError(message, "validation");
+      setSubmitError(message);
+      const variant = error instanceof ApiError && error.kind === "network" || error instanceof ApiError && error.kind === "timeout"
+        ? "network"
+        : error instanceof ApiError && error.kind === "validation" ? "validation" : "generic";
+      showError(message, variant);
     } finally {
       setSubmitting(false);
     }
@@ -70,7 +79,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="font-bold">{t("contact.call")}</h4>
-                  <p className="text-sm text-muted-foreground font-medium">+507 8888-8888</p>
+                  <a href="tel:+50788888888" className="text-sm text-muted-foreground font-medium hover:text-primary transition-colors">+507 8888-8888</a>
                 </div>
               </div>
               <div className="space-y-3">
@@ -79,12 +88,22 @@ export default function Contact() {
                 </div>
                 <div>
                   <h4 className="font-bold">{t("contact.write")}</h4>
-                  <p className="text-sm text-muted-foreground font-medium">contacto@temblequescamila.pa</p>
+                  <a href="mailto:contacto@temblequescamila.pa" className="text-sm text-muted-foreground font-medium hover:text-primary transition-colors break-all">contacto@temblequescamila.pa</a>
                 </div>
               </div>
             </div>
 
-            <form className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" onSubmit={handleSubmit}>
+            <form className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700" onSubmit={handleSubmit} noValidate={false}>
+              {submitError && (
+                <div id="contact-form-error" role="alert" aria-live="assertive" className="rounded-2xl border border-destructive/20 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+                  {submitError}
+                </div>
+              )}
+              {submitted && (
+                <p role="status" aria-live="polite" className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-foreground">
+                  {t("contact.successDescription")}
+                </p>
+              )}
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -97,6 +116,8 @@ export default function Contact() {
                       autoComplete="name"
                       required
                       minLength={2}
+                      aria-invalid={Boolean(submitError)}
+                      aria-describedby={submitError ? "contact-form-error" : undefined}
                       className="h-14 px-6 border-border/40 focus:border-primary/20"
                     />
                   </div>
@@ -110,6 +131,8 @@ export default function Contact() {
                       placeholder={t("contact.emailPlaceholder")}
                       autoComplete="email"
                       required
+                      aria-invalid={Boolean(submitError)}
+                      aria-describedby={submitError ? "contact-form-error" : undefined}
                       className="h-14 px-6 border-border/40 focus:border-primary/20"
                     />
                   </div>
@@ -123,12 +146,14 @@ export default function Contact() {
                     placeholder={t("contact.messagePlaceholder")}
                     required
                     minLength={10}
+                    aria-invalid={Boolean(submitError)}
+                    aria-describedby={submitError ? "contact-form-error" : undefined}
                     className="min-h-[160px] px-6 py-4 border-border/40 focus:border-primary/20"
                   />
                 </div>
               </div>
 
-              <Button type="submit" disabled={submitting} className="w-full h-14 rounded-full font-bold text-lg shadow-elegant group">
+              <Button type="submit" disabled={submitting} aria-busy={submitting} className="w-full h-14 rounded-full font-bold text-lg shadow-elegant group">
                 {submitting ? t("contact.submitting") : t("contact.submit")}
                 <Send className="h-5 w-5 ml-2 transition-transform group-hover:translate-x-1" />
               </Button>

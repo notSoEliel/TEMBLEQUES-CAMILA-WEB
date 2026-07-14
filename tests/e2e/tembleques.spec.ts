@@ -209,6 +209,33 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByText("Cliente QA").first()).toBeVisible();
   });
 
+  test("Debe conservar el formulario de contacto si el backend no responde", async ({ page }) => {
+    await page.addInitScript(() => {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (requestUrl.includes("/api/contact")) {
+          return new Response(JSON.stringify({ error: "El servicio de contacto no está disponible.", code: "SERVICE_UNAVAILABLE" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return originalFetch(input, init);
+      };
+    });
+
+    await page.goto("/contacto");
+    await page.getByLabel("Nombre Completo").fill("Cliente QA");
+    await page.getByLabel("Correo Electrónico").fill("qa-error@example.com");
+    await page.getByLabel("Tu Mensaje").fill("Necesito ayuda con una reserva existente.");
+    await page.getByRole("button", { name: "Enviar Mensaje" }).click();
+
+    await expect(page.getByRole("alert")).toContainText("servicio de contacto");
+    await expect(page.getByLabel("Nombre Completo")).toHaveValue("Cliente QA");
+    await expect(page.getByLabel("Correo Electrónico")).toHaveValue("qa-error@example.com");
+    await expect(page.getByLabel("Tu Mensaje")).toHaveValue("Necesito ayuda con una reserva existente.");
+  });
+
   test("Debe guardar perfil persistente del cliente", async ({ page, request }) => {
     await setMockAuth(page, "mock-client-token");
     await page.goto("/profile");
