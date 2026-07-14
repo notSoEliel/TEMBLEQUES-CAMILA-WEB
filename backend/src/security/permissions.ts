@@ -10,6 +10,9 @@ export type Permission =
   | "maintenance.write"
   | "observability.read"
   | "observability.write"
+  | "payments.refund"
+  | "payments.reconcile"
+  | "reports.fiscal"
   | "products.read"
   | "products.write"
   | "reports.read"
@@ -29,6 +32,9 @@ const ownerPermissions: ReadonlySet<Permission> = new Set([
   "maintenance.write",
   "observability.read",
   "observability.write",
+  "payments.refund",
+  "payments.reconcile",
+  "reports.fiscal",
   "products.read",
   "products.write",
   "reports.read",
