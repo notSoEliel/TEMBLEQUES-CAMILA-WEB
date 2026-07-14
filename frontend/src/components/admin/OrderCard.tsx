@@ -7,6 +7,7 @@ import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, Chevr
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useI18n } from "@/i18n";
 import { getLocalizedText } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface OrderCardProps {
   orderGroupId: string;
@@ -99,6 +100,9 @@ export default function OrderCard({
             >
               {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
               {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
+            </Button>
+            <Button asChild variant="outline" size="sm" className="text-[10px] font-black uppercase border border-border/60">
+              <Link to={`/admin/reservations/${first._id}`}>Abrir expediente</Link>
             </Button>
           </div>
         </div>
