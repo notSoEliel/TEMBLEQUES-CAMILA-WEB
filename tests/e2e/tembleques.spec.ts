@@ -219,6 +219,11 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await page.goto("/admin/reservations");
     await expect(page.getByRole("heading", { name: "Reservas", exact: true })).toBeVisible();
     await expect(page.getByText("Reservado", { exact: true }).first()).toBeVisible();
+
+    await page.goto(`/admin/reservations/${created.rental._id}`);
+    await expect(page.getByRole("heading", { name: "Expediente de reserva", exact: true })).toBeVisible();
+    await expect(page.getByText("Términos e historial", { exact: true })).toBeVisible();
+    await expect(page.getByText("Stripe", { exact: false })).toBeVisible();
   });
 
   test("Debe enviar mensajes de contacto y mostrarlos en administración", async ({ page }) => {

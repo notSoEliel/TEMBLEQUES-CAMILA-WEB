@@ -62,6 +62,39 @@ export interface ObservabilityOverview {
   alerts: ObservabilityAlert[];
 }
 
+export interface RentalTermsAcceptance {
+  accepted_at: string;
+  ip_address: string;
+  user_agent: string;
+}
+
+export interface AdminRentalDetail {
+  _id: string;
+  order_group_id?: string;
+  selected_size: string;
+  start_date: string;
+  end_date: string;
+  total: number;
+  balance_due: number;
+  payment_type: "reservation" | "full";
+  status: string;
+  payment_status: string;
+  deposit_required: boolean;
+  deposit_amount: number;
+  deposit_status: string;
+  late_days: number;
+  late_fee_amount: number;
+  late_fee_status: string;
+  coupon_code?: string;
+  discount_amount?: number;
+  createdAt: string;
+  updatedAt: string;
+  status_history: Array<{ status: string; timestamp: string; notes?: string; updated_by?: string }>;
+  user_id: { name: string; email: string; phone?: string; preferredAddress?: string };
+  product_id: { name: string; name_en?: string; category?: string[]; images?: string[] };
+  payment: { stripe_session_id?: string; stripe_payment_intent_id?: string; stripe_payment_amount?: number };
+}
+
 export interface ApiErrorPayload {
   error?: unknown;
   message?: unknown;
@@ -407,6 +440,9 @@ export const adminApi = {
 
   updateRentalStatus: (id: string, status: string, token: string) =>
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
+
+  rentalDetail: (id: string, token: string) =>
+    api<{ rental: AdminRentalDetail; terms: RentalTermsAcceptance[] }>(`/admin/rentals/${id}`, { token }),
 
   // Users
   users: (token: string, params: { search?: string; page?: number; limit?: number } = {}) => {

@@ -351,6 +351,62 @@ admin.get("/rentals/calendar", async (c) => {
   return c.json({ data: rentals });
 });
 
+// GET /api/admin/rentals/:id - Read-only reservation dossier for operations.
+// Payment identifiers are included only as reconciliation references; no card
+// or payment-method details are returned by this endpoint.
+admin.get("/rentals/:id", async (c) => {
+  const rentalId = c.req.param("id");
+  if (!mongoose.Types.ObjectId.isValid(rentalId)) {
+    throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  }
+
+  const rental = await Rental.findById(rentalId)
+    .populate("user_id", "name email phone preferredAddress")
+    .populate("product_id", "name name_en category images variants rental_price");
+  if (!rental) {
+    throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  }
+
+  const terms = await TermsAcceptance.find({ rental_id: rental._id })
+    .select("accepted_at ip_address user_agent")
+    .sort({ accepted_at: -1 })
+    .lean();
+
+  return c.json({
+    rental: {
+      _id: rental._id,
+      order_group_id: rental.order_group_id,
+      selected_size: rental.selected_size,
+      start_date: rental.start_date,
+      end_date: rental.end_date,
+      total: rental.total,
+      balance_due: rental.balance_due,
+      payment_type: rental.payment_type,
+      status: rental.status,
+      payment_status: rental.payment_status,
+      deposit_required: rental.deposit_required,
+      deposit_amount: rental.deposit_amount,
+      deposit_status: rental.deposit_status,
+      late_days: rental.late_days,
+      late_fee_amount: rental.late_fee_amount,
+      late_fee_status: rental.late_fee_status,
+      coupon_code: rental.coupon_code,
+      discount_amount: rental.discount_amount,
+      status_history: rental.status_history,
+      createdAt: rental.createdAt,
+      updatedAt: rental.updatedAt,
+      user_id: rental.user_id,
+      product_id: rental.product_id,
+      payment: {
+        stripe_session_id: rental.stripe_session_id,
+        stripe_payment_intent_id: rental.stripe_payment_intent_id,
+        stripe_payment_amount: rental.stripe_payment_amount,
+      },
+    },
+    terms,
+  });
+});
+
 // GET /api/admin/rentals/:id/contract.pdf
 admin.get("/rentals/:id/contract.pdf", async (c) => {
   const pdf = await generateRentalContractPdf(c.req.param("id"));
