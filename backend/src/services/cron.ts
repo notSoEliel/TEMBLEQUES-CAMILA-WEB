@@ -33,6 +33,14 @@ export function getCronStatus(): { job: string; lastRunAt?: string; lastSuccessA
   return { job: "clean_abandoned_rentals", lastRunAt, lastSuccessAt, lastError };
 }
 
+export function getAbandonedRentalCutoff(now = new Date()): Date {
+  return new Date(now.getTime() - 35 * 60 * 1000);
+}
+
+export function getAbandonedPaymentStatus(stripeSessionId?: string): "expired" | "cancelled" {
+  return stripeSessionId ? "expired" : "cancelled";
+}
+
 /**
  * Finds rentals that have been "pending" for more than 35 minutes
  * and cancels them to free up the calendar availability.
@@ -40,7 +48,7 @@ export function getCronStatus(): { job: string; lastRunAt?: string; lastSuccessA
  */
 async function cleanAbandonedRentals() {
   lastRunAt = new Date().toISOString();
-  const cutoffTime = new Date(Date.now() - 35 * 60 * 1000); // 35 minutes ago
+  const cutoffTime = getAbandonedRentalCutoff();
 
   const abandonedRentals = await Rental.find({
     status: "pending",
@@ -52,7 +60,7 @@ async function cleanAbandonedRentals() {
 
     for (const rental of abandonedRentals) {
       rental.status = "cancelled";
-      rental.payment_status = rental.stripe_session_id ? "expired" : "cancelled";
+      rental.payment_status = getAbandonedPaymentStatus(rental.stripe_session_id);
       rental.deposit_status = rental.deposit_required ? "not_required" : rental.deposit_status;
       await rental.save();
       structuredLog("info", "rental.cancelled_by_cron", { rentalId: rental._id.toString() });

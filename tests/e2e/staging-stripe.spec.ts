@@ -7,6 +7,7 @@ import {
   fillStripeField,
   uncheckStripeField,
   type CheckoutRequestBody,
+  type StagingRefundResponse,
   type StagingRentalListResponse,
   type StagingReconciliationResponse,
 } from "./staging-helpers";
@@ -133,5 +134,102 @@ test.describe("Staging - Stripe test real", () => {
     for (const rentalId of checkoutBody.rentalIds!) {
       expect(differenceIds.has(rentalId)).toBe(false);
     }
+
+    const rentalId = checkoutBody.rentalIds![0];
+    const adminAuthorization = `Bearer ${requireEnvironment("E2E_MCP_BACKEND_ADMIN_TOKEN")}`;
+    const fiscalQuery = "?from=2026-01-01&to=2026-12-31";
+    const fiscalCsvResponse = await request.get(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/reports/financial/export-csv${fiscalQuery}`,
+      { headers: { Authorization: adminAuthorization } },
+    );
+    expect(fiscalCsvResponse.status()).toBe(200);
+    expect(fiscalCsvResponse.headers()["content-type"]).toContain("text/csv");
+    expect(await fiscalCsvResponse.text()).toContain("Reporte académico y operativo");
+
+    const fiscalPdfResponse = await request.get(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/reports/financial/export.pdf${fiscalQuery}`,
+      { headers: { Authorization: adminAuthorization } },
+    );
+    expect(fiscalPdfResponse.status()).toBe(200);
+    expect(fiscalPdfResponse.headers()["content-type"]).toContain("application/pdf");
+    const pdfHeader = String.fromCharCode(...new Uint8Array(await fiscalPdfResponse.body()).slice(0, 4));
+    expect(pdfHeader).toBe("%PDF");
+
+    const unauthorizedRefundResponse = await request.post(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/rentals/${rentalId}/refund`,
+      {
+        headers: { Authorization: currentAuthorization, "Content-Type": "application/json" },
+        data: { reason: "Intento no autorizado" },
+      },
+    );
+    expect(unauthorizedRefundResponse.status()).toBe(403);
+
+    const idempotencyKey = `staging-smoke-refund-${Date.now()}`;
+    const refundHeaders = {
+      Authorization: adminAuthorization,
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+      "X-Request-Id": `staging-smoke-refund-${Date.now()}`,
+    };
+    const refundResponse = await request.post(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/rentals/${rentalId}/refund`,
+      {
+        headers: refundHeaders,
+        data: { reason: "Validación académica del flujo de reembolso" },
+      },
+    );
+    expect(refundResponse.status()).toBe(201);
+    const refundPayload = await refundResponse.json() as StagingRefundResponse;
+    expect(refundPayload.refund.status).toBe("succeeded");
+    expect(refundPayload.refund.amount).toBeGreaterThan(0);
+
+    const duplicateRefundResponse = await request.post(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/rentals/${rentalId}/refund`,
+      {
+        headers: refundHeaders,
+        data: { reason: "Validación académica del flujo de reembolso" },
+      },
+    );
+    expect(duplicateRefundResponse.status()).toBe(201);
+    const duplicateRefundPayload = await duplicateRefundResponse.json() as StagingRefundResponse;
+    expect(duplicateRefundPayload.refund._id).toBe(refundPayload.refund._id);
+
+    const refundedRentalsResponse = await request.get(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/my?page=1&limit=100`,
+      { headers: { Authorization: currentAuthorization } },
+    );
+    expect(refundedRentalsResponse.status()).toBe(200);
+    const refundedRentals = await refundedRentalsResponse.json() as StagingRentalListResponse;
+    expect(refundedRentals.data.find((rental) => rental._id === rentalId)?.payment_status).toBe("refunded");
+
+    const cancellationPreviewResponse = await request.get(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/${rentalId}/cancellation-preview`,
+      { headers: { Authorization: currentAuthorization } },
+    );
+    expect(cancellationPreviewResponse.status()).toBe(200);
+    const cancellationPreview = await cancellationPreviewResponse.json() as {
+      cancellable: boolean;
+      refundableAmount: number;
+      refundPercentage: number;
+    };
+    expect(cancellationPreview.cancellable).toBe(true);
+    expect(cancellationPreview.refundableAmount).toBeGreaterThanOrEqual(0);
+    expect([0, 0.5, 1]).toContain(cancellationPreview.refundPercentage);
+
+    const cancellationResponse = await request.delete(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/${rentalId}`,
+      {
+        headers: {
+          Authorization: currentAuthorization,
+          "Idempotency-Key": `staging-smoke-cancel-${Date.now()}`,
+        },
+      },
+    );
+    expect(cancellationResponse.status()).toBe(200);
+    const cancellationPayload = await cancellationResponse.json() as {
+      rental: { status: string; payment_status: string };
+    };
+    expect(cancellationPayload.rental.status).toBe("cancelled");
+    expect(cancellationPayload.rental.payment_status).toBe("refunded");
   });
 });

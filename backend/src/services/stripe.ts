@@ -35,6 +35,27 @@ export function getPaymentFailureRentalFilter(
   return null;
 }
 
+export function getCheckoutExpiredRentalFilter(
+  metadata: { orderGroupId?: string; userId?: string; rentalId?: string; rentalIds?: string },
+  sessionId: string,
+): Record<string, unknown> | null {
+  const common = {
+    user_id: metadata.userId,
+    stripe_session_id: sessionId,
+    status: "pending",
+  };
+
+  if (metadata.orderGroupId && metadata.userId) {
+    return { order_group_id: metadata.orderGroupId, ...common };
+  }
+
+  const rentalIds = metadata.rentalIds?.split(",").filter(Boolean) ?? [];
+  if (metadata.rentalId && rentalIds.length === 0) rentalIds.push(metadata.rentalId);
+  if (rentalIds.length === 0 || !metadata.userId) return null;
+
+  return { _id: { $in: rentalIds }, ...common };
+}
+
 function toCents(amount: number): number {
   return Math.max(0, Math.round(amount * 100));
 }
@@ -284,34 +305,12 @@ async function processStripeEvent(
 
     case "checkout.session.expired": {
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
-      const orderGroupId = session.metadata?.orderGroupId;
       const sessionUserId = session.metadata?.userId;
       if (!sessionUserId) {
         throw new AppError("La sesión expirada no identifica al usuario.", 400, "STRIPE_SESSION_METADATA_INVALID");
       }
-      
-      let rentalsToCancel: IRental[] = [];
-      if (orderGroupId) {
-        rentalsToCancel = await Rental.find({
-          order_group_id: orderGroupId,
-          user_id: sessionUserId,
-          stripe_session_id: session.id,
-          status: "pending",
-        });
-      } else {
-        // Fallback for older sessions
-        const rentalIds = session.metadata?.rentalIds?.split(",") || [];
-        const singleId = session.metadata?.rentalId;
-        if (singleId && rentalIds.length === 0) rentalIds.push(singleId);
-        if (rentalIds.length > 0) {
-          rentalsToCancel = await Rental.find({
-            _id: { $in: rentalIds },
-            user_id: sessionUserId,
-            stripe_session_id: session.id,
-            status: "pending",
-          });
-        }
-      }
+      const rentalFilter = getCheckoutExpiredRentalFilter(session.metadata ?? {}, session.id);
+      const rentalsToCancel = rentalFilter ? await Rental.find(rentalFilter) : [];
 
       for (const rental of rentalsToCancel) {
         rental.status = "cancelled";
