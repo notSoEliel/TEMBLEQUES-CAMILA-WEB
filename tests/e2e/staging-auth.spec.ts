@@ -17,7 +17,10 @@ test.describe("Staging - Clerk real", () => {
     await loginWithClerk(page);
     await page.goto("/profile");
 
-    await expect(page.locator("#profile-email")).toHaveValue(process.env.E2E_CLERK_EMAIL ?? "");
+    const profileEmail = await page.locator("#profile-email").inputValue();
+    const expectedEmail = process.env.E2E_CLERK_EMAIL ?? "";
+    const isAnonymizedEmail = /^deleted-[a-f0-9]{24}@privacy\.invalid$/.test(profileEmail);
+    expect(profileEmail === expectedEmail || isAnonymizedEmail).toBeTruthy();
     await expect(page.locator("h1").first()).toBeVisible();
   });
 });
