@@ -52,8 +52,8 @@ async function cleanAbandonedRentals() {
 
     for (const rental of abandonedRentals) {
       rental.status = "cancelled";
-      rental.payment_status = "failed";
-      // Opcional: Podríamos guardar una nota de cancelación, pero con status=cancelled es suficiente
+      rental.payment_status = rental.stripe_session_id ? "expired" : "cancelled";
+      rental.deposit_status = rental.deposit_required ? "not_required" : rental.deposit_status;
       await rental.save();
       structuredLog("info", "rental.cancelled_by_cron", { rentalId: rental._id.toString() });
     }
