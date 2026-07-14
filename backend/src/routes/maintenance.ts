@@ -126,7 +126,7 @@ interface LowStockItem {
 
 async function notifyLowStockOperators(items: LowStockItem[], threshold: number): Promise<void> {
   if (items.length === 0) return;
-  const recipients = await User.find({ role: { $in: ["owner", "operator", "inventory", "admin"] } }).select("_id email").lean();
+  const recipients = await User.find({ role: { $in: ["owner", "operator", "inventory"] } }).select("_id email").lean();
   await Promise.all(items.flatMap((item) => item.variants.flatMap((variant) => recipients.map((recipient) =>
     dispatchNotification({
       userId: recipient._id.toString(),

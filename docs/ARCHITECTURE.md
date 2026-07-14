@@ -190,7 +190,7 @@ User
 ├─ clerkId: string (ID del proveedor Clerk)
 ├─ email: string
 ├─ name: string
-├─ role: "client" | "admin"
+├─ role: "client" | "owner" | "operator" | "inventory" | "support"
 ├─ phone?: string
 ├─ metadata:
 │  ├─ ip?: string (de TermsAcceptance)
@@ -537,7 +537,7 @@ La arquitectura actual permite una evolución fluida hacia:
 ## 15. Seguridad Arquitectónica
 
 1.  **Validación de Origen**: Los webhooks de Stripe se validan mediante firmas criptográficas proporcionadas por Svix.
-2.  **Protección de Rutas**: Middlewares de Hono interceptan cada petición al backend para validar el token de Clerk y el rol del usuario (Admin/User).
+2.  **Protección de Rutas**: Middlewares de Hono interceptan cada petición al backend para validar el token de Clerk y el permiso operativo requerido. El prefijo `/admin` identifica el área administrativa, no un valor de rol.
 3.  **Aislamiento de Secretos**: Todas las credenciales sensibles se inyectan a través de variables de entorno, nunca se hardcodean en el repositorio.
 
 ---

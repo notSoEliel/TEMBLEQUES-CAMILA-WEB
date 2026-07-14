@@ -39,8 +39,8 @@ vi.mock("../middleware/auth.js", () => ({
 
     if (token === "Bearer mock-client") {
       c.set("user", { role: "client", name: "Client" });
-    } else if (token === "Bearer mock-admin") {
-      c.set("user", { role: "owner", name: "Admin" });
+    } else if (token === "Bearer mock-owner") {
+      c.set("user", { role: "owner", name: "Owner" });
     }
 
     await next();
@@ -118,7 +118,7 @@ describe("Media Router - /sign", () => {
     delete process.env[variable];
 
     const res = await app.request("/media/sign", {
-      headers: { Authorization: "Bearer mock-admin" },
+      headers: { Authorization: "Bearer mock-owner" },
     });
 
     expect(res.status).toBe(500);
@@ -129,7 +129,7 @@ describe("Media Router - /sign", () => {
 
   it("debe firmar únicamente timestamp y upload_preset", async () => {
     const res = await app.request("/media/sign", {
-      headers: { Authorization: "Bearer mock-admin" },
+      headers: { Authorization: "Bearer mock-owner" },
     });
 
     expect(res.status).toBe(200);

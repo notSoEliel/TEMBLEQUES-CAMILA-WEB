@@ -83,10 +83,14 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
     "users.read",
   ]),
   client: new Set(),
-  admin: ownerPermissions,
 };
 
-export function normalizeRole(role: Role | string | undefined): Exclude<Role, "admin"> {
+/**
+ * Converts values received from old Clerk metadata or old MongoDB documents
+ * into the current role vocabulary. The legacy value is accepted only at this
+ * compatibility boundary and is never returned or persisted.
+ */
+export function normalizeRole(role: Role | string | undefined): Role {
   if (role === "admin") return "owner";
   if (role === "owner" || role === "operator" || role === "inventory" || role === "support") {
     return role;
@@ -94,13 +98,13 @@ export function normalizeRole(role: Role | string | undefined): Exclude<Role, "a
   return "client";
 }
 
-export function roleFromMetadata(metadata: unknown): Exclude<Role, "admin"> {
+export function roleFromMetadata(metadata: unknown): Role {
   if (!metadata || typeof metadata !== "object") return "client";
   const role = (metadata as Record<string, unknown>).role;
   return normalizeRole(typeof role === "string" ? role : undefined);
 }
 
 export function hasPermission(role: Role | string | undefined, permission: Permission): boolean {
-  const normalizedRole = role === "admin" ? "admin" : normalizeRole(role);
+  const normalizedRole = normalizeRole(role);
   return ROLE_PERMISSIONS[normalizedRole].has(permission);
 }

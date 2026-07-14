@@ -89,9 +89,9 @@ Debido a que Clerk requiere autenticación OTP/social real, se ha implementado u
    localStorage.setItem('mock_auth_token', 'mock-client-token');
    
    // O para autenticarse como Administrador
-   localStorage.setItem('mock_auth_token', 'mock-admin-token');
+   localStorage.setItem('mock_auth_token', 'mock-owner-token');
    ```
 3. Refresque la pantalla. Observará que la sesión de Clerk se ha saltado de manera segura y podrá:
    - Acceder al perfil en `/profile` (si cargó como cliente).
-   - Acceder al panel de administración en `/admin` (si cargó como admin).
+   - Acceder al panel administrativo en `/admin` (si la cuenta tiene rol `owner` u otro permiso operativo compatible).
 4. Para cerrar sesión y limpiar el bypass, ejecute `localStorage.clear()` en consola o pulse el botón de "Cerrar Sesión" en la interfaz.

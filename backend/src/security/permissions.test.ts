@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { hasPermission, normalizeRole, roleFromMetadata } from "./permissions.js";
+import { hasPermission, normalizeRole, roleFromMetadata, ROLE_PERMISSIONS } from "./permissions.js";
 
 describe("roles y permisos", () => {
   it("normaliza el rol legado admin a owner", () => {
     expect(normalizeRole("admin")).toBe("owner");
     expect(roleFromMetadata({ role: "admin" })).toBe("owner");
+    expect(ROLE_PERMISSIONS).not.toHaveProperty("admin");
   });
 
   it("separa permisos operativos de permisos sensibles", () => {

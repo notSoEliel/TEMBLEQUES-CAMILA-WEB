@@ -63,7 +63,7 @@ try {
 | `AUTH_USER_NOT_FOUND` | 401 | Token valid but user deleted |
 | `AUTH_INVALID_CREDENTIALS` | 401 | Wrong email or password |
 | `AUTH_EMAIL_TAKEN` | 400 | Email already registered |
-| `AUTH_FORBIDDEN` | 403 | User role is not admin |
+| `AUTH_FORBIDDEN` | 403 | User lacks the required operational permission |
 | `PRODUCT_NOT_FOUND` | 404 | Product ID doesn't exist |
 | `PRODUCT_NOT_AVAILABLE` | 409 | Product condition ≠ disponible |
 | `PRODUCT_DATES_UNAVAILABLE` | 409 | Dates overlap with existing rental |
