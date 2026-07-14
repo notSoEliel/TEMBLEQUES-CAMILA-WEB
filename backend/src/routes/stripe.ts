@@ -249,7 +249,7 @@ stripe.post("/webhook", async (c) => {
   // Read raw body — must not be pre-parsed
   const rawBody = await c.req.text();
 
-  const result = await handleStripeWebhook(rawBody, sig);
+  const result = await handleStripeWebhook(rawBody, sig, c.req.header("x-request-id"));
   return c.json(result);
 });
 

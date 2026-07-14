@@ -20,6 +20,7 @@ export type DepositStatus =
   | "failed";
 
 export type FeeStatus = "not_applicable" | "pending" | "charged" | "failed";
+export type PaymentStatus = "pending" | "completed" | "failed" | "expired" | "cancelled" | "refunded";
 
 export interface IRental extends Document {
   fixture_key?: string;
@@ -33,7 +34,7 @@ export interface IRental extends Document {
   balance_due: number;
   payment_type: "reservation" | "full";
   status: RentalStatus;
-  payment_status: "pending" | "completed" | "failed" | "refunded";
+  payment_status: PaymentStatus;
   terms_accepted: boolean;
   stripe_session_id?: string;
   stripe_payment_intent_id?: string;
@@ -80,7 +81,7 @@ const rentalSchema = new Schema<IRental>(
     },
     payment_status: {
       type: String,
-      enum: ["pending", "completed", "failed", "refunded"],
+      enum: ["pending", "completed", "failed", "expired", "cancelled", "refunded"],
       default: "pending",
     },
     terms_accepted: { type: Boolean, required: true, default: false },
