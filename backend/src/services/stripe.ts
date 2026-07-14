@@ -225,23 +225,38 @@ async function processStripeEvent(
     case "checkout.session.expired": {
       const session = event.data.object as import("stripe").Stripe.Checkout.Session;
       const orderGroupId = session.metadata?.orderGroupId;
+      const sessionUserId = session.metadata?.userId;
+      if (!sessionUserId) {
+        throw new AppError("La sesión expirada no identifica al usuario.", 400, "STRIPE_SESSION_METADATA_INVALID");
+      }
       
       let rentalsToCancel: IRental[] = [];
       if (orderGroupId) {
-        rentalsToCancel = await Rental.find({ order_group_id: orderGroupId, status: "pending" });
+        rentalsToCancel = await Rental.find({
+          order_group_id: orderGroupId,
+          user_id: sessionUserId,
+          stripe_session_id: session.id,
+          status: "pending",
+        });
       } else {
         // Fallback for older sessions
         const rentalIds = session.metadata?.rentalIds?.split(",") || [];
         const singleId = session.metadata?.rentalId;
         if (singleId && rentalIds.length === 0) rentalIds.push(singleId);
         if (rentalIds.length > 0) {
-          rentalsToCancel = await Rental.find({ _id: { $in: rentalIds }, status: "pending" });
+          rentalsToCancel = await Rental.find({
+            _id: { $in: rentalIds },
+            user_id: sessionUserId,
+            stripe_session_id: session.id,
+            status: "pending",
+          });
         }
       }
 
       for (const rental of rentalsToCancel) {
         rental.status = "cancelled";
-        rental.payment_status = "failed";
+        rental.payment_status = "expired";
+        rental.deposit_status = rental.deposit_required ? "not_required" : rental.deposit_status;
         await rental.save();
       }
       recordMetric("checkout_expired_total", rentalsToCancel.length);
