@@ -10,7 +10,7 @@
 
 El script `backend/scripts/backup.ts` exporta las colecciones de MongoDB y cifra el contenido con AES-256-GCM. La clave se recibe exclusivamente mediante `BACKUP_ENCRYPTION_KEY`, en hexadecimal de 32 bytes. El archivo generado contiene versión, fecha, IV, etiqueta de autenticación y payload cifrado; no contiene datos legibles en texto plano.
 
-El workflow `.github/workflows/mongodb-backup.yml` ejecuta el respaldo una vez al día a las 03:00 UTC y también permite ejecución manual. El artefacto se conserva 30 días. GitHub Actions recibe únicamente secretos del entorno `production`; ningún secreto se guarda en el repositorio, issues o logs.
+El workflow `.github/workflows/mongodb-backup.yml` ejecuta el respaldo una vez al día a las 03:00 UTC y también permite ejecución manual. En el proyecto académico actual utiliza el entorno de GitHub `staging`, que apunta únicamente a la base de staging. El artefacto se conserva 30 días. La futura producción deberá usar otro entorno y otros secretos; ningún secreto se guarda en el repositorio, issues o logs.
 
 En producción, `BACKUP_ENCRYPTION_KEY` es obligatorio al iniciar. El respaldo de producción exige `BACKUP_ALLOW_PRODUCTION=true`, que solo está definido dentro del workflow autorizado.
 

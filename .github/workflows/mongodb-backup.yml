@@ -12,7 +12,7 @@ jobs:
   backup:
     name: Crear respaldo cifrado
     runs-on: ubuntu-latest
-    environment: production
+    environment: staging
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -29,10 +29,9 @@ jobs:
       - name: Crear respaldo cifrado
         working-directory: backend
         env:
-          APP_ENV: production
+          APP_ENV: staging
           MONGO_URI: ${{ secrets.MONGO_URI }}
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
-          BACKUP_ALLOW_PRODUCTION: "true"
           BACKUP_OUTPUT_DIR: /tmp/tembleques-backups
         run: bun run backup
 
@@ -40,6 +39,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mongodb-backup-${{ github.run_id }}
-          path: /tmp/tembleques-backups/*.json
+          path: /tmp/tembleques-backups/*.json.enc
           if-no-files-found: error
           retention-days: 30
