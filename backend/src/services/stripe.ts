@@ -32,6 +32,11 @@ export function isStripeConfigured(): boolean {
   return Boolean(key && key !== "sk_test_placeholder");
 }
 
+export function isStripeDemoAllowed(): boolean {
+  const appEnv = process.env.APP_ENV;
+  return appEnv === undefined || appEnv === "local" || appEnv === "ci";
+}
+
 export async function createStripeSession(
   rentals: IPopulatedRental[],
   origin: string,
@@ -61,9 +66,6 @@ export async function createStripeSession(
     line_items,
     mode: "payment",
     expires_at: expiresAt,
-    payment_intent_data: {
-      setup_future_usage: "off_session",
-    },
     success_url: `${origin}/confirmation?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/cart?cancelled=1`,
     metadata: {
@@ -164,15 +166,9 @@ async function processStripeEvent(event: import("stripe").Stripe.Event): Promise
         await rental.save();
 
         if (rental.deposit_required && rental.deposit_amount > 0) {
-          try {
-            await createDepositHold(rental);
-            rental.deposit_status = "held";
-            rental.deposit_failure_reason = undefined;
-          } catch (error: any) {
-            rental.deposit_status = "failed";
-            rental.deposit_failure_reason =
-              error?.message || "No se pudo crear el hold del deposito de garantia.";
-          }
+          rental.deposit_status = "pending_hold";
+          rental.deposit_failure_reason =
+            "El depósito no se cobra automáticamente: el checkout no guarda métodos de pago.";
           await rental.save();
         }
       }

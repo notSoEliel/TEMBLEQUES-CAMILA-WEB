@@ -194,7 +194,9 @@ export async function updateRentalStatus(
   newStatus: RentalStatus,
 ) {
   const validTransitions: Record<string, string[]> = {
-    pending: ["reserved", "paid", "cancelled"],
+    // paid solo lo confirma un webhook válido de Stripe. reserved puede
+    // representar una gestión operativa sin convertir el pago en completed.
+    pending: ["reserved", "cancelled"],
     reserved: ["delivered", "cancelled"],
     paid: ["confirmed", "delivered", "cancelled"],
     confirmed: ["delivered", "cancelled"],
@@ -241,9 +243,6 @@ export async function updateRentalStatus(
 
   rental.status = newStatus;
 
-  if (newStatus === "paid" || newStatus === "reserved") {
-    rental.payment_status = "completed";
-  }
 
   // Si se pasa a entregado, la deuda se cancela automáticamente
   if (newStatus === "delivered" && rental.balance_due > 0) {
@@ -278,10 +277,10 @@ export async function updateRentalStatus(
       await chargeLateFee(rental);
       rental.late_fee_status = "charged";
       rental.late_fee_failure_reason = undefined;
-    } catch (error: any) {
+    } catch (error: unknown) {
       rental.late_fee_status = "failed";
       rental.late_fee_failure_reason =
-        error?.message || "No se pudo cobrar la penalidad por atraso.";
+        error instanceof Error ? error.message : "No se pudo cobrar la penalidad por atraso.";
     }
     await rental.save();
   }

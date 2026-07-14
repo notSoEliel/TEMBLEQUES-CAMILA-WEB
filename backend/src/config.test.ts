@@ -31,8 +31,13 @@ describe("configuración segura", () => {
   });
 
   it("exige la clave de respaldo en producción", () => {
-    expect(() => loadConfig({ ...secureStaging, APP_ENV: "production" })).toThrow("BACKUP_ENCRYPTION_KEY");
-    expect(loadConfig({ ...secureStaging, APP_ENV: "production", BACKUP_ENCRYPTION_KEY: "a".repeat(64) }).appEnv).toBe("production");
+    expect(() => loadConfig({ ...secureStaging, APP_ENV: "production" })).toThrow("STRIPE_SECRET_KEY debe comenzar con sk_live_");
+    expect(loadConfig({
+      ...secureStaging,
+      APP_ENV: "production",
+      STRIPE_SECRET_KEY: "sk_live_stripe",
+      BACKUP_ENCRYPTION_KEY: "a".repeat(64),
+    }).appEnv).toBe("production");
   });
 
   it("rechaza mocks explícitos en staging", () => {
