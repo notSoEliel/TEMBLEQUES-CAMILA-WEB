@@ -292,6 +292,59 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await page.getByRole("button", { name: /Marcar como leída|Mark as read/ }).first().click();
   });
 
+  test("Debe proteger el bajo stock y rechazar mantenimientos solapados", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
+    const size = product.variants.find((variant) => !variant.in_maintenance)?.size;
+    if (!size) throw new Error("El producto semilla no tiene talla para mantenimiento.");
+
+    const lowStockResponse = await request.get("http://localhost:3000/api/admin/maintenance/low-stock?page=1&limit=20", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+    });
+    expect(lowStockResponse.ok()).toBeTruthy();
+    const lowStockPayload = await lowStockResponse.json() as { threshold: number; data: unknown[] };
+    expect(typeof lowStockPayload.threshold).toBe("number");
+    expect(Array.isArray(lowStockPayload.data)).toBeTruthy();
+
+    const clientLowStockResponse = await request.get("http://localhost:3000/api/admin/maintenance/low-stock", {
+      headers: { Authorization: "Bearer mock-client-token" },
+    });
+    expect(clientLowStockResponse.status()).toBe(403);
+
+    const startOffset = 400 + (Date.now() % 1000);
+    const startDate = futureDate(startOffset);
+    const endDate = futureDate(startOffset + 2);
+    const maintenancePayload = { productId: product._id, selectedSize: size, startDate, endDate, reason: "Prueba de mantenimiento H71" };
+    const createdResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: maintenancePayload,
+    });
+    expect(createdResponse.status()).toBe(201);
+    const created = await createdResponse.json() as { block: { _id: string } };
+
+    const overlapResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: { ...maintenancePayload, reason: "Solapamiento inválido" },
+    });
+    expect(overlapResponse.status()).toBe(409);
+    await expect(overlapResponse.json()).resolves.toMatchObject({ code: "MAINTENANCE_OVERLAP" });
+
+    const invalidRangeResponse = await request.post("http://localhost:3000/api/admin/maintenance", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: { ...maintenancePayload, startDate: endDate, endDate: startDate },
+    });
+    expect(invalidRangeResponse.status()).toBe(400);
+    await expect(invalidRangeResponse.json()).resolves.toMatchObject({ code: "MAINTENANCE_DATE_RANGE_INVALID" });
+
+    const deleteResponse = await request.delete(`http://localhost:3000/api/admin/maintenance/${created.block._id}`, {
+      headers: { Authorization: "Bearer mock-admin-token" },
+    });
+    expect(deleteResponse.ok()).toBeTruthy();
+
+    await setMockAuth(page, "mock-admin-token");
+    await page.goto("/admin/inventory");
+    await expect(page.getByText("Control de bajo stock", { exact: true })).toBeVisible();
+  });
+
   test("Debe enviar mensajes de contacto y mostrarlos en administración", async ({ page }) => {
     await page.goto("/contacto");
 

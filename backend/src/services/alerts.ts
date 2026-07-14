@@ -2,6 +2,8 @@ import { SystemAlert, type AlertSeverity, type ISystemAlert } from "../models/Sy
 import { Product } from "../models/Product.js";
 import { Rental } from "../models/Rental.js";
 import { sanitizeAuditMetadata } from "./audit.js";
+import { Settings } from "../models/Settings.js";
+import { MaintenanceBlock } from "../models/MaintenanceBlock.js";
 
 export interface RaiseAlertInput {
   type: string;
@@ -23,12 +25,12 @@ export async function raiseSystemAlert(input: RaiseAlertInput): Promise<ISystemA
 
 export async function refreshOperationalAlerts(): Promise<void> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const settings = await Settings.findOne().select("low_stock_threshold").lean<{ low_stock_threshold?: number }>().exec();
+  const lowStockThreshold = settings?.low_stock_threshold ?? 1;
   const [failedPayments, lateRentals, lowStockProducts] = await Promise.all([
     Rental.countDocuments({ payment_status: "failed", updatedAt: { $gte: since } }),
     Rental.countDocuments({ status: "late" }),
-    Product.find({
-      variants: { $elemMatch: { stock: { $lte: 1 }, in_maintenance: false } },
-    }).select("_id name").limit(20).lean(),
+    findLowStockProducts(lowStockThreshold),
   ]);
 
   if (failedPayments > 0) {
@@ -59,8 +61,25 @@ export async function refreshOperationalAlerts(): Promise<void> {
       source: "inventory",
       metadata: {
         count: lowStockProducts.length,
+        threshold: lowStockThreshold,
         products: lowStockProducts.map((product) => ({ id: product._id.toString(), name: product.name })),
       },
     });
   }
+}
+
+async function findLowStockProducts(threshold: number): Promise<Array<{ _id: string; name: string }>> {
+  const now = new Date();
+  const activeBlocks = await MaintenanceBlock.find({ start_date: { $lte: now }, end_date: { $gt: now } })
+    .select("product_id selected_size").lean();
+  const activeBlockKeys = new Set(activeBlocks.map((block) => `${block.product_id.toString()}:${block.selected_size}`));
+  const products = await Product.find({ "variants.stock": { $lte: threshold } }).select("_id name variants").limit(100).lean();
+  return products
+    .filter((product) => product.variants.some((variant) =>
+      variant.stock <= threshold
+      && !variant.in_maintenance
+      && !activeBlockKeys.has(`${String(product._id)}:${variant.size}`),
+    ))
+    .slice(0, 20)
+    .map((product) => ({ _id: String(product._id), name: product.name }));
 }
