@@ -519,15 +519,28 @@ export const adminApi = {
     api<{ message: string; block: any }>(`/admin/maintenance/${id}`, { method: "DELETE", token }),
 
   // Reports
-  getInventoryStats: (token: string) =>
-    api<{ stats: any[] }>("/admin/reports/inventory-stats", { token }),
+  getInventoryStats: (token: string, params: { from?: string; to?: string; search?: string; category?: string } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    if (params.search) searchParams.set("search", params.search);
+    if (params.category) searchParams.set("category", params.category);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<{ stats: any[] }>(`/admin/reports/inventory-stats${query}`, { token });
+  },
 
-  exportCsv: async (token: string): Promise<string> => {
+  exportCsv: async (token: string, params: { from?: string; to?: string; search?: string; category?: string } = {}): Promise<string> => {
     const freshToken = typeof window !== "undefined" && (window as any).Clerk?.session
       ? await (window as any).Clerk.session.getToken()
       : token;
     
-    const res = await fetch("/api/admin/reports/export-csv", {
+    const searchParams = new URLSearchParams();
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    if (params.search) searchParams.set("search", params.search);
+    if (params.category) searchParams.set("category", params.category);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`/api/admin/reports/export-csv${query}`, {
       headers: { Authorization: `Bearer ${freshToken || token}` }
     });
     if (!res.ok) throw new Error("Error al exportar reporte");

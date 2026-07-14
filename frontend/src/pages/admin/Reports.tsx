@@ -37,13 +37,15 @@ export default function Reports() {
   const limit = parseInt(searchParams.get("limit") || "10", 10);
   const sortBy = searchParams.get("sortBy") || "rentalsCount"; // rentalsCount, totalRevenue, totalDaysRented, name
   const sortOrder = searchParams.get("sortOrder") || "desc"; // asc, desc
+  const from = searchParams.get("from") || "";
+  const to = searchParams.get("to") || "";
 
   useEffect(() => {
     const fetchStats = async () => {
       if (!token) return;
       try {
         setLoading(true);
-        const res = await adminApi.getInventoryStats(token);
+        const res = await adminApi.getInventoryStats(token, { from: from || undefined, to: to || undefined, search: query || undefined });
         setStats(res.stats || []);
       } catch (err: any) {
         showError(err?.message || "Error al cargar reporte de rotación.");
@@ -52,7 +54,7 @@ export default function Reports() {
       }
     };
     fetchStats();
-  }, [token]);
+  }, [token, from, to, query]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newQuery = e.target.value;
@@ -86,7 +88,7 @@ export default function Reports() {
     if (!token) return;
     try {
       setExporting(true);
-      const csvText = await adminApi.exportCsv(token);
+      const csvText = await adminApi.exportCsv(token, { from: from || undefined, to: to || undefined, search: query || undefined });
       
       const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -101,6 +103,13 @@ export default function Reports() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const setDateFilter = (key: "from" | "to", value: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value) newParams.set(key, value); else newParams.delete(key);
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   // Filter and sort stats locally based on searchParams
@@ -235,6 +244,10 @@ export default function Reports() {
                 onChange={handleSearchChange}
                 className="pl-10 rounded-[2rem] border border-border/80 h-10 px-4 focus:ring-2 focus:ring-primary/20"
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2 md:w-80">
+              <label className="text-xs font-semibold text-muted-foreground">Desde<Input type="date" value={from} onChange={(event) => setDateFilter("from", event.target.value)} /></label>
+              <label className="text-xs font-semibold text-muted-foreground">Hasta<Input type="date" value={to} onChange={(event) => setDateFilter("to", event.target.value)} /></label>
             </div>
           </div>
         </CardHeader>

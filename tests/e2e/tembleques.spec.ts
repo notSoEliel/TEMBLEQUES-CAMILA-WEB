@@ -397,4 +397,14 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await page.goto("/admin/business-rules");
     await expect(page.getByRole("heading", { name: "Información y Reglas" })).toBeVisible();
   });
+
+  test("Debe validar el rango de fechas de los reportes administrativos", async ({ page, request }) => {
+    await setMockAuth(page, "mock-admin-token");
+    const response = await request.get("http://localhost:3000/api/admin/reports/inventory-stats?from=2026-09-10&to=2026-09-01", { headers: { Authorization: "Bearer mock-admin-token" } });
+    expect(response.status()).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: "REPORT_DATE_RANGE_INVALID" });
+    await page.goto("/admin/reports?from=2026-09-10&to=2026-09-01");
+    await expect(page.getByLabel("Desde")).toHaveValue("2026-09-10");
+    await expect(page.getByLabel("Hasta")).toHaveValue("2026-09-01");
+  });
 });
