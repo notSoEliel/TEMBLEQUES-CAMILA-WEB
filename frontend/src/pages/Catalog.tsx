@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { productsApi } from "@/services/api";
+import { ApiError, productsApi } from "@/services/api";
 import { 
   IProduct, 
   ICategoryConfig, 
@@ -44,6 +44,7 @@ import { settingsApi } from "@/services/api";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { getLocalizedText } from "@/lib/utils";
+import { RequestState } from "@/components/ui/RequestState";
 
 export default function Catalog() {
   const { t, language } = useI18n();
@@ -51,6 +52,7 @@ export default function Catalog() {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(searchParams.getAll("category") || []);
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
@@ -102,6 +104,7 @@ export default function Catalog() {
     if (limit !== currentLimit) setCurrentLimit(limit);
 
     setLoading(true);
+    setLoadError(null);
     try {
       const params: Record<string, string | string[] | number> = {
         page,
@@ -116,10 +119,11 @@ export default function Catalog() {
       const response = await productsApi.list(params);
       setProducts(response.data);
       setPagination(response.pagination || null);
-    } catch (err) {
-      console.error("Error loading products:", err);
+    } catch (err: unknown) {
+      setLoadError(err instanceof ApiError ? err.message : "No pudimos cargar el catálogo. Inténtalo nuevamente.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -405,6 +409,14 @@ export default function Catalog() {
             </Card>
           ))}
         </div>
+      ) : loadError ? (
+        <RequestState
+          title={t("catalog.errorTitle")}
+          message={loadError}
+          retryLabel={t("common.retry")}
+          onRetry={() => void loadProducts()}
+          busy={loading}
+        />
       ) : products.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-xl font-bold mb-2">{t("catalog.noProductsFound")}</p>
