@@ -9,6 +9,32 @@ export type IPopulatedRental = Omit<IRental, "product_id"> & {
   product_id: IProduct;
 };
 
+export interface PaymentFailureMetadata {
+  orderGroupId?: string;
+  rentalId?: string;
+  userId?: string;
+}
+
+export function getPaymentFailureRentalFilter(
+  metadata: PaymentFailureMetadata,
+): Record<string, string> | null {
+  if (metadata.orderGroupId) {
+    return {
+      order_group_id: metadata.orderGroupId,
+      ...(metadata.userId ? { user_id: metadata.userId } : {}),
+    };
+  }
+
+  if (metadata.rentalId) {
+    return {
+      _id: metadata.rentalId,
+      ...(metadata.userId ? { user_id: metadata.userId } : {}),
+    };
+  }
+
+  return null;
+}
+
 function toCents(amount: number): number {
   return Math.max(0, Math.round(amount * 100));
 }
@@ -71,6 +97,12 @@ export async function createStripeSession(
     metadata: {
       orderGroupId: rentals[0].order_group_id,
       userId: rentals[0].user_id.toString(),
+    },
+    payment_intent_data: {
+      metadata: {
+        orderGroupId: rentals[0].order_group_id,
+        userId: rentals[0].user_id.toString(),
+      },
     },
   });
 
@@ -164,12 +196,24 @@ async function claimWebhookEvent(
   }
 
   const existing = await StripeWebhookEvent.findOne({ event_id: eventId });
-  if (!existing || existing.status === "processed" || existing.status === "processing") {
+  if (!existing || existing.status === "processed") {
     return false;
   }
 
+  const staleProcessingCutoff = new Date(Date.now() - 5 * 60 * 1000);
+  const isStaleProcessing = existing.status === "processing"
+    && existing.updatedAt instanceof Date
+    && existing.updatedAt < staleProcessingCutoff;
+  if (existing.status === "processing" && !isStaleProcessing) return false;
+
   const retried = await StripeWebhookEvent.findOneAndUpdate(
-    { event_id: eventId, status: "failed" },
+    {
+      event_id: eventId,
+      $or: [
+        { status: "failed" },
+        { status: "processing", updatedAt: { $lt: staleProcessingCutoff } },
+      ],
+    },
     {
       $set: {
         status: "processing",
@@ -281,21 +325,21 @@ async function processStripeEvent(
 
     case "payment_intent.payment_failed": {
       const intent = event.data.object as import("stripe").Stripe.PaymentIntent;
-      const rentalId = intent.metadata?.rentalId;
-      if (!rentalId) {
+      const rentalFilter = getPaymentFailureRentalFilter(intent.metadata ?? {});
+      if (!rentalFilter) {
         break;
       }
 
-      await Rental.findByIdAndUpdate(rentalId, {
+      const result = await Rental.updateMany(rentalFilter, {
         payment_status: "failed",
       });
-      recordMetric("payment_failed_total");
+      recordMetric("payment_failed_total", result.modifiedCount);
       void raiseSystemAlert({
         type: "payment_failed",
         severity: "warning",
         message: "Stripe informó un pago fallido.",
         source: "stripe.webhook",
-        metadata: { rentalId },
+        metadata: { orderGroupId: intent.metadata?.orderGroupId, rentalId: intent.metadata?.rentalId },
       }).catch((error: unknown) => {
         structuredLog("error", "alert.persist_failed", { error: error instanceof Error ? error.message : "unknown" });
       });
@@ -307,7 +351,7 @@ async function processStripeEvent(
   }
 }
 
-function validateCheckoutSession(session: import("stripe").Stripe.Checkout.Session): void {
+export function validateCheckoutSession(session: import("stripe").Stripe.Checkout.Session): void {
   if (session.status !== "complete" || session.payment_status !== "paid") {
     throw new AppError("La sesión de Stripe no confirma un pago completado.", 409, "STRIPE_PAYMENT_NOT_CONFIRMED");
   }

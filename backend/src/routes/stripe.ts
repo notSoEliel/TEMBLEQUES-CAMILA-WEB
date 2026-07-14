@@ -201,6 +201,12 @@ stripe.get("/verify-session", authMiddleware, async (c) => {
     throw new AppError("session_id es requerido", 400, "BAD_REQUEST");
   }
 
+  const user = c.get("user") as IUser;
+  const ownedRental = await Rental.exists({ stripe_session_id: sessionId, user_id: user._id });
+  if (!ownedRental) {
+    throw new AppError("La sesión de pago no pertenece al usuario autenticado.", 404, "STRIPE_SESSION_NOT_FOUND");
+  }
+
   // If in demo mode, just return ok since session isn't real
   if (!isStripeConfigured()) {
     return c.json({ verified: true, mode: "demo" });

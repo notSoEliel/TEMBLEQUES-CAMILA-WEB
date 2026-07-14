@@ -8,6 +8,7 @@ import {
   uncheckStripeField,
   type CheckoutRequestBody,
   type StagingRentalListResponse,
+  type StagingReconciliationResponse,
 } from "./staging-helpers";
 
 const stagingURL = process.env.E2E_STAGING_URL ?? "http://localhost:5173";
@@ -97,5 +98,32 @@ test.describe("Staging - Stripe test real", () => {
     expect(authorization).toMatch(/^Bearer\s+/);
     expect(checkoutBody.rentalIds?.length).toBeGreaterThan(0);
     await waitForWebhookState(page, request, checkoutBody.rentalIds!);
+
+    const receiptResponse = await request.get(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/rentals/${checkoutBody.rentalIds![0]}/receipt.pdf`,
+      { headers: { Authorization: authorization! } },
+    );
+    expect(receiptResponse.status()).toBe(200);
+    expect(receiptResponse.headers()["content-type"]).toContain("application/pdf");
+
+    const reconciliationResponse = await request.post(
+      `${requireEnvironment("E2E_BACKEND_URL")}/api/admin/payments/reconcile`,
+      {
+        headers: {
+          Authorization: `Bearer ${requireEnvironment("E2E_MCP_BACKEND_ADMIN_TOKEN")}`,
+          "x-request-id": `staging-smoke-${Date.now()}`,
+        },
+      },
+    );
+    expect(reconciliationResponse.status()).toBe(200);
+    const reconciliation = await reconciliationResponse.json() as StagingReconciliationResponse;
+    expect(reconciliation.reconciliation.runId).toBeTruthy();
+    expect(reconciliation.reconciliation.inspected).toBeGreaterThan(0);
+    const differenceIds = new Set(
+      reconciliation.reconciliation.differences.map((difference) => difference.rentalId),
+    );
+    for (const rentalId of checkoutBody.rentalIds!) {
+      expect(differenceIds.has(rentalId)).toBe(false);
+    }
   });
 });

@@ -15,14 +15,17 @@ type TestEnvironment = {
   };
 };
 
-const { apiSignRequestMock } = vi.hoisted(() => ({
-  apiSignRequestMock: vi.fn(() => "mocked-signature-1234"),
-}));
+type CloudinarySignParams = Record<string, string | number>;
+
+const apiSignRequestMock = vi.fn(
+  (_params: CloudinarySignParams, _secret: string) => "mocked-signature-1234",
+);
 
 vi.mock("cloudinary", () => ({
   v2: {
     utils: {
-      api_sign_request: apiSignRequestMock,
+      api_sign_request: (params: CloudinarySignParams, secret: string) =>
+        apiSignRequestMock(params, secret),
     },
   },
 }));
