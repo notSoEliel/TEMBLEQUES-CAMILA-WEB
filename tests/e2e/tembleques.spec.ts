@@ -242,8 +242,29 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await page.goto("/");
 
     await expect(page.getByRole("link", { name: "Catálogo" }).first()).toBeVisible();
-    await page.locator('div[aria-label="Idioma"] button', { hasText: "EN" }).first().click();
+    await page.getByRole("button", { name: "EN", exact: true }).first().click();
 
+    await expect(page.getByRole("link", { name: "Catalog" }).first()).toBeVisible();
+  });
+
+  test("Debe persistir el idioma elegido para el cliente autenticado", async ({ page, request }) => {
+    await request.patch("http://localhost:3000/api/auth/me", {
+      headers: { Authorization: "Bearer mock-client-token" },
+      data: { preferredLanguage: "es" },
+    });
+    await setMockAuth(page, "mock-client-token");
+    await page.goto("/");
+
+    const updatePromise = page.waitForResponse((response) =>
+      response.url().includes("/api/auth/me") && response.request().method() === "PATCH",
+    );
+    await page.getByRole("button", { name: "EN", exact: true }).first().click();
+    const updateResponse = await updatePromise;
+    expect(updateResponse.ok()).toBeTruthy();
+    const updatePayload = await updateResponse.json() as { user: { preferredLanguage?: string } };
+    expect(updatePayload.user.preferredLanguage).toBe("en");
+
+    await page.reload();
     await expect(page.getByRole("link", { name: "Catalog" }).first()).toBeVisible();
   });
 

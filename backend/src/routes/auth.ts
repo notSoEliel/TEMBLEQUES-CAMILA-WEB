@@ -42,15 +42,17 @@ auth.get("/me", authMiddleware, async (c) => {
       role: user.role,
       phone: user.phone,
       preferredAddress: user.preferredAddress,
+      preferredLanguage: user.preferredLanguage,
       createdAt: user.createdAt,
     },
   });
 });
 
 const updateProfileSchema = z.object({
-  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").max(120, "El nombre es demasiado largo"),
+  name: z.string().trim().min(2, "El nombre debe tener al menos 2 caracteres").max(120, "El nombre es demasiado largo").optional(),
   phone: z.string().trim().max(40, "El teléfono es demasiado largo").optional().or(z.literal("")),
   preferredAddress: z.string().trim().max(240, "La dirección es demasiado larga").optional().or(z.literal("")),
+  preferredLanguage: z.enum(["es", "en"]).optional(),
 });
 
 // PATCH /api/auth/me — updates local customer profile fields stored in MongoDB.
@@ -59,9 +61,10 @@ auth.patch("/me", authMiddleware, async (c) => {
   const body = await c.req.json();
   const data = updateProfileSchema.parse(body);
 
-  user.name = data.name;
-  user.phone = data.phone || undefined;
-  user.preferredAddress = data.preferredAddress || undefined;
+  if (data.name !== undefined) user.name = data.name;
+  if (data.phone !== undefined) user.phone = data.phone || undefined;
+  if (data.preferredAddress !== undefined) user.preferredAddress = data.preferredAddress || undefined;
+  if (data.preferredLanguage !== undefined) user.preferredLanguage = data.preferredLanguage;
   await user.save();
 
   return c.json({
@@ -73,6 +76,7 @@ auth.patch("/me", authMiddleware, async (c) => {
       role: user.role,
       phone: user.phone,
       preferredAddress: user.preferredAddress,
+      preferredLanguage: user.preferredLanguage,
       createdAt: user.createdAt,
     },
   });
