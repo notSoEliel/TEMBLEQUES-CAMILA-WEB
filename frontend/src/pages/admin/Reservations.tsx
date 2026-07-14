@@ -4,9 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { adminApi, type PaginationMetadata } from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, RefreshCw } from "lucide-react";
+import { Calendar, RefreshCw, Search } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -70,6 +71,7 @@ export default function AdminReservations() {
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
   const [viewMode, setViewMode] = useState<"orders" | "calendar">((searchParams.get("view") as any) || "orders");
   const [sortOrder, setSortOrder] = useState(searchParams.get("sort") || "desc");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
 
   useEffect(() => {
     // Ensure page and limit are always in the URL (except for calendar view)
@@ -93,12 +95,14 @@ export default function AdminReservations() {
     const limit = Number(searchParams.get("limit")) || 10;
     const status = searchParams.get("status") || "";
     const sort = searchParams.get("sort") || "desc";
+    const search = searchParams.get("search") || "";
 
     // Update local state to match URL
     if (page !== currentPage) setCurrentPage(page);
     if (limit !== currentLimit) setCurrentLimit(limit);
     if (status !== filter) setFilter(status);
     if (sort !== sortOrder) setSortOrder(sort);
+    setSearch(search);
 
     // Don't load rentals for calendar view - it loads its own data
     if (view === "calendar") return;
@@ -106,7 +110,7 @@ export default function AdminReservations() {
     setLoading(true);
     try {
       const freshToken = await getToken();
-      const response = await adminApi.rentals(freshToken || token!, { status: status || undefined, page, limit, sort });
+      const response = await adminApi.rentals(freshToken || token!, { status: status || undefined, search: search || undefined, page, limit, sort });
       setRentals(response.data);
       setPagination(response.pagination);
     } catch (err: any) {
@@ -190,6 +194,16 @@ export default function AdminReservations() {
     setSearchParams(newParams);
   };
 
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const newParams = new URLSearchParams(searchParams);
+    const normalizedSearch = search.trim();
+    if (normalizedSearch) newParams.set("search", normalizedSearch);
+    else newParams.delete("search");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
+  };
+
   return (
     <div className="space-y-6">
       {errorModal}
@@ -239,6 +253,12 @@ export default function AdminReservations() {
           </Button>
         ))}
       </div>
+
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2" role="search">
+        <label htmlFor="admin-rental-search" className="sr-only">Buscar reservas</label>
+        <Input id="admin-rental-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por pedido, cliente o producto" />
+        <Button type="submit"><Search className="h-4 w-4 mr-2" />Buscar</Button>
+      </form>
 
       <Separator />
 

@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import SizeManager, { type SizeVariant } from "@/components/SizeManager";
 import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
-import { Plus, Pencil, Trash2, X, Loader2, Eye, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, Eye, Calendar, Search } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -66,6 +66,7 @@ export default function AdminInventory() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
 
   const [maintenanceProduct, setMaintenanceProduct] = useState<any>(null);
   const [maintenanceBlocks, setMaintenanceBlocks] = useState<any[]>([]);
@@ -187,11 +188,21 @@ export default function AdminInventory() {
 
     setLoading(true);
     try {
-      const response = await productsApi.list({ page, limit });
+      const response = await productsApi.list({ page, limit, search: searchParams.get("search") || undefined });
       setProducts(response.data);
       setPagination(response.pagination);
     } catch (err) { console.error(err); }
     setLoading(false);
+  };
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const newParams = new URLSearchParams(searchParams);
+    const normalizedSearch = search.trim();
+    if (normalizedSearch) newParams.set("search", normalizedSearch);
+    else newParams.delete("search");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const resetForm = () => {
@@ -309,6 +320,11 @@ export default function AdminInventory() {
 
   return (
     <div className="space-y-6">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2" role="search">
+        <label htmlFor="admin-product-search" className="sr-only">Buscar productos</label>
+        <Input id="admin-product-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre de producto" />
+        <Button type="submit"><Search className="h-4 w-4 mr-2" />Buscar</Button>
+      </form>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Inventario</h1>

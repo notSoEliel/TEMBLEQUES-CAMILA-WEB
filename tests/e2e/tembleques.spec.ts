@@ -159,6 +159,35 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByRole("heading", { name: "Usuarios", exact: true })).toBeVisible();
   });
 
+  test("Debe buscar productos y reservas desde la operación administrativa", async ({ page, request }) => {
+    const product = await getAvailableProduct(request);
+    const searchTerm = product.name.split(/\s+/)[0];
+
+    await setMockAuth(page, "mock-admin-token");
+    await page.goto(`/admin/inventory?search=${encodeURIComponent(searchTerm)}&page=1&limit=10`);
+    await expect(page.getByRole("heading", { name: product.name, exact: true })).toBeVisible();
+
+    const size = product.variants.find((variant) => !variant.in_maintenance && variant.stock > 0)?.size;
+    if (!size) throw new Error("El producto semilla no tiene talla disponible.");
+    const orderGroupId = `phase6-search-${Date.now()}`;
+    const createResponse = await request.post("http://localhost:3000/api/rentals", {
+      headers: { Authorization: "Bearer mock-client-token" },
+      data: {
+        productId: product._id,
+        selectedSize: size,
+        startDate: futureDate(20),
+        endDate: futureDate(22),
+        termsAccepted: true,
+        paymentType: "reservation",
+        orderGroupId,
+      },
+    });
+    expect(createResponse.ok()).toBeTruthy();
+
+    await page.goto(`/admin/reservations?search=${encodeURIComponent(orderGroupId)}&page=1&limit=10`);
+    await expect(page.getByText(orderGroupId.slice(-6).toUpperCase(), { exact: false })).toBeVisible();
+  });
+
   test("Debe permitir al administrador actualizar el estado de una reserva", async ({ page, request }) => {
     const product = await getAvailableProduct(request);
     const size = product.variants.find((variant) => !variant.in_maintenance && variant.stock > 0)?.size;

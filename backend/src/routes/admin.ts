@@ -19,6 +19,10 @@ import { adminAuditMiddleware } from "../services/audit.js";
 import { createRentalRefund } from "../services/refunds.js";
 import { reconcilePayments } from "../services/reconciliation.js";
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const admin = new Hono<{ Variables: AuthVariables }>();
 
 // All administrative routes require authentication. Each operation declares its
@@ -286,10 +290,24 @@ admin.delete("/products/:id", async (c) => {
 
 // GET /api/admin/rentals
 admin.get("/rentals", async (c) => {
-  const { status, sort } = c.req.query();
+  const { status, sort, search } = c.req.query();
   const { page, limit, skip } = getPaginationParams(c);
-  const filter: any = {};
+  const filter: Record<string, unknown> = {};
   if (status) filter.status = status;
+
+  const normalizedSearch = search?.trim();
+  if (normalizedSearch) {
+    const expression = new RegExp(escapeRegex(normalizedSearch), "i");
+    const [matchingUsers, matchingProducts] = await Promise.all([
+      User.find({ $or: [{ name: expression }, { email: expression }, { phone: expression }] }).select("_id").lean(),
+      Product.find({ $or: [{ name: expression }, { name_en: expression }] }).select("_id").lean(),
+    ]);
+    const userIds = matchingUsers.map((user) => user._id);
+    const productIds = matchingProducts.map((product) => product._id);
+    filter.$or = userIds.length > 0 || productIds.length > 0
+      ? [{ order_group_id: expression }, { user_id: { $in: userIds } }, { product_id: { $in: productIds } }]
+      : [{ order_group_id: expression }];
+  }
 
   const sortOrder = sort === "asc" ? 1 : -1;
 
@@ -402,7 +420,12 @@ admin.patch("/users/:id/role", requirePermission("users.roles.write"), async (c)
 // GET /api/admin/users
 admin.get("/users", async (c) => {
   const { page, limit, skip } = getPaginationParams(c);
-  const filter = { role: "client" };
+  const search = c.req.query("search")?.trim();
+  const filter: Record<string, unknown> = { role: "client" };
+  if (search) {
+    const expression = new RegExp(escapeRegex(search), "i");
+    filter.$or = [{ name: expression }, { email: expression }, { phone: expression }];
+  }
 
   const [users, total] = await Promise.all([
     User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
