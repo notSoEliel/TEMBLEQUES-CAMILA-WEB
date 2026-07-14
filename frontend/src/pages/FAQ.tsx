@@ -7,6 +7,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { HelpCircle } from "lucide-react";
 import { useI18n } from "@/i18n";
+import { Link } from "react-router-dom";
 
 export default function FAQ() {
   const { t } = useI18n();
@@ -54,12 +55,12 @@ export default function FAQ() {
         {/* Footer Note */}
         <div className="text-center pt-12 space-y-4">
           <p className="text-muted-foreground font-medium">{t("faq.more")}</p>
-          <a 
-            href="/contacto" 
+          <Link
+            to="/contacto"
             className="inline-block bg-primary text-white font-bold px-8 py-3 rounded-full shadow-elegant hover:scale-105 transition-transform active:scale-95"
           >
             {t("faq.contact")}
-          </a>
+          </Link>
         </div>
       </div>
     </div>

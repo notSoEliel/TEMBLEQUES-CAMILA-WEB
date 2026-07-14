@@ -198,8 +198,8 @@ export default function Orders() {
                 <ShoppingBag className="h-10 w-10" />
               </div>
               <p className="text-xl font-display font-bold italic text-muted-foreground">{t("orders.noOrders")}</p>
-              <Button className="rounded-full px-10 shadow-elegant font-bold" onClick={() => window.location.href='/catalog'}>
-                {t("cart.exploreBtn")}
+              <Button asChild className="rounded-full px-10 shadow-elegant font-bold">
+                <Link to="/catalog">{t("cart.exploreBtn")}</Link>
               </Button>
             </Card>
           ) : (

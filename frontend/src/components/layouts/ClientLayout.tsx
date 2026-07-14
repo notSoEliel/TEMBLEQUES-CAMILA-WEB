@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,9 @@ export default function ClientLayout() {
   const { user, logout } = useAuth();
   const { items } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useI18n();
+  const isCurrent = (path: string) => location.pathname === path;
 
   const handleLogout = () => {
     logout();
@@ -65,6 +67,7 @@ export default function ClientLayout() {
                   <nav className="flex flex-col gap-5 mt-8">
                     <Link
                       to="/"
+                      aria-current={isCurrent("/") ? "page" : undefined}
                       className="flex items-center gap-3 text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       <Home className="h-6 w-6" />
@@ -72,18 +75,21 @@ export default function ClientLayout() {
                     </Link>
                     <Link
                       to="/catalog"
+                      aria-current={isCurrent("/catalog") ? "page" : undefined}
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       {t("nav.catalog")}
                     </Link>
                     <Link
                       to="/historia"
+                      aria-current={isCurrent("/historia") ? "page" : undefined}
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       {t("nav.history")}
                     </Link>
                     <Link
                       to="/credencial"
+                      aria-current={isCurrent("/credencial") ? "page" : undefined}
                       className="text-2xl font-bold tracking-tight hover:text-primary transition-colors px-2"
                     >
                       {t("nav.credentials")}
@@ -92,12 +98,14 @@ export default function ClientLayout() {
                       <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">{t("nav.help")}</p>
                       <Link
                         to="/faq"
+                        aria-current={isCurrent("/faq") ? "page" : undefined}
                         className="text-2xl font-bold tracking-tight hover:text-primary transition-colors"
                       >
                         {t("nav.faq")}
                       </Link>
                       <Link
                         to="/contacto"
+                        aria-current={isCurrent("/contacto") ? "page" : undefined}
                         className="text-2xl font-bold tracking-tight hover:text-primary transition-colors"
                       >
                         {t("nav.contact")}
@@ -136,7 +144,7 @@ export default function ClientLayout() {
               <NavigationMenu>
                 <NavigationMenuList className="flex items-center gap-1">
                   <NavigationMenuItem>
-                    <Link to="/catalog">
+                    <Link to="/catalog" aria-current={isCurrent("/catalog") ? "page" : undefined}>
                       <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                         {t("nav.catalog")}
                       </NavigationMenuLink>
@@ -162,19 +170,19 @@ export default function ClientLayout() {
                           </div>
                           <div className="col-span-1 flex flex-col gap-1">
                             <DropdownMenuItem asChild>
-                              <Link to="/historia" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/historia" aria-current={isCurrent("/historia") ? "page" : undefined} className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">{t("nav.history")}</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.historySub")}</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to="/credencial" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/credencial" aria-current={isCurrent("/credencial") ? "page" : undefined} className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">{t("nav.credentials")}</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.credentialsSub")}</span>
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link to="/mision-vision" className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
+                              <Link to="/mision-vision" aria-current={isCurrent("/mision-vision") ? "page" : undefined} className="flex flex-col items-start px-3 py-2 rounded-[0.5rem]">
                                 <span className="font-bold text-sm">{t("nav.missionVision")}</span>
                                 <span className="text-[11px] text-muted-foreground leading-tight">{t("nav.missionSub")}</span>
                               </Link>
@@ -193,12 +201,12 @@ export default function ClientLayout() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="w-56 p-2">
                         <DropdownMenuItem asChild>
-                          <Link to="/faq" className="w-full flex items-center gap-2 px-3 py-2.5">
+                          <Link to="/faq" aria-current={isCurrent("/faq") ? "page" : undefined} className="w-full flex items-center gap-2 px-3 py-2.5">
                             <span className="font-bold">{t("nav.faq")}</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link to="/contacto" className="w-full flex items-center gap-2 px-3 py-2.5">
+                          <Link to="/contacto" aria-current={isCurrent("/contacto") ? "page" : undefined} className="w-full flex items-center gap-2 px-3 py-2.5">
                             <span className="font-bold">{t("nav.contact")}</span>
                           </Link>
                         </DropdownMenuItem>
@@ -365,7 +373,7 @@ export default function ClientLayout() {
               </h4>
               <ul className="space-y-3 text-sm">
                 <li>
-                  <Link to="/catalog" className="text-muted-foreground hover:text-primary transition-colors">
+                  <Link to="/catalog" aria-current={isCurrent("/catalog") ? "page" : undefined} className="text-muted-foreground hover:text-primary transition-colors">
                     {t("nav.catalog")}
                   </Link>
                 </li>

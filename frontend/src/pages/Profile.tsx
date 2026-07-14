@@ -423,8 +423,8 @@ export default function Profile() {
                       {t("profile.emptyArmarioDesc")}
                     </p>
                   </div>
-                  <Button className="rounded-full px-12 h-11 shadow-elegant font-bold" onClick={() => window.location.href='/catalog'}>
-                    {t("cart.exploreBtn")}
+                  <Button asChild className="rounded-full px-12 h-11 shadow-elegant font-bold">
+                    <Link to="/catalog">{t("cart.exploreBtn")}</Link>
                   </Button>
                 </Card>
               )}
