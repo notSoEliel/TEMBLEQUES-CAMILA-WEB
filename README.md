@@ -36,6 +36,7 @@ Plataforma e-commerce B2C para alquiler de vestimenta folclorica panamena, con c
 - [Backend deep dive](docs/BACKEND_DEEP_DIVE.md)
 - [Frontend deep dive](docs/FRONTEND_DEEP_DIVE.md)
 - [Pagos y webhooks](docs/PAYMENTS_WEBHOOKS.md)
+- [Operación administrativa](docs/ADMIN_OPERATIONS.md)
 - [Autenticacion y Clerk](docs/AUTH_FLOW.md)
 - [Seguridad y configuracion](docs/SECURITY_AND_CONFIGURATION.md)
 - [Modelo de datos](docs/DATABASE_SCHEMA.md)

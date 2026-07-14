@@ -1,6 +1,6 @@
 # Guía de Configuración del Entorno: Tembleques Camila
 
-Esta guía proporciona un recorrido completo "Zero to Hero" para configurar el entorno de desarrollo de la plataforma Tembleques Camila. Al finalizar estos pasos, tendrás un ecosistema funcional con frontend, backend, base de datos y servicios de terceros (Clerk/Stripe) perfectamente sincronizados.
+Esta guía proporciona un recorrido completo "Zero to Hero" para configurar el entorno de desarrollo de la plataforma Tembleques Camila. Al finalizar estos pasos, tendrás un ecosistema funcional con frontend, backend, base de datos y servicios de terceros (Clerk/Stripe/Cloudinary) sincronizados. Resend es opcional y solo es necesario si se quieren activar correos transaccionales reales.
 
 ---
 
@@ -55,7 +55,7 @@ Para redirigir eventos de pago directamente a tu backend local sin necesidad de 
 ### Paso 1: Clonar y Preparar el Espacio de Trabajo
 ```bash
 git clone <url-del-repositorio>
-cd parcial-dsix
+cd tembleques-camila-web
 ```
 
 ### Paso 2: Instalación de Dependencias
@@ -121,6 +121,26 @@ Si recibes un error indicando que el puerto ya está en uso, es probable que ten
    ```
 *Si dejas el placeholder por defecto, el sistema funcionará en **Modo Demo**, simulando los pagos sin contactar a Stripe.*
 
+### C. Correo transaccional con Resend (Opcional)
+
+Las notificaciones internas no dependen de Resend. Sin configuración adicional, el sistema crea la notificación dentro de la aplicación y registra el canal de correo como `skipped` con el código `EMAIL_PROVIDER_NOT_CONFIGURED`.
+
+Para activar el envío real:
+
+1. Crea o utiliza una cuenta de [Resend](https://resend.com).
+2. Verifica el dominio o remitente que utilizarás.
+3. Añade las siguientes variables al entorno protegido del backend:
+
+   ```env
+   RESEND_API_KEY=re_...
+   RESEND_FROM_EMAIL=Tembleques Camila <notificaciones@tu-dominio-verificado.com>
+   RESEND_REPLY_TO=contacto@tu-dominio-verificado.com
+   ```
+
+`RESEND_REPLY_TO` es opcional. La API key y cualquier valor real del remitente son secretos: no deben aparecer en Git, issues, logs ni capturas.
+
+Cuando las variables están presentes, el backend registra el correo como `pending`, llama a Resend y lo cambia a `sent` o `failed`. La operación principal no queda bloqueada indefinidamente: la integración tiene un timeout interno de ocho segundos.
+
 ---
 
 ## 6. Desarrollo Colaborativo y Webhooks
@@ -155,6 +175,8 @@ docker compose up --build
 - [ ] Visita [http://localhost:5173](http://localhost:5173): El frontend debe cargar.
 - [ ] Intenta Registrarte: Debes ver el modal de Clerk.
 - [ ] Revisa los logs del backend: `docker compose logs -f backend`. No debe haber errores de conexión a MongoDB.
+- [ ] Si activaste Resend, genera una notificación de prueba y confirma que el correo llegue al buzón previsto.
+- [ ] Si no activaste Resend, confirma que la notificación interna funciona y que el canal de correo queda como `skipped`.
 
 ---
 

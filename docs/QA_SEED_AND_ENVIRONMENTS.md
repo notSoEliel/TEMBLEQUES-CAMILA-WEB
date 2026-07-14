@@ -54,11 +54,22 @@ La clave de Clerk solo debe inyectarse desde el gestor de secretos o el entorno 
 
 El flujo de confirmación y `GET /api/rentals/my` no modifican estados de pago. La única transición financiera se procesa en el webhook con firma validada y deduplicación por `event.id`.
 
-El repositorio incluye `.github/workflows/staging-smoke.yml`, ejecutable manualmente desde GitHub Actions. Usa el environment `staging`, valida que existan la URL y las credenciales de Clerk, ejecuta ambos smoke tests y conserva los artefactos aunque fallen. Las claves y el webhook de Stripe permanecen configurados en Railway; nunca se copian al workflow.
+El repositorio incluye `.github/workflows/staging-smoke.yml`, ejecutable manualmente desde GitHub Actions. Usa el environment `staging`, valida que existan la URL y las credenciales de Clerk, ejecuta los smoke de Clerk, Stripe, H70 y H71, y conserva los artefactos aunque fallen. Las claves y el webhook de Stripe permanecen configurados en Railway; nunca se copian al workflow.
 
 El workflow construye el frontend del commit exacto que se está verificando con `VITE_API_URL` apuntando al backend staging y lo sirve temporalmente en el runner. Así el smoke combina frontend versionado + backend staging + Clerk/Stripe reales, sin depender de que un alias de Vercel tenga desplegado el mismo commit. El dominio frontend configurado en `STAGING_FRONTEND_URL` queda reservado para comprobaciones manuales.
 
 Para la evidencia completa de H56/#61, el backend expone `GET /api/admin/seed-status` como lectura administrativa. Devuelve únicamente el ambiente, la configuración no secreta del seed y los conteos del namespace `seed_key`/`fixture_key`; no devuelve documentos ni credenciales.
+
+## Smoke de operación administrativa
+
+El archivo `tests/e2e/staging-phase6.spec.ts` valida sobre el backend remoto y un frontend construido desde el commit probado:
+
+- H70 — notificación interna asociada a una incidencia, aislamiento por usuario y marcado como leída.
+- H71 — lectura de bajo stock, permisos de cliente, umbral configurable, creación de mantenimiento, rechazo de solapamiento y limpieza del fixture temporal.
+
+El smoke utiliza secretos del environment `staging` de GitHub Actions. No requiere ni permite copiar tokens al repositorio.
+
+Resend no es un requisito del smoke: si no está configurado, la notificación interna debe seguir funcionando y el registro de correo debe quedar como `skipped`.
 
 ## Promoción a la demo
 

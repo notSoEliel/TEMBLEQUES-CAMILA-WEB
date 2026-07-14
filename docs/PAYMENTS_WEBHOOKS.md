@@ -156,6 +156,35 @@ Esto genera una `webhook_secret` temporal que debe colocarse en el archivo `.env
 | `STRIPE_WEBHOOK_INVALID_SIGNATURE` | La firma no coincide con el cuerpo | Asegurar que se está enviando el Raw Body. |
 | `LATE_FEE_PAYMENT_METHOD_MISSING` | No hay tarjeta guardada para la mora | Contactar al cliente para pago manual. |
 
+## 8. Operación financiera implementada en la fase 4
+
+La fase 4 extendió este flujo con operaciones administrativas y controles posteriores al pago:
+
+| Historia | Capacidad | Referencia operativa |
+| --- | --- | --- |
+| H43 — Reembolsos — issue #73 | Reembolso total o parcial con idempotencia, permisos administrativos y notificación de resultado. | `POST /api/admin/rentals/:id/refund` |
+| H44 — Recibos — issue #74 | Comprobante PDF disponible únicamente para el propietario de la reserva. | `GET /api/rentals/:id/receipt.pdf` |
+| H45 — Conciliación de pagos — issue #54 | Compara reservas internas con Checkout Session, PaymentIntent y evidencia del webhook. | `POST /api/admin/payments/reconcile` |
+| H46 — Cancelaciones — issue #75 | Previsualiza la política y cancela aplicando el reembolso correspondiente. | `GET /api/rentals/:id/cancellation-preview` y `DELETE /api/rentals/:id` |
+| H47 — Facturación fiscal preparada — issue #76 | Genera reportes académicos con subtotal, ITBMS, total y cobrado. | `/api/admin/reports/financial/export-csv` y `/api/admin/reports/financial/export.pdf` |
+
+Los reportes financieros están marcados explícitamente como académicos y operativos. No son facturas fiscales electrónicas ni sustituyen una integración con la DGI.
+
+La conciliación no se limita a listar reservas: para cada reserva con referencias Stripe consulta la Checkout Session, el PaymentIntent y el evento de webhook procesado. Puede detectar diferencias como:
+
+- `MISSING_STRIPE_REFERENCE`.
+- `AMOUNT_MISMATCH`.
+- `PAYMENT_INTENT_NOT_SUCCEEDED`.
+- `WEBHOOK_EVIDENCE_MISSING`.
+- `CANCELLED_WITHOUT_REFUND`.
+- `STRIPE_LOOKUP_FAILED`.
+
+Las operaciones financieras administrativas requieren permisos específicos y deben ejecutarse con datos de prueba en ambientes no productivos.
+
+## Notificaciones derivadas de pagos
+
+Los eventos de confirmación, fallo, expiración, cancelación y reembolso pueden producir notificaciones internas. El canal de correo mediante Resend es opcional y se documenta en [Despliegue staging](./DEPLOY_STAGING.md); la ausencia del proveedor no cambia el estado financiero ni permite marcar un pago como confirmado.
+
 ---
 
 Este documento es crítico para entender cómo Tembleques Camila protege su flujo de ingresos. Cualquier modificación en los controladores de Stripe debe ser validada contra esta máquina de estados.
