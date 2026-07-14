@@ -539,7 +539,9 @@ function redactUser(data: JsonValue): JsonValue {
 function redactUserAudit(data: JsonValue): JsonValue {
   if (!isRecord(data)) return data;
   const audit = isRecord(data.audit) ? data.audit : data;
-  return { audit: omit(audit, ["ip_address", "user_agent", "clerkId", "preferredAddress", "lastRental"]) };
+  return {
+    audit: redactValue(omit(audit, ["lastRental"])),
+  };
 }
 
 function redactRentals(data: JsonValue): JsonValue {
@@ -548,25 +550,17 @@ function redactRentals(data: JsonValue): JsonValue {
   return {
     ...data,
     data: items.map((item) => isRecord(item)
-      ? omit(item, ["terms", "ip_address", "user_agent", "stripe_session_id", "stripe_payment_intent_id"])
+      ? redactValue(omit(item, ["terms", "stripe_session_id", "stripe_payment_intent_id"]))
       : item),
   };
 }
 
 function redactAudit(data: JsonValue): JsonValue {
-  if (!isRecord(data)) return data;
-  const items = Array.isArray(data.data) ? data.data : [];
-  return {
-    ...data,
-    data: items.map((item) => isRecord(item)
-      ? omit(item, ["ip_address", "user_agent", "metadata.stack", "metadata.token"])
-      : item),
-  };
+  return redactValue(data);
 }
 
 function redactObservability(data: JsonValue): JsonValue {
-  if (!isRecord(data)) return data;
-  return omit(data, ["secrets", "credentials", "stack", "stackTrace"]);
+  return redactValue(data);
 }
 
 function createReportSummary(data: JsonValue): JsonValue {
@@ -604,4 +598,20 @@ function omit(record: { [key: string]: JsonValue }, keys: string[]): JsonValue {
   const result: { [key: string]: JsonValue } = { ...record };
   for (const key of keys) delete result[key];
   return result;
+}
+
+function redactValue(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) return value.map((item) => redactValue(item));
+  if (!isRecord(value)) return value;
+
+  const result: { [key: string]: JsonValue } = {};
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (isSensitiveKey(key)) continue;
+    result[key] = redactValue(nestedValue);
+  }
+  return result;
+}
+
+function isSensitiveKey(key: string): boolean {
+  return /(ip_address|user_agent|token|secret|authorization|api.?key|signature|card|cvc|clerkid|preferredaddress|stack)/i.test(key);
 }
