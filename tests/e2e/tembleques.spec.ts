@@ -247,6 +247,17 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByRole("link", { name: "Catalog" }).first()).toBeVisible();
   });
 
+  test("Debe ofrecer salto al contenido y mover el foco al cambiar de ruta", async ({ page }) => {
+    await page.goto("/");
+
+    const skipLink = page.locator('a[href="#main-content"]');
+    await skipLink.focus();
+    await expect(skipLink).toBeFocused();
+
+    await page.goto("/catalog");
+    await expect(page.locator("#main-content")).toBeFocused();
+  });
+
   test("Debe exponer módulos administrativos de cupones, reportes y reglas", async ({ page }) => {
     await setMockAuth(page, "mock-admin-token");
 

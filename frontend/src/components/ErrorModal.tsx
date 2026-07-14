@@ -83,7 +83,7 @@ export default function ErrorModal({
             <span className={`${config.iconClass} shrink-0`}>{config.icon}</span>
             <DialogTitle>{config.title}</DialogTitle>
           </div>
-          <DialogDescription className="text-sm leading-relaxed text-foreground/80">
+          <DialogDescription aria-live="polite" className="text-sm leading-relaxed text-foreground/80">
             {message || "Por favor, intenta de nuevo o contacta al soporte si el problema persiste."}
           </DialogDescription>
         </DialogHeader>

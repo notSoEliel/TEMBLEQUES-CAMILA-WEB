@@ -92,7 +92,10 @@ export default function ErrorPage({
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+    <section
+      aria-labelledby="error-page-title"
+      className="min-h-[70vh] flex items-center justify-center px-4 py-16"
+    >
       <div className="max-w-md w-full text-center space-y-6">
         {/* Big code + icon */}
         <div className="relative inline-flex flex-col items-center">
@@ -110,6 +113,7 @@ export default function ErrorPage({
         {/* Text */}
         <div className="space-y-2">
           <h1
+            id="error-page-title"
             className="text-2xl font-bold"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
@@ -148,6 +152,6 @@ export default function ErrorPage({
           </p>
         )}
       </div>
-    </div>
+    </section>
   );
 }

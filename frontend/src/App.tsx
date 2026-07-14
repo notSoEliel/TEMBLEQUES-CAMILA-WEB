@@ -31,6 +31,7 @@ import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
 import AdminCoupons from "@/pages/admin/CouponsAdmin";
 import AdminReports from "@/pages/admin/Reports";
+import { RouteFocusManager } from "@/components/ui/AccessibilityTools";
 
 /**
  * Guards a route that requires the user to be logged in.
@@ -113,6 +114,7 @@ export default function App() {
       <GlobalAuthLoader>
         <CartProvider>
           <BrowserRouter>
+            <RouteFocusManager />
             <ScrollToTop />
             <Routes>
               {/* Client Routes */}
