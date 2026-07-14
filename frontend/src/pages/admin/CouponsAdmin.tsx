@@ -34,6 +34,7 @@ export default function CouponsAdmin() {
   const [value, setValue] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [maxUses, setMaxUses] = useState("");
+  const [minPurchaseAmount, setMinPurchaseAmount] = useState("");
 
   const fetchCoupons = async () => {
     if (!token) return;
@@ -70,6 +71,7 @@ export default function CouponsAdmin() {
           value: parseFloat(value),
           expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
           max_uses: maxUses ? parseInt(maxUses) : null,
+          min_purchase_amount: minPurchaseAmount ? parseFloat(minPurchaseAmount) : null,
         },
         token
       );
@@ -79,6 +81,7 @@ export default function CouponsAdmin() {
       setValue("");
       setExpiresAt("");
       setMaxUses("");
+      setMinPurchaseAmount("");
       
       await fetchCoupons();
     } catch (err: any) {
@@ -147,6 +150,22 @@ export default function CouponsAdmin() {
                     onChange={(e) => setCode(e.target.value.toUpperCase())}
                     className="rounded-[2rem] border border-border/80 h-11 px-4 focus:ring-2 focus:ring-primary/20"
                     required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="minPurchaseAmount" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Compra Mínima (PAB, opcional)
+                  </Label>
+                  <Input
+                    id="minPurchaseAmount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Sin mínimo"
+                    value={minPurchaseAmount}
+                    onChange={(e) => setMinPurchaseAmount(e.target.value)}
+                    className="rounded-[2rem] border border-border/80 h-11 px-4 focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
 
@@ -304,6 +323,7 @@ export default function CouponsAdmin() {
                               ) : (
                                 "Nunca"
                               )}
+                              {coupon.min_purchase_amount ? <span className="block text-[11px]">Mín.: {formatCurrency(coupon.min_purchase_amount)}</span> : null}
                             </td>
                             <td className="py-4 text-center">
                               <button

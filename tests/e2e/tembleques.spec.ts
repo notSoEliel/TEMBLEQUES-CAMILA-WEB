@@ -407,4 +407,16 @@ test.describe("Tembleques Camila - E2E Tests", () => {
     await expect(page.getByLabel("Desde")).toHaveValue("2026-09-10");
     await expect(page.getByLabel("Hasta")).toHaveValue("2026-09-01");
   });
+
+  test("Debe rechazar promociones con un porcentaje imposible", async ({ page, request }) => {
+    await setMockAuth(page, "mock-admin-token");
+    const response = await request.post("http://localhost:3000/api/coupons", {
+      headers: { Authorization: "Bearer mock-admin-token" },
+      data: { code: `INVALID${Date.now()}`, discount_type: "percentage", value: 101 },
+    });
+    expect(response.status()).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ code: "COUPON_PERCENTAGE_INVALID" });
+    await page.goto("/admin/coupons");
+    await expect(page.getByRole("heading", { name: "Gestión de Cupones" })).toBeVisible();
+  });
 });
