@@ -5,6 +5,8 @@ export type Permission =
   | "contacts.manage"
   | "coupons.manage"
   | "dashboard.read"
+  | "incidents.read"
+  | "incidents.write"
   | "inventory.read"
   | "inventory.write"
   | "maintenance.write"
@@ -27,6 +29,8 @@ const ownerPermissions: ReadonlySet<Permission> = new Set([
   "contacts.manage",
   "coupons.manage",
   "dashboard.read",
+  "incidents.read",
+  "incidents.write",
   "inventory.read",
   "inventory.write",
   "maintenance.write",
@@ -51,6 +55,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
     "contacts.manage",
     "coupons.manage",
     "dashboard.read",
+    "incidents.read",
+    "incidents.write",
     "products.read",
     "reports.read",
     "observability.read",
@@ -60,6 +66,7 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
   ]),
   inventory: new Set([
     "dashboard.read",
+    "incidents.read",
     "inventory.read",
     "inventory.write",
     "maintenance.write",
@@ -70,6 +77,8 @@ export const ROLE_PERMISSIONS: Readonly<Record<Role, ReadonlySet<Permission>>> =
   support: new Set([
     "contacts.manage",
     "dashboard.read",
+    "incidents.read",
+    "incidents.write",
     "reservations.read",
     "users.read",
   ]),

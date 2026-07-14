@@ -17,6 +17,7 @@ import {
   Info,
   Ticket,
   BarChart3,
+  AlertTriangle,
 } from "lucide-react";
 import { SkipLink } from "@/components/ui/AccessibilityTools";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
   { href: "/admin/users", label: "Usuarios", icon: Users },
   { href: "/admin/contacts", label: "Mensajes", icon: Mail },
+  { href: "/admin/incidents", label: "Incidencias", icon: AlertTriangle },
   { href: "/admin/business-rules", label: "Info y Reglas", icon: Info },
   { href: "/admin/settings", label: "Ajustes", icon: Settings },
 ];

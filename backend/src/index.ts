@@ -19,6 +19,7 @@ import reportRoutes from "./routes/reports.js";
 import contactRoutes from "./routes/contact.js";
 import mediaRoutes from "./routes/media.js";
 import observabilityRoutes from "./routes/observability.js";
+import incidentRoutes from "./routes/incidents.js";
 import privacyRoutes from "./routes/privacy.js";
 import { startCronJobs } from "./services/cron.js";
 import { loadConfig } from "./config.js";
@@ -122,6 +123,7 @@ app.route("/api/admin/reports", reportRoutes);
 app.route("/api/contact", contactRoutes);
 app.route("/api/media", mediaRoutes);
 app.route("/api/admin/observability", observabilityRoutes);
+app.route("/api/admin/incidents", incidentRoutes);
 app.route("/api/privacy", privacyRoutes);
 
 // Start server

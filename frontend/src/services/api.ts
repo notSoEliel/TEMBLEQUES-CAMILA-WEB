@@ -95,6 +95,25 @@ export interface AdminRentalDetail {
   payment: { stripe_session_id?: string; stripe_payment_intent_id?: string; stripe_payment_amount?: number };
 }
 
+export type AdminIncidentType = "damage" | "late_return" | "payment_issue" | "customer_complaint" | "maintenance" | "other";
+export type AdminIncidentSeverity = "low" | "medium" | "high" | "critical";
+export type AdminIncidentStatus = "open" | "in_review" | "resolved" | "closed";
+
+export interface AdminIncident {
+  _id: string;
+  type: AdminIncidentType;
+  severity: AdminIncidentSeverity;
+  status: AdminIncidentStatus;
+  description: string;
+  resolution?: string;
+  createdAt: string;
+  updatedAt: string;
+  rental_id?: { _id: string; order_group_id?: string; status: string; payment_status: string };
+  user_id?: { _id: string; name: string; email: string };
+  product_id?: { _id: string; name: string };
+  timeline: Array<{ status: AdminIncidentStatus; note?: string; timestamp: string; actor_id?: { name?: string; email?: string } }>;
+}
+
 export interface ApiErrorPayload {
   error?: unknown;
   message?: unknown;
@@ -443,6 +462,23 @@ export const adminApi = {
 
   rentalDetail: (id: string, token: string) =>
     api<{ rental: AdminRentalDetail; terms: RentalTermsAcceptance[] }>(`/admin/rentals/${id}`, { token }),
+
+  incidents: (token: string, params: { search?: string; status?: AdminIncidentStatus; severity?: AdminIncidentSeverity; page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.search) searchParams.set("search", params.search);
+    if (params.status) searchParams.set("status", params.status);
+    if (params.severity) searchParams.set("severity", params.severity);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<AdminIncident>>(`/admin/incidents${query}`, { token });
+  },
+
+  createIncident: (data: { rentalId?: string; userId?: string; productId?: string; type: AdminIncidentType; severity: AdminIncidentSeverity; description: string }, token: string) =>
+    api<{ incident: AdminIncident }>("/admin/incidents", { method: "POST", body: data, token }),
+
+  updateIncident: (id: string, data: { status?: AdminIncidentStatus; severity?: AdminIncidentSeverity; resolution?: string | null; note?: string }, token: string) =>
+    api<{ incident: AdminIncident }>(`/admin/incidents/${id}`, { method: "PATCH", body: data, token }),
 
   // Users
   users: (token: string, params: { search?: string; page?: number; limit?: number } = {}) => {

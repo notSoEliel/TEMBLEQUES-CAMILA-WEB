@@ -25,6 +25,7 @@ import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminInventory from "@/pages/admin/Inventory";
 import AdminReservations from "@/pages/admin/Reservations";
 import AdminReservationDetail from "@/pages/admin/ReservationDetail";
+import AdminIncidents from "@/pages/admin/Incidents";
 import AdminUsers from "@/pages/admin/Users";
 import AdminUserDetail from "@/pages/admin/UserDetail";
 import AdminContacts from "@/pages/admin/Contacts";
@@ -202,6 +203,7 @@ export default function App() {
                 <Route path="/admin/inventory" element={<AdminInventory />} />
                 <Route path="/admin/reservations" element={<AdminReservations />} />
                 <Route path="/admin/reservations/:id" element={<AdminReservationDetail />} />
+                <Route path="/admin/incidents" element={<AdminIncidents />} />
                 <Route path="/admin/coupons" element={<AdminCoupons />} />
                 <Route path="/admin/reports" element={<AdminReports />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
