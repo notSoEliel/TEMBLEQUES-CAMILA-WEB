@@ -7,15 +7,26 @@ import { AppError } from "../lib/errors.js";
 const coupons = new Hono<{ Variables: AuthVariables }>();
 
 const createCouponSchema = z.object({
-  code: z.string().min(1, "El código es requerido").toUpperCase(),
+  code: z.string().trim().min(3, "El código debe tener al menos 3 caracteres").max(40).regex(/^[A-Z0-9_-]+$/i, "El código solo puede contener letras, números, guion y guion bajo").toUpperCase(),
   discount_type: z.enum(["percentage", "fixed"]),
-  value: z.number().min(0, "El valor del descuento debe ser mayor o igual a 0"),
+  value: z.number().positive("El valor del descuento debe ser mayor que 0"),
   is_active: z.boolean().default(true),
   expires_at: z.string().optional().nullable(),
-  max_uses: z.number().min(1).optional().nullable(),
+  max_uses: z.number().int().min(1).optional().nullable(),
   min_purchase_amount: z.number().min(0).optional().nullable(),
   applicable_categories: z.array(z.string()).optional().nullable(),
 });
+
+function validateCouponRules(data: { discount_type: "percentage" | "fixed"; value: number; expires_at?: string | null }): void {
+  if (data.discount_type === "percentage" && data.value > 100) {
+    throw new AppError("El descuento porcentual no puede superar el 100 %.", 400, "COUPON_PERCENTAGE_INVALID");
+  }
+  if (data.expires_at) {
+    const expiresAt = new Date(data.expires_at);
+    if (Number.isNaN(expiresAt.getTime())) throw new AppError("La fecha de expiración no es válida.", 400, "COUPON_DATE_INVALID");
+    if (expiresAt <= new Date()) throw new AppError("La fecha de expiración debe ser futura.", 400, "COUPON_DATE_IN_PAST");
+  }
+}
 
 const validateCouponSchema = z.object({
   code: z.string().min(1, "El código es requerido").toUpperCase(),
@@ -79,6 +90,7 @@ coupons.get("/", authMiddleware, requirePermission("coupons.manage"), async (c) 
 coupons.post("/", authMiddleware, requirePermission("coupons.manage"), async (c) => {
   const body = await c.req.json();
   const data = createCouponSchema.parse(body);
+  validateCouponRules(data);
 
   const existing = await Coupon.findOne({ code: data.code });
   if (existing) {
@@ -105,6 +117,12 @@ coupons.put("/:id", authMiddleware, requirePermission("coupons.manage"), async (
   if (!coupon) {
     throw new AppError("Cupón no encontrado.", 404, "COUPON_NOT_FOUND");
   }
+
+  validateCouponRules({
+    discount_type: data.discount_type ?? coupon.discount_type,
+    value: data.value ?? coupon.value,
+    expires_at: data.expires_at === null ? null : data.expires_at ?? coupon.expires_at?.toISOString(),
+  });
 
   if (data.code && data.code !== coupon.code) {
     const existing = await Coupon.findOne({ code: data.code });

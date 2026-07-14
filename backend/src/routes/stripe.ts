@@ -32,6 +32,7 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
   const user = c.get("user") as IUser;
   const body = await c.req.json();
   const { orderGroupId, rentalIds: inputIds, rentalId: inputId, paymentType, couponCode } = createSessionSchema.parse(body);
+  let claimedCouponId: string | undefined;
   
   let rentals = [];
 
@@ -91,6 +92,21 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
       throw new AppError("El cupón ha alcanzado el límite máximo de usos.", 400, "COUPON_LIMIT_REACHED");
     }
 
+    const subtotal = rentals.reduce((sum, rental) => sum + rental.total, 0);
+    if (coupon.min_purchase_amount && subtotal < coupon.min_purchase_amount) {
+      throw new AppError(`Este cupón requiere una compra mínima de ${coupon.min_purchase_amount.toFixed(2)} PAB.`, 400, "COUPON_MIN_AMOUNT");
+    }
+    if (coupon.applicable_categories && coupon.applicable_categories.length > 0) {
+      const categories = rentals.flatMap((rental) => {
+        const product = rental.product_id as unknown as IProduct;
+        return Array.isArray(product.category) ? product.category : [product.category];
+      });
+      if (!categories.some((category) => coupon.applicable_categories?.includes(category))) {
+        throw new AppError("El cupón no aplica a las piezas seleccionadas.", 400, "COUPON_CATEGORY_RESTRICTION");
+      }
+    }
+    claimedCouponId = coupon._id.toString();
+
     if (coupon.discount_type === "percentage") {
       for (const rental of rentals) {
         discountPerRental[rental._id.toString()] = Math.round(rental.total * (coupon.value / 100) * 100) / 100;
@@ -111,8 +127,6 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
       }
     }
 
-    coupon.used_count += 1;
-    await coupon.save();
   }
 
   // Update discount fields on rentals
@@ -127,6 +141,25 @@ stripe.post("/create-checkout-session", authMiddleware, async (c) => {
     rental.deposit_amount = depositAmount;
     rental.balance_due = rental.payment_type === "full" ? 0 : discountedTotal - depositAmount;
     await rental.save();
+  }
+
+  if (claimedCouponId) {
+    const claimedCoupon = await Coupon.findOneAndUpdate(
+      {
+        _id: claimedCouponId,
+        is_active: true,
+        $or: [
+          { max_uses: { $exists: false } },
+          { max_uses: null },
+          { $expr: { $lt: ["$used_count", "$max_uses"] } },
+        ],
+      },
+      { $inc: { used_count: 1 } },
+      { new: true },
+    );
+    if (!claimedCoupon) {
+      throw new AppError("El cupón alcanzó su límite mientras se procesaba el checkout.", 409, "COUPON_LIMIT_REACHED");
+    }
   }
 
   // Re-check availability for all
