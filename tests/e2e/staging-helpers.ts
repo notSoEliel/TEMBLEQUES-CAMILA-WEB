@@ -33,6 +33,21 @@ export interface StagingRentalListResponse {
   data: StagingRental[];
 }
 
+export interface StagingReconciliationDifference {
+  rentalId: string;
+  code: string;
+}
+
+export interface StagingReconciliationResponse {
+  reconciliation: {
+    runId: string;
+    inspected: number;
+    consistent: number;
+    inconsistent: number;
+    differences: StagingReconciliationDifference[];
+  };
+}
+
 export function requireEnvironment(name: string): string {
   const value = process.env[name];
   if (!value) {
