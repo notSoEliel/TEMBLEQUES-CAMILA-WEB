@@ -2,7 +2,7 @@
 
 ## Estado actual
 
-- Frontend staging: https://frontend-navy-five-22.vercel.app
+- Frontend staging: https://temblequescamila.vercel.app
 - Backend staging: https://backend-production-e696.up.railway.app
 - Backend healthcheck: https://backend-production-e696.up.railway.app/health
 - MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
@@ -66,11 +66,13 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 - `MCP_BACKEND_ADMIN_TOKEN`
 - `MCP_BACKEND_CLIENT_TOKEN`
 - `MCP_CLIENT_IDENTITY=clerk`
-- `MCP_ALLOWED_ORIGIN`
+- `MCP_ALLOWED_ORIGIN=https://temblequescamila.vercel.app,https://frontend-navy-five-22.vercel.app`
 - `NIXPACKS_NODE_VERSION=22`
 - `NODE_ENV=production`
 
 La base de datos de staging debe ser distinta de la base de producción. El seed de staging solo actualiza documentos que tienen `seed_key`, `fixture_key` o un `clerkId` del namespace `seed_`; no borra datos manuales de QA. Para una demostración estable se recomienda desplegar el mismo commit con `APP_ENV=demo`, otra `MONGO_URI` y `SEED_PROFILE=demo`.
+
+El dominio público actual de Vercel es `https://temblequescamila.vercel.app`. El alias anterior se conserva temporalmente en `MCP_ALLOWED_ORIGIN` para no romper sesiones o demostraciones que todavía lo utilicen.
 
 Producción debe usar `APP_ENV=production` y `SEED_ENABLED=false`. El backend rechaza la ejecución del seed en ese entorno.
 

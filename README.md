@@ -11,7 +11,7 @@ Plataforma e-commerce B2C para alquiler de vestimenta folclorica panamena, con c
 
 - Repositorio: https://github.com/notSoEliel/TEMBLEQUES-CAMILA-WEB
 - GitHub Project: https://github.com/users/notSoEliel/projects/3
-- Frontend staging: https://frontend-navy-five-22.vercel.app
+- Frontend staging: https://temblequescamila.vercel.app
 - Backend staging: https://backend-production-e696.up.railway.app
 - Backend healthcheck: https://backend-production-e696.up.railway.app/health
 - MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
