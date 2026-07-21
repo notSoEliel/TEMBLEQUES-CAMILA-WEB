@@ -396,6 +396,7 @@ const dictionaries: Record<Language, Dictionary> = {
     "confirm.continueBtn": "Seguir Explorando",
 
     "review.backProfile": "Volver al Perfil",
+    "review.backBtn": "Volver al Perfil",
     "review.mainTitle": "Revisar Pedido Pendiente",
     "review.itemsTitle": "Artículos en el pedido ({count})",
     "review.qtyLabel": "Cantidad",
@@ -903,6 +904,7 @@ const dictionaries: Record<Language, Dictionary> = {
     "confirm.continueBtn": "Keep Exploring",
 
     "review.backProfile": "Back to Profile",
+    "review.backBtn": "Back to Profile",
     "review.mainTitle": "Review Pending Order",
     "review.itemsTitle": "Items in order ({count})",
     "review.qtyLabel": "Quantity",
