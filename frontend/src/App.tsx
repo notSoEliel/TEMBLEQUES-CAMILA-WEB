@@ -184,11 +184,7 @@ export default function App() {
                 />
                 <Route
                   path="/cart"
-                  element={
-                    <ProtectedRoute>
-                      <Cart />
-                    </ProtectedRoute>
-                  }
+                  element={<Cart />}
                 />
                 <Route path="/historia" element={<History />} />
                 <Route path="/credencial" element={<ArtisanCredential />} />

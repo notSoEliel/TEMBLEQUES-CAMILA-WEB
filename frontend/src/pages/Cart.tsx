@@ -8,11 +8,21 @@ import { Trash2, ArrowLeft, ShoppingBag, CreditCard, Info, Plus, Minus } from "l
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 import { getLocalizedText } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, total, totalDeposit, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { t, language } = useI18n();
+
+  const handleReserve = () => {
+    if (!user) {
+      navigate("/login?redirect=/checkout/multi");
+      return;
+    }
+    navigate("/checkout/multi");
+  };
 
   if (items.length === 0) {
     return (
@@ -179,7 +189,7 @@ export default function Cart() {
                 <Button
                   size="lg"
                   className="w-full mt-2 shadow-md"
-                  onClick={() => navigate("/checkout/multi")}
+                  onClick={handleReserve}
                 >
                   <CreditCard className="h-5 w-5 mr-2" />
                   {t("cart.reserveBtn")}
