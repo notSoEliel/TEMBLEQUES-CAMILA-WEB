@@ -597,7 +597,7 @@ export const adminApi = {
     if (params.search) searchParams.set("search", params.search);
     if (params.category) searchParams.set("category", params.category);
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    const res = await fetch(`/api/admin/reports/export-csv${query}`, {
+    const res = await fetch(`${API_URL}/admin/reports/export-csv${query}`, {
       headers: { Authorization: `Bearer ${freshToken || token}` }
     });
     if (!res.ok) throw new Error("Error al exportar reporte");
