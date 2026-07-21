@@ -186,7 +186,7 @@ export default function Checkout() {
     if (authLoading || cartLoading) return;
 
     if (!user) {
-      navigate("/login");
+      navigate("/login?redirect=/checkout/" + (productId ?? "multi"));
       return;
     }
     

@@ -88,10 +88,6 @@ export default function ProductDetail() {
     : null;
 
   function handleAddToCart() {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
     if (!selectedSize) {
       showError(t("product.selectSizeError"), "validation");
       return;
@@ -398,7 +394,7 @@ export default function ProductDetail() {
 
           {!user && (
             <p className="text-sm text-muted-foreground text-center">
-              {t("product.loginToReserveAlert")}
+              {t("product.guestCartNote")}
             </p>
           )}
         </div>

@@ -12,7 +12,19 @@ import {
 } from "@/types";
 
 function resolveApiUrl(): string {
-  const configuredUrl = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
+  const configuredValue = import.meta.env.VITE_API_URL?.trim();
+  if (!configuredValue) {
+    if (import.meta.env.PROD) {
+      throw new Error("VITE_API_URL no está configurada para este despliegue.");
+    }
+    return "/api";
+  }
+
+  const configuredUrl = configuredValue.replace(/\/$/, "");
+  if (import.meta.env.PROD && (configuredUrl === "/api" || configuredUrl.startsWith("/api/"))) {
+    throw new Error("VITE_API_URL no puede apuntar al frontend en un despliegue remoto.");
+  }
+
   if (configuredUrl === "/api" || configuredUrl.endsWith("/api")) return configuredUrl;
   return `${configuredUrl}/api`;
 }

@@ -113,7 +113,13 @@ function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const mockToken = localStorage.getItem("mock_auth_token");
+    // Los tokens mock solo son válidos en el modo local/CI. Nunca deben
+    // tener prioridad sobre una sesión real de Clerk en staging.
+    const mockToken = isMockClerkMode ? localStorage.getItem("mock_auth_token") : null;
+    if (!isMockClerkMode) {
+      localStorage.removeItem("mock_auth_token");
+    }
+
     if (mockToken) {
       const role = mockToken === "mock-owner-token" ? "owner" : "client";
       const email = `${role}@test.com`;

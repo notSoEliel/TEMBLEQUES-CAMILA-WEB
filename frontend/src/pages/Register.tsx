@@ -1,5 +1,6 @@
 import React from "react";
 import { SignUp } from "@clerk/clerk-react";
+import { useSearchParams } from "react-router-dom";
 import { useI18n } from "@/i18n";
 
 /**
@@ -8,6 +9,11 @@ import { useI18n } from "@/i18n";
  */
 export default function Register() {
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
+  const requestedRedirect = searchParams.get("redirect");
+  const fallbackRedirectUrl = requestedRedirect?.startsWith("/") && !requestedRedirect.startsWith("//")
+    ? requestedRedirect
+    : "/";
 
   return (
     <div aria-label={t("auth.signUpTitle")} className="min-h-[80vh] flex items-center justify-center px-4 py-12">
@@ -19,8 +25,8 @@ export default function Register() {
       <SignUp
         routing="path"
         path="/register"
-        signInUrl="/login"
-        fallbackRedirectUrl="/"
+        signInUrl={`/login?redirect=${encodeURIComponent(fallbackRedirectUrl)}`}
+        fallbackRedirectUrl={fallbackRedirectUrl}
         appearance={{
           elements: {
             cardBox: "!shadow-elegant-lg !border-none !rounded-[2rem] !bg-background/80 !backdrop-blur-md w-full !overflow-hidden",
