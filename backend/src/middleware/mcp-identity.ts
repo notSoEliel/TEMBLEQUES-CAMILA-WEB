@@ -23,7 +23,11 @@ export async function verifyMcpIdentityAssertion(
 ): Promise<McpIdentityClaims> {
   const issuer = process.env.MCP_IDENTITY_ISSUER?.trim() || "tembleques-camila-mcp";
   const audience = process.env.MCP_BACKEND_AUDIENCE?.trim() || "tembleques-camila-backend";
-  const result = await jwtVerify(assertion, await publicKey(), { issuer, audience });
+  const result = await jwtVerify(assertion, await publicKey(), {
+    issuer,
+    audience,
+    algorithms: ["EdDSA"],
+  });
   if (result.payload.mcp_source !== "mcp" || typeof result.payload.sub !== "string") {
     throw new Error("La aserción MCP no contiene una identidad válida.");
   }

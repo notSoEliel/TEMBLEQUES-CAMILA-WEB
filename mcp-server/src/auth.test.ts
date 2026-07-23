@@ -5,6 +5,8 @@ import {
   hasMcpScope,
   isMcpOriginAllowed,
   loadMcpAuthConfig,
+  MCP_ROLE_SCOPES,
+  MCP_SCOPES,
 } from "./auth.js";
 
 const environment = {
@@ -14,6 +16,35 @@ const environment = {
 };
 
 describe("autenticación HTTP del MCP", () => {
+  it("alinea los scopes MCP con los cinco roles de negocio", () => {
+    expect(MCP_ROLE_SCOPES.client).toEqual(new Set([
+      "catalog.read",
+      "availability.read",
+      "rentals.create",
+      "rentals.read.own",
+      "rentals.cancel.own",
+      "payments.create",
+    ]));
+    expect(MCP_ROLE_SCOPES.owner.size).toBe(MCP_SCOPES.length);
+    expect(MCP_ROLE_SCOPES.owner).toEqual(new Set(MCP_SCOPES));
+
+    expect(MCP_ROLE_SCOPES.operator.has("dashboard.read")).toBe(true);
+    expect(MCP_ROLE_SCOPES.operator.has("reservations.write")).toBe(true);
+    expect(MCP_ROLE_SCOPES.operator.has("products.write")).toBe(false);
+    expect(MCP_ROLE_SCOPES.operator.has("users.roles.write")).toBe(false);
+    expect(MCP_ROLE_SCOPES.operator.has("payments.reconcile")).toBe(false);
+
+    expect(MCP_ROLE_SCOPES.inventory.has("inventory.write")).toBe(true);
+    expect(MCP_ROLE_SCOPES.inventory.has("products.write")).toBe(true);
+    expect(MCP_ROLE_SCOPES.inventory.has("users.roles.write")).toBe(false);
+    expect(MCP_ROLE_SCOPES.inventory.has("payments.reconcile")).toBe(false);
+
+    expect(MCP_ROLE_SCOPES.support.has("reservations.read")).toBe(true);
+    expect(MCP_ROLE_SCOPES.support.has("users.read")).toBe(true);
+    expect(MCP_ROLE_SCOPES.support.has("products.write")).toBe(false);
+    expect(MCP_ROLE_SCOPES.support.has("payments.reconcile")).toBe(false);
+  });
+
   it("crea un principal guest limitado cuando no hay credenciales", async () => {
     const config = loadMcpAuthConfig(environment);
     const principal = await authenticateMcpRequest(new Request("http://localhost/mcp"), config);

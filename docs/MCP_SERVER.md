@@ -61,7 +61,7 @@ Una tool protegida llamada por guest responde `401` con `WWW-Authenticate` y la 
 El servidor acepta OAuth de Clerk mediante Authorization Code + PKCE. La configuración OAuth solicita scopes estándar:
 
 ```text
-openid profile email
+openid profile email public_metadata
 ```
 
 Los scopes MCP de negocio son internos. Se derivan del rol de Clerk y no se confían al contenido de la solicitud.
@@ -74,7 +74,7 @@ MCP valida mediante Clerk:
 - issuer;
 - audiencia/recurso MCP;
 - expiración;
-- tipo `oauth_token`;
+- tipo `mcp_access`;
 - usuario autenticado.
 
 MCP no reenvía el token OAuth al backend. Para cada llamada privada crea una aserción EdDSA de 60 segundos con `sub`, issuer, audiencia, `requestId`, `iat`, `exp` y `jti`. El backend valida la aserción, carga el usuario por `clerkId` y aplica sus permisos reales.
