@@ -8,9 +8,6 @@ import {
   type McpPrincipal,
 } from "./auth.js";
 
-const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 3000);
-const authConfig = loadMcpAuthConfig();
-
 function json(
   data: unknown,
   status = 200,
@@ -25,9 +22,53 @@ function json(
   });
 }
 
-Bun.serve({
-  port,
-  async fetch(request) {
+const PUBLIC_TOOLS = new Set([
+  "catalog.products.search",
+  "catalog.availability.check",
+]);
+
+function protectedResourceMetadataUrl(request: Request): string {
+  return new URL("/.well-known/oauth-protected-resource/mcp", request.url).toString();
+}
+
+function authorizationChallenge(request: Request): string {
+  return `Bearer resource_metadata="${protectedResourceMetadataUrl(request)}"`;
+}
+
+function protectedResourceMetadata(request: Request, authConfig: ReturnType<typeof loadMcpAuthConfig>): Record<string, unknown> {
+  const resourceUrl = authConfig.resourceUrl ?? new URL("/mcp", request.url).toString();
+  const authorizationServers = authConfig.oauthIssuer ? [authConfig.oauthIssuer] : [];
+  return {
+    resource: resourceUrl,
+    authorization_servers: authorizationServers,
+    scopes_supported: ["openid", "profile", "email"],
+    bearer_methods_supported: ["header"],
+  };
+}
+
+async function containsProtectedToolCall(request: Request): Promise<boolean> {
+  if (request.method !== "POST") return false;
+  try {
+    const body = await request.clone().json() as unknown;
+    const messages = Array.isArray(body) ? body : [body];
+    return messages.some((message) => {
+      if (!message || typeof message !== "object") return false;
+      const record = message as Record<string, unknown>;
+      if (record.method !== "tools/call") return false;
+      const params = record.params;
+      if (!params || typeof params !== "object") return true;
+      const name = (params as Record<string, unknown>).name;
+      return typeof name !== "string" || !PUBLIC_TOOLS.has(name);
+    });
+  } catch {
+    return false;
+  }
+}
+
+export async function handleMcpHttpRequest(
+  request: Request,
+  authConfig: ReturnType<typeof loadMcpAuthConfig>,
+): Promise<Response> {
     const url = new URL(request.url);
     const corsHeaders = getMcpCorsHeaders(request, authConfig.allowedOrigins);
 
@@ -43,6 +84,14 @@ Bun.serve({
         status: "ok",
         name: "tembleques-camila-mcp",
       }, 200, corsHeaders);
+    }
+
+    if (url.pathname === "/.well-known/oauth-protected-resource/mcp"
+      || url.pathname === "/.well-known/oauth-protected-resource") {
+      if (request.method !== "GET") {
+        return json({ error: "Metodo no permitido" }, 405, corsHeaders);
+      }
+      return json(protectedResourceMetadata(request, authConfig), 200, corsHeaders);
     }
 
     if (url.pathname !== "/mcp") {
@@ -61,12 +110,20 @@ Bun.serve({
       return json({ error: "Origen no permitido" }, 403, corsHeaders);
     }
 
-    const principal: McpPrincipal | null = authenticateMcpRequest(request, authConfig);
+    const principal: McpPrincipal | null = await authenticateMcpRequest(request, authConfig);
     if (!principal) {
       return json(
-        { error: "Autenticación MCP requerida", code: "MCP_AUTH_REQUIRED" },
+        { error: "Autenticación OAuth o API key de servicio requerida", code: "MCP_AUTH_REQUIRED" },
         401,
-        { ...corsHeaders, "WWW-Authenticate": "Bearer" },
+        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request) },
+      );
+    }
+
+    if (principal.kind === "guest" && await containsProtectedToolCall(request)) {
+      return json(
+        { error: "Esta tool requiere autenticación OAuth", code: "MCP_OAUTH_REQUIRED" },
+        401,
+        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request) },
       );
     }
 
@@ -90,9 +147,17 @@ Bun.serve({
         id: null,
       }, 500, corsHeaders);
     }
-  },
-});
+}
 
-console.log(`[MCP HTTP] Tembleques Camila MCP listening on port ${port}`);
-console.log(`[MCP HTTP] Health: http://localhost:${port}/health`);
-console.log(`[MCP HTTP] Endpoint: http://localhost:${port}/mcp`);
+if (import.meta.main) {
+  const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 3000);
+  const authConfig = loadMcpAuthConfig();
+  Bun.serve({
+    port,
+    fetch: (request) => handleMcpHttpRequest(request, authConfig),
+  });
+
+  console.log(`[MCP HTTP] Tembleques Camila MCP listening on port ${port}`);
+  console.log(`[MCP HTTP] Health: http://localhost:${port}/health`);
+  console.log(`[MCP HTTP] Endpoint: http://localhost:${port}/mcp`);
+}

@@ -52,6 +52,10 @@ function requiredVariables(environment: AppEnvironment, env: Record<string, stri
     "STRIPE_WEBHOOK_SECRET",
     "MCP_BACKEND_ADMIN_TOKEN",
     "MCP_BACKEND_CLIENT_TOKEN",
+    "MCP_BACKEND_MCP_TOKEN",
+    "MCP_IDENTITY_PUBLIC_KEY",
+    "MCP_IDENTITY_ISSUER",
+    "MCP_BACKEND_AUDIENCE",
   ];
 
   if (environment === "production") names.push("BACKUP_ENCRYPTION_KEY");

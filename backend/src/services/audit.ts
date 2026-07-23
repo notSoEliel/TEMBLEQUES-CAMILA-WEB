@@ -20,7 +20,8 @@ export function sanitizeAuditMetadata(value: unknown, depth = 0): unknown {
   return output;
 }
 
-function sourceFor(clerkId: string): AuditSource {
+function sourceFor(clerkId: string, source: "web" | "mcp" | "service" | undefined): AuditSource {
+  if (source === "mcp" || source === "service") return "mcp";
   return clerkId.startsWith("mcp_") ? "mcp" : "web";
 }
 
@@ -79,7 +80,7 @@ export async function recordAdminAudit(
       action: actionFor(method, path),
       entity,
       entityId,
-      source: sourceFor(user.clerkId),
+      source: sourceFor(user.clerkId, c.get("authSource")),
       method,
       path,
       requestId: details.requestId ?? c.req.header("x-request-id") ?? randomUUID(),

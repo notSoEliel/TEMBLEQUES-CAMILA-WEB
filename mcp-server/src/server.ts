@@ -1,4 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, type RegisteredTool, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { AnySchema, ZodRawShapeCompat } from "@modelcontextprotocol/sdk/server/zod-compat.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import {
@@ -7,8 +9,10 @@ import {
   type McpPrincipal,
   type McpScope,
 } from "./auth.js";
+import { createMcpIdentityAssertion } from "./identity.js";
 
 type AuthMode = "public" | "client" | "admin";
+type ToolInputSchema = undefined | ZodRawShapeCompat | AnySchema;
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
@@ -30,13 +34,58 @@ type BackendErrorPayload = {
 const backendUrl = (process.env.MCP_BACKEND_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const adminToken = process.env.MCP_BACKEND_ADMIN_TOKEN ?? process.env.MCP_ADMIN_TOKEN;
 const clientToken = process.env.MCP_BACKEND_CLIENT_TOKEN ?? process.env.MCP_CLIENT_TOKEN;
-const clientIdentity = process.env.MCP_CLIENT_IDENTITY ?? "clerk";
+const bridgeToken = process.env.MCP_BACKEND_MCP_TOKEN;
 const DEFAULT_TIMEOUT_MS = 15_000;
 const PAYMENT_TIMEOUT_MS = 30_000;
 
+const TOOL_SCOPES: Readonly<Record<string, McpScope>> = {
+  "admin.dashboard.summary": "dashboard.read",
+  "catalog.products.search": "catalog.read",
+  "catalog.availability.check": "availability.read",
+  "rentals.draft.create": "rentals.create",
+  "payments.checkout.create": "payments.create",
+  "rentals.mine.list": "rentals.read.own",
+  "rentals.pending.cancel": "rentals.cancel.own",
+  "admin.rentals.list": "reservations.read",
+  "admin.rentals.status.update": "reservations.write",
+  "admin.calendar.range": "reservations.read",
+  "admin.products.upsert": "products.write",
+  "admin.inventory.variantMaintenance.set": "maintenance.write",
+  "admin.users.search": "users.read",
+  "admin.users.detail": "users.read",
+  "reports.operations.generate": "reports.read",
+  "security.audit.search": "audit.read",
+  "ops.health.check": "observability.read",
+  "payments.reconcile.run": "payments.reconcile",
+};
+
+function toolIsVisible(name: string, principal: McpPrincipal): boolean {
+  const scope = TOOL_SCOPES[name];
+  return scope !== undefined && hasMcpScope(principal, scope);
+}
+
+function registerVisibleTool<OutputArgs extends ZodRawShapeCompat | AnySchema, InputArgs extends ToolInputSchema>(
+  server: McpServer,
+  principal: McpPrincipal,
+  name: string,
+  config: {
+    title?: string;
+    description?: string;
+    inputSchema?: InputArgs;
+    outputSchema?: OutputArgs;
+    annotations?: ToolAnnotations;
+    _meta?: Record<string, unknown>;
+  },
+  callback: ToolCallback<InputArgs>,
+): RegisteredTool {
+  const tool = server.registerTool(name, config, callback);
+  if (!toolIsVisible(name, principal)) tool.disable();
+  return tool;
+}
+
 function tokenFor(mode: AuthMode): string | undefined {
   if (mode === "admin") return adminToken;
-  if (mode === "client" && clientIdentity === "service") return clientToken;
+  if (mode === "client") return clientToken;
   return undefined;
 }
 
@@ -138,14 +187,15 @@ function createBackendApi(principal: McpPrincipal) {
     headers.set("x-request-id", requestId);
     if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
-    if (mode === "client" && clientIdentity === "clerk") {
-      if (!principal.identityToken) {
+    if (principal.kind === "oauth" && mode !== "public") {
+      if (!bridgeToken) {
         throw new McpError(
-          ErrorCode.InvalidRequest,
-          `La tool requiere identidad Clerk del usuario. requestId: ${requestId}`,
+          ErrorCode.InternalError,
+          `La configuración interna no tiene MCP_BACKEND_MCP_TOKEN. requestId: ${requestId}`,
         );
       }
-      headers.set("Authorization", `Bearer ${principal.identityToken}`);
+      headers.set("Authorization", `Bearer ${bridgeToken}`);
+      headers.set("X-MCP-Identity-Assertion", await createMcpIdentityAssertion(principal, requestId));
     } else {
       const token = tokenFor(mode);
       if (mode !== "public" && !token) {
@@ -234,13 +284,16 @@ const productSchema = z.object({
 export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
   const effectivePrincipal: McpPrincipal = principal ?? {
     id: "stdio-local",
+    kind: "service",
     mode: "admin",
+    role: "owner",
+    serviceName: "admin",
     scopes: MCP_ADMIN_SCOPES,
   };
   const api = createBackendApi(effectivePrincipal);
   const server = new McpServer({ name: "tembleques-camila", version: "1.1.0" });
 
-  server.registerTool("admin.dashboard.summary", {
+  registerVisibleTool(server, effectivePrincipal, "admin.dashboard.summary", {
     title: "Resumen administrativo",
     description: "Consulta KPIs agregados del dashboard administrativo. Requiere dashboard.read.",
     inputSchema: {},
@@ -250,7 +303,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("catalog.products.search", {
+  registerVisibleTool(server, effectivePrincipal, "catalog.products.search", {
     title: "Buscar productos",
     description: "Busca productos del catálogo por texto, categoría, talla, precio y fechas.",
     inputSchema: {
@@ -267,10 +320,10 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async (input) => {
     const result = await api(`/api/products${toQuery(input)}`);
-    return response(result.data, result.requestId);
+    return response(redactPublicProducts(result.data), result.requestId);
   });
 
-  server.registerTool("catalog.availability.check", {
+  registerVisibleTool(server, effectivePrincipal, "catalog.availability.check", {
     title: "Consultar disponibilidad",
     description: "Consulta fechas reservadas o bloqueadas de un producto.",
     inputSchema: {
@@ -281,10 +334,10 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
   }, async ({ productId, from, to }) => {
     const result = await api(`/api/products/${productId}/availability${toQuery({ from, to })}`);
-    return response(result.data, result.requestId);
+    return response(redactPublicAvailability(result.data), result.requestId);
   });
 
-  server.registerTool("rentals.draft.create", {
+  registerVisibleTool(server, effectivePrincipal, "rentals.draft.create", {
     title: "Crear reserva pendiente",
     description: "Crea una reserva pendiente para el usuario Clerk autenticado. Requiere consentimiento explícito.",
     inputSchema: {
@@ -305,7 +358,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("payments.checkout.create", {
+  registerVisibleTool(server, effectivePrincipal, "payments.checkout.create", {
     title: "Crear checkout",
     description: "Crea una sesión de Stripe para reservas propias pendientes.",
     inputSchema: {
@@ -324,7 +377,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("rentals.mine.list", {
+  registerVisibleTool(server, effectivePrincipal, "rentals.mine.list", {
     title: "Listar mis reservas",
     description: "Lista reservas del usuario Clerk autenticado.",
     inputSchema: {
@@ -338,7 +391,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("rentals.pending.cancel", {
+  registerVisibleTool(server, effectivePrincipal, "rentals.pending.cancel", {
     title: "Cancelar reserva pendiente",
     description: "Cancela únicamente una reserva propia en estado pending y no genera reembolso.",
     inputSchema: { rentalId: z.string().min(1) },
@@ -348,7 +401,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.rentals.list", {
+  registerVisibleTool(server, effectivePrincipal, "admin.rentals.list", {
     title: "Listar reservas administrativas",
     description: "Lista reservas administrativas con filtros por estado, texto y paginación.",
     inputSchema: {
@@ -364,7 +417,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.rentals.status.update", {
+  registerVisibleTool(server, effectivePrincipal, "admin.rentals.status.update", {
     title: "Actualizar estado de reserva",
     description: "Actualiza el estado operativo aplicando las transiciones de negocio y auditando la acción.",
     inputSchema: {
@@ -380,7 +433,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.calendar.range", {
+  registerVisibleTool(server, effectivePrincipal, "admin.calendar.range", {
     title: "Consultar calendario administrativo",
     description: "Consulta eventos de reservas por rango de fechas.",
     inputSchema: {
@@ -393,7 +446,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.products.upsert", {
+  registerVisibleTool(server, effectivePrincipal, "admin.products.upsert", {
     title: "Crear o editar producto",
     description: "Crea o edita un producto con esquema explícito y validaciones de inventario.",
     inputSchema: {
@@ -410,7 +463,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.inventory.variantMaintenance.set", {
+  registerVisibleTool(server, effectivePrincipal, "admin.inventory.variantMaintenance.set", {
     title: "Marcar variante en mantenimiento",
     description: "Activa o desactiva el mantenimiento permanente de una variante, separado de los bloqueos temporales.",
     inputSchema: {
@@ -425,12 +478,12 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
       `/api/admin/products/${productId}/variants/${encodeURIComponent(selectedSize)}/maintenance`,
       "admin",
       { method: "PATCH", body: JSON.stringify({ inMaintenance, reason }) },
-      "inventory.write",
+      "maintenance.write",
     );
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.users.search", {
+  registerVisibleTool(server, effectivePrincipal, "admin.users.search", {
     title: "Buscar clientes",
     description: "Busca clientes por nombre, correo o teléfono con paginación.",
     inputSchema: {
@@ -444,7 +497,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("admin.users.detail", {
+  registerVisibleTool(server, effectivePrincipal, "admin.users.detail", {
     title: "Detalle de cliente",
     description: "Consulta perfil, estadísticas e historial paginado con datos sensibles filtrados.",
     inputSchema: {
@@ -468,7 +521,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     }, user.requestId);
   });
 
-  server.registerTool("reports.operations.generate", {
+  registerVisibleTool(server, effectivePrincipal, "reports.operations.generate", {
     title: "Generar reporte operativo",
     description: "Genera reportes de inventario y rotación en JSON, CSV o resumen textual.",
     inputSchema: {
@@ -489,7 +542,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  server.registerTool("security.audit.search", {
+  registerVisibleTool(server, effectivePrincipal, "security.audit.search", {
     title: "Consultar auditoría",
     description: "Consulta el registro global de acciones administrativas con filtros y paginación.",
     inputSchema: {
@@ -505,7 +558,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactAudit(result.data), result.requestId);
   });
 
-  server.registerTool("ops.health.check", {
+  registerVisibleTool(server, effectivePrincipal, "ops.health.check", {
     title: "Salud técnica",
     description: "Consulta observabilidad protegida de backend y dependencias configuradas.",
     inputSchema: {},
@@ -515,7 +568,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactObservability(result.data), result.requestId);
   });
 
-  server.registerTool("payments.reconcile.run", {
+  registerVisibleTool(server, effectivePrincipal, "payments.reconcile.run", {
     title: "Conciliación de pagos",
     description: "Compara reservas internas, Checkout Sessions, PaymentIntents y webhooks de Stripe.",
     inputSchema: {},
@@ -534,6 +587,38 @@ function redactUser(data: JsonValue): JsonValue {
   return {
     user: pick(user, ["_id", "name", "email", "phone", "preferredLanguage", "role", "createdAt", "updatedAt"]),
   };
+}
+
+function redactPublicProducts(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return { data: [] };
+  const items = Array.isArray(data.data) ? data.data : [];
+  return {
+    data: items.map((item) => {
+      if (!isRecord(item)) return {};
+      const variants = Array.isArray(item.variants) ? item.variants : [];
+      return {
+        ...pick(item, ["_id", "name", "name_en", "category", "description", "description_en", "rental_price", "images"]),
+        variants: variants.map((variant) => {
+          if (!isRecord(variant)) return {};
+          const stock = typeof variant.stock === "number" ? variant.stock : 0;
+          const inMaintenance = variant.in_maintenance === true;
+          return {
+            ...pick(variant, ["size", "price_override"]),
+            available: stock > 0 && !inMaintenance,
+          };
+        }),
+      };
+    }),
+    ...(data.pagination !== undefined ? { pagination: data.pagination } : {}),
+  };
+}
+
+function redactPublicAvailability(data: JsonValue): JsonValue {
+  if (!isRecord(data)) return { booked: [] };
+  const booked = Array.isArray(data.booked)
+    ? data.booked.filter((date): date is string => typeof date === "string")
+    : [];
+  return { booked };
 }
 
 function redactUserAudit(data: JsonValue): JsonValue {
@@ -586,7 +671,7 @@ function isRecord(value: JsonValue): value is { [key: string]: JsonValue } {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function pick(record: { [key: string]: JsonValue }, keys: string[]): JsonValue {
+function pick(record: { [key: string]: JsonValue }, keys: string[]): { [key: string]: JsonValue } {
   const result: { [key: string]: JsonValue } = {};
   for (const key of keys) {
     if (record[key] !== undefined) result[key] = record[key];
