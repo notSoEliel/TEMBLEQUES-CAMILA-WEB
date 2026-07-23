@@ -1,5 +1,6 @@
 import { createClerkClient } from "@clerk/backend";
 import { timingSafeEqual } from "node:crypto";
+import { importSPKI, jwtVerify } from "jose";
 
 export type McpAuthMode = "guest" | "admin" | "client";
 export type McpPrincipalKind = "guest" | "oauth" | "service";
@@ -85,12 +86,21 @@ export interface McpAuthConfig {
   oauthIssuer?: string;
   oauthAudience?: string;
   resourceUrl?: string;
+  clerkOAuthIssuer?: string;
+  clerkOAuthClientId?: string;
+  clerkOAuthClientSecret?: string;
+  clerkOAuthRedirectUri?: string;
+  oauthSigningPrivateKey?: string;
+  oauthSigningPublicKey?: string;
+  oauthAccessTokenTtlSeconds: number;
+  oauthRefreshTokenTtlSeconds: number;
 }
 
 export interface McpOAuthIdentity {
   userId: string;
   clientId: string;
   scopes: readonly string[];
+  role?: McpRole;
 }
 
 export type McpOAuthVerifier = (
@@ -192,18 +202,41 @@ function parseUrl(name: string, value: string | undefined): string | undefined {
   }
 }
 
+function parsePositiveInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  maximum: number,
+): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > maximum) {
+    throw new Error(`${name} debe ser un entero positivo menor o igual a ${maximum}.`);
+  }
+  return parsed;
+}
+
 export function loadMcpAuthConfig(env: NodeJS.ProcessEnv = process.env): McpAuthConfig {
   const oauthEnabled = env.MCP_OAUTH_ENABLED === "true";
   const clerkSecretKey = env.CLERK_SECRET_KEY?.trim() || undefined;
   const resourceUrl = parseUrl("MCP_RESOURCE_URL", env.MCP_RESOURCE_URL);
-  const oauthIssuer = parseUrl(
-    "MCP_OAUTH_ISSUER",
-    env.MCP_OAUTH_ISSUER ?? env.CLERK_ISSUER_URL,
-  );
+  const oauthIssuer = parseUrl("MCP_OAUTH_ISSUER", env.MCP_OAUTH_ISSUER);
   const oauthAudience = parseUrl(
     "MCP_OAUTH_AUDIENCE",
     env.MCP_OAUTH_AUDIENCE ?? resourceUrl,
   );
+  const clerkOAuthIssuer = parseUrl(
+    "MCP_CLERK_OAUTH_ISSUER",
+    env.MCP_CLERK_OAUTH_ISSUER ?? env.CLERK_ISSUER_URL,
+  );
+  const clerkOAuthClientId = env.MCP_CLERK_OAUTH_CLIENT_ID?.trim() || undefined;
+  const clerkOAuthClientSecret = env.MCP_CLERK_OAUTH_CLIENT_SECRET?.trim() || undefined;
+  const clerkOAuthRedirectUri = parseUrl(
+    "MCP_CLERK_OAUTH_REDIRECT_URI",
+    env.MCP_CLERK_OAUTH_REDIRECT_URI,
+  );
+  const oauthSigningPrivateKey = env.MCP_OAUTH_SIGNING_PRIVATE_KEY?.trim() || undefined;
+  const oauthSigningPublicKey = env.MCP_OAUTH_SIGNING_PUBLIC_KEY?.trim() || undefined;
 
   if (oauthEnabled && !clerkSecretKey) {
     throw new Error("MCP_OAUTH_ENABLED=true necesita CLERK_SECRET_KEY.");
@@ -223,6 +256,24 @@ export function loadMcpAuthConfig(env: NodeJS.ProcessEnv = process.env): McpAuth
   if (oauthEnabled && !env.MCP_IDENTITY_PRIVATE_KEY?.trim()) {
     throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_IDENTITY_PRIVATE_KEY.");
   }
+  if (oauthEnabled && !clerkOAuthIssuer) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_CLERK_OAUTH_ISSUER.");
+  }
+  if (oauthEnabled && !clerkOAuthClientId) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_CLERK_OAUTH_CLIENT_ID.");
+  }
+  if (oauthEnabled && !clerkOAuthClientSecret) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_CLERK_OAUTH_CLIENT_SECRET.");
+  }
+  if (oauthEnabled && !clerkOAuthRedirectUri) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_CLERK_OAUTH_REDIRECT_URI.");
+  }
+  if (oauthEnabled && !oauthSigningPrivateKey) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_OAUTH_SIGNING_PRIVATE_KEY.");
+  }
+  if (oauthEnabled && !oauthSigningPublicKey) {
+    throw new Error("MCP_OAUTH_ENABLED=true necesita MCP_OAUTH_SIGNING_PUBLIC_KEY.");
+  }
 
   const adminKey = env.MCP_ADMIN_API_KEY?.trim() || undefined;
   const clientKey = env.MCP_CLIENT_API_KEY?.trim() || undefined;
@@ -239,6 +290,24 @@ export function loadMcpAuthConfig(env: NodeJS.ProcessEnv = process.env): McpAuth
     oauthIssuer,
     oauthAudience,
     resourceUrl,
+    clerkOAuthIssuer,
+    clerkOAuthClientId,
+    clerkOAuthClientSecret,
+    clerkOAuthRedirectUri,
+    oauthSigningPrivateKey,
+    oauthSigningPublicKey,
+    oauthAccessTokenTtlSeconds: parsePositiveInteger(
+      "MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS",
+      env.MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+      600,
+      3600,
+    ),
+    oauthRefreshTokenTtlSeconds: parsePositiveInteger(
+      "MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS",
+      env.MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS,
+      30 * 24 * 60 * 60,
+      90 * 24 * 60 * 60,
+    ),
     allowedOrigins: parseOrigins(env.MCP_ALLOWED_ORIGIN),
   };
 }
@@ -250,14 +319,14 @@ function safeEqual(left: string, right: string): boolean {
   return timingSafeEqual(leftBytes, rightBytes);
 }
 
-function normalizeRole(value: unknown): McpRole {
+export function normalizeRole(value: unknown): McpRole {
   if (value === "owner" || value === "operator" || value === "inventory" || value === "support") {
     return value;
   }
   return "client";
 }
 
-function roleFromMetadata(metadata: unknown): McpRole {
+export function roleFromMetadata(metadata: unknown): McpRole {
   if (!metadata || typeof metadata !== "object") return "client";
   const role = (metadata as Record<string, unknown>).role;
   return normalizeRole(role);
@@ -267,29 +336,69 @@ function modeForRole(role: McpRole): McpAuthMode {
   return role === "client" ? "client" : "admin";
 }
 
-async function verifyClerkOAuthRequest(
+const revokedMcpAccessTokenJtis = new Map<string, number>();
+let oauthPublicKeyCache: { value: string; promise: Promise<CryptoKey> } | undefined;
+
+export function revokeMcpAccessTokenJti(jti: string, expiresAt: number): void {
+  revokedMcpAccessTokenJtis.set(jti, expiresAt);
+}
+
+function isMcpAccessTokenJtiRevoked(jti: string): boolean {
+  const now = Date.now();
+  for (const [key, expiresAt] of revokedMcpAccessTokenJtis) {
+    if (expiresAt <= now) revokedMcpAccessTokenJtis.delete(key);
+  }
+  return revokedMcpAccessTokenJtis.has(jti);
+}
+
+function isMcpRole(value: unknown): value is McpRole {
+  return value === "client"
+    || value === "owner"
+    || value === "operator"
+    || value === "inventory"
+    || value === "support";
+}
+
+function isMcpScope(value: string): value is McpScope {
+  return MCP_SCOPES.includes(value as McpScope);
+}
+
+async function verifyMcpOAuthRequest(
   request: Request,
   config: McpAuthConfig,
 ): Promise<McpOAuthIdentity | null> {
-  if (!config.oauthEnabled || !config.clerkSecretKey) return null;
+  const authorization = request.headers.get("Authorization");
+  if (!config.oauthEnabled || !config.oauthSigningPublicKey || !config.oauthIssuer || !config.oauthAudience) return null;
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const token = authorization.slice("Bearer ".length).trim();
+  if (!token) return null;
 
-  const clerk = createClerkClient({ secretKey: config.clerkSecretKey });
-  const auth = await clerk.authenticateRequest(request, {
-    acceptsToken: "oauth_token",
-    audience: config.oauthAudience,
-  });
-
-  if (!auth.isAuthenticated || auth.tokenType !== "oauth_token") return null;
-  const authObject = auth.toAuth();
-  if (!authObject.isAuthenticated || authObject.tokenType !== "oauth_token" || !authObject.userId) {
-    return null;
+  const normalizedKey = config.oauthSigningPublicKey.replace(/\\n/g, "\n");
+  if (!oauthPublicKeyCache || oauthPublicKeyCache.value !== normalizedKey) {
+    oauthPublicKeyCache = { value: normalizedKey, promise: importSPKI(normalizedKey, "EdDSA") };
   }
 
-  return {
-    userId: authObject.userId,
-    clientId: authObject.clientId ?? "unknown-client",
-    scopes: authObject.scopes,
-  };
+  const result = await jwtVerify(token, await oauthPublicKeyCache.promise, {
+    issuer: config.oauthIssuer,
+    audience: config.oauthAudience,
+    algorithms: ["EdDSA"],
+  });
+  const payload = result.payload;
+  const role = payload.role;
+  const subject = payload.sub;
+  const clientId = payload.client_id;
+  const jti = payload.jti;
+  const scopeValue = payload.scope;
+  if (payload.token_use !== "mcp_access" || !isMcpRole(role) || typeof subject !== "string"
+    || typeof clientId !== "string" || typeof jti !== "string" || typeof scopeValue !== "string") {
+    return null;
+  }
+  if (isMcpAccessTokenJtiRevoked(jti)) return null;
+
+  const scopes = scopeValue.split(/\s+/).filter(isMcpScope);
+  const allowedScopes = MCP_ROLE_SCOPES[role];
+  if (scopes.length !== new Set(scopes).size || scopes.some((scope) => !allowedScopes.has(scope))) return null;
+  return { userId: subject, clientId, scopes, role };
 }
 
 async function resolveClerkRole(userId: string, config: McpAuthConfig): Promise<McpRole> {
@@ -317,7 +426,7 @@ function servicePrincipal(
 export async function authenticateMcpRequest(
   request: Request,
   config: McpAuthConfig,
-  oauthVerifier: McpOAuthVerifier = verifyClerkOAuthRequest,
+  oauthVerifier: McpOAuthVerifier = verifyMcpOAuthRequest,
   roleResolver: McpRoleResolver = (userId) => resolveClerkRole(userId, config),
 ): Promise<McpPrincipal | null> {
   const authorization = request.headers.get("Authorization");
@@ -345,14 +454,17 @@ export async function authenticateMcpRequest(
   try {
     const identity = await oauthVerifier(request, config);
     if (!identity) return null;
-    const role = await roleResolver(identity.userId);
+    const role = identity.role ?? await roleResolver(identity.userId);
+    const scopes = identity.role
+      ? new Set(identity.scopes.filter((scope): scope is McpScope => isMcpScope(scope) && MCP_ROLE_SCOPES[role].has(scope)))
+      : MCP_ROLE_SCOPES[role];
     return {
       id: `clerk:${identity.userId}`,
       kind: "oauth",
       mode: modeForRole(role),
       role,
       clerkUserId: identity.userId,
-      scopes: MCP_ROLE_SCOPES[role],
+      scopes,
     };
   } catch {
     return null;

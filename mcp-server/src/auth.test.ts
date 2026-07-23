@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { exportPKCS8, exportSPKI, generateKeyPair, SignJWT } from "jose";
 import {
   authenticateMcpRequest,
   hasMcpScope,
@@ -70,6 +71,12 @@ describe("autenticación HTTP del MCP", () => {
       MCP_RESOURCE_URL: "https://mcp.example.com/mcp",
       MCP_BACKEND_MCP_TOKEN: "bridge-token-placeholder",
       MCP_IDENTITY_PRIVATE_KEY: "private-key-placeholder",
+      MCP_CLERK_OAUTH_ISSUER: "https://clerk.example.com",
+      MCP_CLERK_OAUTH_CLIENT_ID: "clerk-client-placeholder",
+      MCP_CLERK_OAUTH_CLIENT_SECRET: "clerk-client-secret-placeholder",
+      MCP_CLERK_OAUTH_REDIRECT_URI: "https://mcp.example.com/oauth/clerk/callback",
+      MCP_OAUTH_SIGNING_PRIVATE_KEY: "private-key-placeholder",
+      MCP_OAUTH_SIGNING_PUBLIC_KEY: "public-key-placeholder",
     });
     const principal = await authenticateMcpRequest(
       new Request("https://mcp.example.com/mcp", { headers: { Authorization: "Bearer oauth-token" } }),
@@ -104,5 +111,86 @@ describe("autenticación HTTP del MCP", () => {
       new Request("http://localhost/mcp", { headers: { Origin: "https://evil.example.com" } }),
       config.allowedOrigins,
     )).toBe(false);
+  });
+
+  it("valida un access token MCP firmado y conserva solamente los scopes pedidos", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("EdDSA", { extractable: true });
+    const config = loadMcpAuthConfig({
+      ...environment,
+      MCP_OAUTH_ENABLED: "true",
+      CLERK_SECRET_KEY: "clerk-secret-placeholder",
+      MCP_OAUTH_ISSUER: "https://mcp.example.com",
+      MCP_OAUTH_AUDIENCE: "https://mcp.example.com/mcp",
+      MCP_RESOURCE_URL: "https://mcp.example.com/mcp",
+      MCP_BACKEND_MCP_TOKEN: "bridge-token-placeholder",
+      MCP_IDENTITY_PRIVATE_KEY: "private-key-placeholder",
+      MCP_CLERK_OAUTH_ISSUER: "https://clerk.example.com",
+      MCP_CLERK_OAUTH_CLIENT_ID: "clerk-client-placeholder",
+      MCP_CLERK_OAUTH_CLIENT_SECRET: "clerk-client-secret-placeholder",
+      MCP_CLERK_OAUTH_REDIRECT_URI: "https://mcp.example.com/oauth/clerk/callback",
+      MCP_OAUTH_SIGNING_PRIVATE_KEY: await exportPKCS8(privateKey),
+      MCP_OAUTH_SIGNING_PUBLIC_KEY: await exportSPKI(publicKey),
+    });
+    const token = await new SignJWT({
+      token_use: "mcp_access",
+      client_id: "mcp-test-client",
+      role: "operator",
+      scope: "dashboard.read reservations.read",
+    })
+      .setProtectedHeader({ alg: "EdDSA", typ: "at+jwt" })
+      .setIssuer("https://mcp.example.com")
+      .setAudience("https://mcp.example.com/mcp")
+      .setSubject("user_operator")
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .setJti("jti-operator-test")
+      .sign(privateKey);
+
+    const principal = await authenticateMcpRequest(new Request("https://mcp.example.com/mcp", {
+      headers: { Authorization: `Bearer ${token}` },
+    }), config);
+
+    expect(principal?.role).toBe("operator");
+    expect(hasMcpScope(principal ?? undefined, "dashboard.read")).toBe(true);
+    expect(hasMcpScope(principal ?? undefined, "reservations.read")).toBe(true);
+    expect(hasMcpScope(principal ?? undefined, "products.write")).toBe(false);
+  });
+
+  it("rechaza un access token que intenta elevar scopes fuera del rol", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("EdDSA", { extractable: true });
+    const config = loadMcpAuthConfig({
+      ...environment,
+      MCP_OAUTH_ENABLED: "true",
+      CLERK_SECRET_KEY: "clerk-secret-placeholder",
+      MCP_OAUTH_ISSUER: "https://mcp.example.com",
+      MCP_OAUTH_AUDIENCE: "https://mcp.example.com/mcp",
+      MCP_RESOURCE_URL: "https://mcp.example.com/mcp",
+      MCP_BACKEND_MCP_TOKEN: "bridge-token-placeholder",
+      MCP_IDENTITY_PRIVATE_KEY: "private-key-placeholder",
+      MCP_CLERK_OAUTH_ISSUER: "https://clerk.example.com",
+      MCP_CLERK_OAUTH_CLIENT_ID: "clerk-client-placeholder",
+      MCP_CLERK_OAUTH_CLIENT_SECRET: "clerk-client-secret-placeholder",
+      MCP_CLERK_OAUTH_REDIRECT_URI: "https://mcp.example.com/oauth/clerk/callback",
+      MCP_OAUTH_SIGNING_PRIVATE_KEY: await exportPKCS8(privateKey),
+      MCP_OAUTH_SIGNING_PUBLIC_KEY: await exportSPKI(publicKey),
+    });
+    const token = await new SignJWT({
+      token_use: "mcp_access",
+      client_id: "mcp-test-client",
+      role: "support",
+      scope: "users.roles.write",
+    })
+      .setProtectedHeader({ alg: "EdDSA", typ: "at+jwt" })
+      .setIssuer("https://mcp.example.com")
+      .setAudience("https://mcp.example.com/mcp")
+      .setSubject("user_support")
+      .setIssuedAt()
+      .setExpirationTime("5m")
+      .setJti("jti-support-test")
+      .sign(privateKey);
+
+    await expect(authenticateMcpRequest(new Request("https://mcp.example.com/mcp", {
+      headers: { Authorization: `Bearer ${token}` },
+    }), config)).resolves.toBeNull();
   });
 });

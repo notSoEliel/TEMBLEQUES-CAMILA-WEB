@@ -37,11 +37,13 @@ El valor legacy `admin` solo se acepta como entrada de compatibilidad y se norma
 
 ## MCP remoto
 
-`MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY` son credenciales de servicio para CI e integraciones internas. `MCP_BACKEND_ADMIN_TOKEN` y `MCP_BACKEND_CLIENT_TOKEN` mantienen compatibilidad con esas identidades de máquina. Los usuarios humanos usan OAuth con Clerk; el rol se obtiene en el servidor y no mediante una cabecera enviada por el cliente.
+`MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY` son credenciales de servicio para CI e integraciones internas. `MCP_BACKEND_ADMIN_TOKEN` y `MCP_BACKEND_CLIENT_TOKEN` mantienen compatibilidad con esas identidades de máquina. Los usuarios humanos usan el bridge OAuth MCP; el bridge delega la autenticación a Clerk, y el rol se obtiene en el servidor, nunca mediante una cabecera enviada por el cliente.
 
 El endpoint `/mcp` acepta guest explícito. Sin token solo permite catálogo y disponibilidad. Una llamada guest a una tool protegida responde `401` con metadata OAuth. `MCP_AUTH_REQUIRED=false` nunca concede scopes administrativos.
 
-Las llamadas OAuth no reenvían el token de Clerk al backend. MCP utiliza una aserción EdDSA breve y el backend valida issuer, audiencia, expiración, firma y usuario antes de aplicar los permisos reales. `MCP_BACKEND_MCP_TOKEN` autentica únicamente el transporte interno entre ambos servicios.
+El bridge OAuth MCP expone la metadata de Authorization Server, Dynamic Client Registration, Authorization Code + PKCE, refresh token rotativo y revocación. Clerk solo ve scopes OIDC estándar; los scopes MCP se validan y asignan dentro del bridge a partir del rol real de Clerk. Los access tokens MCP son JWT EdDSA de corta duración y se validan con issuer, audiencia, expiración, firma, `token_use`, `client_id`, `jti`, rol y scopes permitidos.
+
+Las llamadas OAuth no reenvían ningún token de Clerk al backend. MCP utiliza una aserción EdDSA breve y el backend valida issuer, audiencia, expiración, firma y usuario antes de aplicar los permisos reales. `MCP_BACKEND_MCP_TOKEN` autentica únicamente el transporte interno entre ambos servicios.
 
 El MCP comprueba scopes antes de llamar al backend y mantiene una lista de orígenes exactos. El endpoint `/health` no devuelve URLs, flags ni presencia de secretos.
 

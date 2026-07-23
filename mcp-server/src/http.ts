@@ -8,6 +8,7 @@ import {
   MCP_SCOPES,
   type McpPrincipal,
 } from "./auth.js";
+import { getMcpOAuthService } from "./oauth.js";
 
 function json(
   data: unknown,
@@ -21,6 +22,11 @@ function json(
       "Content-Type": "application/json",
     },
   });
+}
+
+function withCors(response: Response, corsHeaders: Record<string, string>): Response {
+  for (const [key, value] of Object.entries(corsHeaders)) response.headers.set(key, value);
+  return response;
 }
 
 const PUBLIC_TOOLS = new Set([
@@ -92,6 +98,30 @@ export async function handleMcpHttpRequest(
         status: "ok",
         name: "tembleques-camila-mcp",
       }, 200, corsHeaders);
+    }
+
+    if (authConfig.oauthEnabled) {
+      const oauth = getMcpOAuthService(authConfig);
+      if (url.pathname === "/.well-known/oauth-authorization-server"
+        || url.pathname === "/.well-known/oauth-authorization-server/mcp") {
+        if (request.method !== "GET") return withCors(json({ error: "Metodo no permitido" }, 405), corsHeaders);
+        return withCors(json(oauth.metadata()), corsHeaders);
+      }
+      if (url.pathname === "/oauth/register" && request.method === "POST") {
+        return withCors(await oauth.register(request), corsHeaders);
+      }
+      if (url.pathname === "/oauth/authorize" && request.method === "GET") {
+        return withCors(await oauth.authorize(request), corsHeaders);
+      }
+      if (url.pathname === "/oauth/clerk/callback" && request.method === "GET") {
+        return withCors(await oauth.clerkCallback(request), corsHeaders);
+      }
+      if (url.pathname === "/oauth/token" && request.method === "POST") {
+        return withCors(await oauth.token(request), corsHeaders);
+      }
+      if (url.pathname === "/oauth/revoke" && request.method === "POST") {
+        return withCors(await oauth.revoke(request), corsHeaders);
+      }
     }
 
     if (url.pathname === "/.well-known/oauth-protected-resource/mcp"
