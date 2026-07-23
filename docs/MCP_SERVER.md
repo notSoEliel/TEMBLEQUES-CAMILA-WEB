@@ -1,157 +1,202 @@
 # Servidor MCP
 
-## Objetivo y estado
+## Objetivo y URL única
 
-El servidor MCP expone las historias H83–H100 como tools para Codex o Claude Code. El endpoint remoto está desplegado en Railway dentro del proyecto académico `tembleques-camila-staging`; aunque Railway etiqueta técnicamente el entorno como `production`, en este proyecto se trata como staging.
+El servidor MCP expone las historias H83–H100 como tools para Codex y otros clientes MCP. Está desplegado en Railway dentro del proyecto académico `tembleques-camila-staging`; aunque Railway etiqueta técnicamente el entorno como `production`, en este proyecto se trata como staging.
 
-El endpoint HTTP `/mcp` exige una API key MCP incluso para tools de catálogo público. “Público” describe el permiso de la tool, no la apertura del transporte. `/health` es el único endpoint público del servicio y solo confirma que el proceso está vivo.
+La URL canónica es:
 
-## Identidad y autorización
+```text
+https://mcp-server-production-321a.up.railway.app/mcp
+```
 
-La autenticación tiene dos capas:
+No existen URLs distintas para clientes y administradores. El servidor determina el acceso mediante el principal de la solicitud:
 
-1. `Authorization: Bearer <MCP_API_KEY>` autentica al consumidor MCP y determina sus scopes.
-2. `X-MCP-Clerk-Token: <token-de-sesión-Clerk>` identifica al usuario real para las tools de cliente.
+| Principal | Autenticación | Acceso |
+|---|---|---|
+| `guest` | Ninguna | Catálogo y disponibilidad |
+| Usuario humano | OAuth con Clerk + PKCE | Tools según el rol real de Clerk |
+| Servicio | API key | CI, GitHub Actions e integraciones internas |
 
-El token Clerk se valida posteriormente en el backend Hono. El servidor MCP no lo guarda en MongoDB, no lo imprime y no lo incluye en respuestas o logs. Las tools `rentals.*` y `payments.checkout.create` fallan si se usa la API key cliente sin identidad Clerk.
+## Experiencia para clientes de IA
 
-Variables externas:
+### Consulta pública
 
-- `MCP_ADMIN_API_KEY`: key con scopes administrativos, técnicos y financieros.
-- `MCP_CLIENT_API_KEY`: key con scopes de cliente.
+Un cliente MCP puede conectarse a la URL y consultar sin configuración adicional:
 
-Variables internas:
+- `catalog.products.search`
+- `catalog.availability.check`
 
-- `MCP_BACKEND_ADMIN_TOKEN`: credencial MCP hacia el usuario de servicio administrativo del backend.
-- `MCP_BACKEND_CLIENT_TOKEN`: compatibilidad para ejecución local explícita con identidad de servicio.
-- `MCP_CLIENT_IDENTITY=clerk`: obligatorio para HTTP remoto de staging.
+No se necesita login ni API key. La respuesta pública se genera mediante una lista blanca y no incluye nombres de clientes, correos, IP, User-Agent, tokens, pagos ni detalles internos de reservas.
 
-No se crean tokens separados de finanzas o diagnóstico en esta fase; esa separación queda modelada mediante scopes y pruebas negativas.
+### Cliente autenticado
 
-## Matriz de scopes
+Cuando el usuario intenta consultar sus reservas, crear una reserva, crear checkout o cancelar una reserva pendiente, el servidor responde con el challenge OAuth si todavía es guest. Un cliente MCP compatible inicia el flujo de Clerk; otros clientes muestran una acción como `Connect`, `Authorize` o `Needs login`.
 
-| Grupo | Scopes |
-|---|---|
-| Catálogo | `catalog.read`, `availability.read` |
-| Cliente | `rentals.create`, `rentals.read.own`, `rentals.cancel.own`, `payments.create` |
-| Administración | `dashboard.read`, `reservations.read`, `reservations.write`, `products.write`, `inventory.write`, `users.read`, `reports.read`, `audit.read`, `observability.read`, `payments.reconcile` |
+El usuario no escoge su rol. MCP obtiene el `userId` de Clerk, consulta el rol real y calcula los scopes MCP. La identidad nunca se convierte en administrativa por una cabecera enviada por el cliente.
 
-La autorización se verifica antes de llamar al backend. Un principal inexistente nunca recibe scopes implícitos.
+### Administrador autenticado
 
-## Configuración local HTTP
+Un administrador utiliza la misma URL. Después del login, Clerk determina si es `owner`, `operator`, `inventory` o `support`. El listado de tools se filtra según el rol y el backend vuelve a verificar el permiso antes de ejecutar la operación.
+
+ChatGPT, Codex, Claude y otras IAs no tienen necesariamente la misma interfaz de conexión. Algunos clientes aceptan la URL directa y descubren OAuth; otros requieren crear primero una app, conector o integración. Esto es una diferencia del cliente MCP, no una razón para debilitar la autenticación del servidor.
+
+## Autenticación y autorización
+
+### Guest explícito
+
+Una solicitud sin `Authorization` recibe únicamente:
+
+```text
+catalog.read
+availability.read
+```
+
+`MCP_AUTH_REQUIRED=false` ya no concede scopes administrativos. La variable se mantiene solo por compatibilidad de configuración antigua y nunca cambia el guest a owner.
+
+Una tool protegida llamada por guest responde `401` con `WWW-Authenticate` y la URL de metadata del recurso protegido.
+
+### OAuth con Clerk
+
+El servidor acepta OAuth de Clerk mediante Authorization Code + PKCE. La configuración OAuth solicita scopes estándar:
+
+```text
+openid profile email
+```
+
+Los scopes MCP de negocio son internos. Se derivan del rol de Clerk y no se confían al contenido de la solicitud.
+
+MCP valida mediante Clerk:
+
+- firma del token;
+- issuer;
+- audiencia/recurso MCP;
+- expiración;
+- tipo `oauth_token`;
+- usuario autenticado.
+
+MCP no reenvía el token OAuth al backend. Para cada llamada privada crea una aserción EdDSA de 60 segundos con `sub`, issuer, audiencia, `requestId`, `iat`, `exp` y `jti`. El backend valida la aserción, carga el usuario por `clerkId` y aplica sus permisos reales.
+
+### API keys de servicio
+
+Las API keys son exclusivamente para máquinas:
+
+- `MCP_ADMIN_API_KEY`: servicio administrativo para CI y mantenimiento.
+- `MCP_CLIENT_API_KEY`: servicio con scopes de cliente para pruebas automatizadas.
+
+Las claves internas del backend tienen funciones separadas:
+
+- `MCP_BACKEND_ADMIN_TOKEN`: identidad de servicio owner para llamadas internas de CI.
+- `MCP_BACKEND_CLIENT_TOKEN`: identidad de servicio client para compatibilidad de pruebas.
+- `MCP_BACKEND_MCP_TOKEN`: credencial de transporte del puente OAuth MCP→backend; no representa al usuario.
+
+Las API keys y los tokens internos no se incluyen en logs, respuestas, issues, PRs ni documentación con valores reales.
+
+## Roles y scopes MCP
+
+| Rol | Scopes principales | Restricción importante |
+|---|---|---|
+| `client` | `catalog.read`, `availability.read`, `rentals.create`, `rentals.read.own`, `rentals.cancel.own`, `payments.create` | Solo sus propias reservas |
+| `owner` | Todos los scopes administrativos aprobados | Es el único rol con gestión de roles, auditoría global y conciliación |
+| `operator` | Dashboard, reservas, usuarios, reportes, observabilidad e incidencias | No edita productos ni gestiona roles |
+| `inventory` | Inventario, mantenimiento, productos y lectura de reservas | No gestiona usuarios ni roles |
+| `support` | Dashboard, reservas, usuarios, contactos e incidencias | No concilia pagos ni edita inventario |
+
+El valor legacy `admin` se normaliza a `owner` únicamente en el backend. No es un rol MCP visible.
+
+## Matriz de tools
+
+| Historia / issue | Nombre en código | Nombre natural | Acceso | Scope | Rol de negocio | OAuth | Clerk | Ubicación | Prueba sencilla |
+|---|---|---|---|---|---|---:|---:|---|---|
+| H83 / #109 | `admin.dashboard.summary` | Resumen administrativo | Admin | `dashboard.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | `tools/list` por rol |
+| H84 / #110 | `catalog.products.search` | Buscar productos | Público | `catalog.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
+| H85 / #111 | `catalog.availability.check` | Consultar disponibilidad | Público | `availability.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
+| H86 / #112 | `rentals.draft.create` | Crear reserva pendiente | Cliente | `rentals.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea su reserva |
+| H87 / #113 | `payments.checkout.create` | Crear checkout | Cliente | `payments.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea checkout propio |
+| H88 / #114 | `rentals.mine.list` | Consultar mis reservas | Cliente | `rentals.read.own` | client | Sí | Sí | `mcp-server/src/server.ts` | No devuelve reservas ajenas |
+| H89 / #115 | `rentals.pending.cancel` | Cancelar reserva pendiente | Cliente | `rentals.cancel.own` | client | Sí | Sí | `mcp-server/src/server.ts` | Cancela solo la propia |
+| H90 / #116 | `admin.rentals.list` | Listar reservas | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Operator puede leer |
+| H91 / #117 | `admin.rentals.status.update` | Cambiar estado de reserva | Admin | `reservations.write` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Support recibe 403 |
+| H92 / #118 | `admin.calendar.range` | Consultar calendario | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Consulta por fechas |
+| H93 / #119 | `admin.products.upsert` | Crear o editar producto | Admin | `products.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
+| H94 / #120 | `admin.inventory.variantMaintenance.set` | Mantener variante | Admin | `maintenance.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Inventory puede editar |
+| H95 / #121 | `admin.users.search` | Buscar clientes | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Support puede leer |
+| H96 / #122 | `admin.users.detail` | Detalle de cliente | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Datos sensibles filtrados |
+| H97 / #123 | `reports.operations.generate` | Reporte operativo | Admin | `reports.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Summary sin secretos |
+| H98 / #124 | `security.audit.search` | Auditoría global | Admin | `audit.read` | owner | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
+| H99 / #125 | `ops.health.check` | Salud técnica | Admin | `observability.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Respuesta redactada |
+| H100 / #126 | `payments.reconcile.run` | Conciliación de pagos | Admin | `payments.reconcile` | owner | Sí | Sí | `mcp-server/src/server.ts` | Espera H45 / #54 |
+
+## Configuración por ambiente
+
+### Local y CI con API keys
 
 ```bash
 cd mcp-server
 bun install
 MCP_BACKEND_URL=http://localhost:3000 \
-MCP_AUTH_REQUIRED=true \
-MCP_CLIENT_IDENTITY=clerk \
-MCP_ADMIN_API_KEY='clave-admin-larga' \
-MCP_CLIENT_API_KEY='clave-cliente-larga' \
-MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
+MCP_ADMIN_API_KEY='clave-interna' \
+MCP_CLIENT_API_KEY='clave-interna' \
+MCP_BACKEND_ADMIN_TOKEN='credencial-interna' \
+MCP_BACKEND_CLIENT_TOKEN='credencial-interna' \
 MCP_ALLOWED_ORIGIN=http://localhost:5173 \
 PORT=3900 \
 bun run start
 ```
 
-Para ejecutar tools cliente desde una integración HTTP, la petición debe llevar además el token Clerk vigente:
+Para probar OAuth real en staging se añaden, desde el gestor de secretos del ambiente:
 
-```bash
-curl -sS http://localhost:3900/mcp \
-  -H 'Content-Type: application/json' \
-  -H 'Accept: application/json, text/event-stream' \
-  -H "Authorization: Bearer $MCP_CLIENT_API_KEY" \
-  -H "X-MCP-Clerk-Token: $CLERK_SESSION_TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"rentals.mine.list","arguments":{}}}'
+```text
+MCP_OAUTH_ENABLED=true
+CLERK_SECRET_KEY
+MCP_OAUTH_ISSUER=https://<instancia-clerk>.clerk.accounts.dev
+MCP_RESOURCE_URL=https://<dominio-mcp>/mcp
+MCP_OAUTH_AUDIENCE=https://<dominio-mcp>/mcp
+MCP_BACKEND_MCP_TOKEN
+MCP_IDENTITY_PRIVATE_KEY
+MCP_IDENTITY_ISSUER=tembleques-camila-mcp
+MCP_BACKEND_AUDIENCE=tembleques-camila-backend
 ```
 
-## Configuración local stdio
+El backend necesita los mismos valores públicos o internos correspondientes:
 
-El transporte stdio está reservado para uso local explícito. No debe utilizarse como configuración remota de staging.
-
-```bash
-cd mcp-server
-MCP_BACKEND_URL=http://localhost:3000 \
-MCP_AUTH_REQUIRED=false \
-MCP_CLIENT_IDENTITY=service \
-MCP_BACKEND_ADMIN_TOKEN='credencial-interna-admin' \
-MCP_BACKEND_CLIENT_TOKEN='credencial-interna-cliente' \
-bun run start:stdio
+```text
+MCP_BACKEND_MCP_TOKEN
+MCP_IDENTITY_PUBLIC_KEY
+MCP_IDENTITY_ISSUER
+MCP_BACKEND_AUDIENCE
 ```
 
-## Contrato operativo común
+La clave privada solo existe en Railway en el servicio MCP. La clave pública solo existe en el backend. Ninguna se guarda en el repositorio.
 
-- Cada llamada genera un `requestId` con formato `mcp-<UUID>`.
-- El `requestId` se propaga como `x-request-id` al backend y vuelve en la respuesta de la tool.
-- Las llamadas de lectura tienen timeout de 15 segundos.
-- Checkout y conciliación tienen timeout de 30 segundos.
-- Los errores de backend se normalizan sin stacks, tokens ni mensajes internos.
-- 401, 403, 404, 409 y 5xx conservan un código seguro y el `requestId`.
-- Los DTO administrativos son de lista blanca; no se devuelven IP, User-Agent, tokens ni datos de tarjeta innecesarios.
+### Metadata OAuth
 
-## Tools implementadas
+El servidor publica:
 
-- H83 / issue #109 — `admin.dashboard.summary`
-- H84 / issue #110 — `catalog.products.search`
-- H85 / issue #111 — `catalog.availability.check`
-- H86 / issue #112 — `rentals.draft.create`
-- H87 / issue #113 — `payments.checkout.create`
-- H88 / issue #114 — `rentals.mine.list`
-- H89 / issue #115 — `rentals.pending.cancel`
-- H90 / issue #116 — `admin.rentals.list`
-- H91 / issue #117 — `admin.rentals.status.update`
-- H92 / issue #118 — `admin.calendar.range`
-- H93 / issue #119 — `admin.products.upsert`
-- H94 / issue #120 — `admin.inventory.variantMaintenance.set`
-- H95 / issue #121 — `admin.users.search`
-- H96 / issue #122 — `admin.users.detail`
-- H97 / issue #123 — `reports.operations.generate`
-- H98 / issue #124 — `security.audit.search`
-- H99 / issue #125 — `ops.health.check`
-- H100 / issue #126 — `payments.reconcile.run`
-
-H89 usa una ruta específica que solo cancela reservas `pending` y no ejecuta reembolsos. H94 cambia el flag permanente de la variante y no crea un bloqueo temporal de fechas. H97 ofrece `json`, `csv` y `summary`, sin sustituir los reportes fiscales.
-
-## Smoke remoto reproducible
-
-El smoke transversal corresponde a `APOYO - QA - Smoke tests de herramientas MCP`, issue #64. Se ejecuta manualmente mediante GitHub Actions:
-
-```bash
-E2E_MCP_SMOKE=true \
-E2E_STAGING_URL=https://frontend-staging.example \
-E2E_MCP_REMOTE_URL=https://mcp-server-staging.example/mcp \
-E2E_MCP_BACKEND_URL=https://backend-staging.example \
-MCP_ADMIN_API_KEY='...' \
-MCP_CLIENT_API_KEY='...' \
-E2E_MCP_BACKEND_ADMIN_TOKEN='...' \
-E2E_CLERK_EMAIL='...' \
-bun run test:e2e:mcp:staging
+```text
+GET /.well-known/oauth-protected-resource/mcp
+GET /.well-known/oauth-protected-resource
 ```
 
-El workflow valida:
+La metadata apunta a Clerk como Authorization Server. El MCP no implementa un Authorization Server falso ni almacena contraseñas, access tokens o refresh tokens.
 
-- `/mcp` sin token devuelve 401.
-- `tools/list` devuelve las 18 tools.
-- catálogo público y disponibilidad;
-- identidad Clerk obligatoria para cliente;
-- creación de reserva con términos explícitos;
-- checkout de Stripe en modo test;
-- consulta y cancelación de reservas propias;
-- consultas administrativas;
-- actualización de estado y auditoría;
-- upsert y mantenimiento de producto;
-- reportes JSON, CSV y resumen;
-- salud técnica protegida;
-- conciliación real H100;
-- limpieza de productos y reservas temporales.
+En Clerk Development/Staging se debe configurar OAuth Application con Authorization Code + PKCE, consentimiento y Dynamic Client Registration si el cliente MCP lo necesita. Actualmente no se debe modificar la instancia de producción.
 
-Los secretos se inyectan desde GitHub Actions y nunca se imprimen, guardan en el repositorio ni se incluyen en issues o artefactos.
+## Smoke reproducible
 
-## Despliegue
+El smoke transversal corresponde a `APOYO - QA - Smoke tests de herramientas MCP`, issue #64.
 
-```bash
-railway status
-railway up ./mcp-server --path-as-root --service mcp-server
-```
+Valida:
 
-Antes de mover una historia a `Done` se exige CI verde, typecheck, pruebas, deployment exitoso, smoke remoto y evidencia enlazada entre historia, issue, PR, commit, workflow y deployment.
+- guest sin token recibe catálogo y disponibilidad;
+- guest recibe `401` para tools protegidas;
+- `tools/list` guest devuelve 2 tools;
+- API key administrativa devuelve 18 tools;
+- API key cliente devuelve únicamente las 6 tools de cliente;
+- creación, lectura, checkout y cancelación con identidad de servicio de CI;
+- tools administrativas y scopes;
+- DTOs sin IP, User-Agent ni secretos;
+- limpieza de productos y reservas temporales;
+- OAuth real cuando `E2E_MCP_OAUTH_TOKEN` está configurado en staging.
+
+Antes de cerrar H83–H100 se exige CI verde, typecheck, pruebas, deployment exitoso, smoke remoto y evidencia enlazada entre historia, issue, PR, commit, workflow y deployment. H100 / #126 permanece condicionado a H45 / #54.
