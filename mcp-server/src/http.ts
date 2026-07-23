@@ -27,12 +27,19 @@ const PUBLIC_TOOLS = new Set([
   "catalog.availability.check",
 ]);
 
-function protectedResourceMetadataUrl(request: Request): string {
-  return new URL("/.well-known/oauth-protected-resource/mcp", request.url).toString();
+function protectedResourceMetadataUrl(
+  request: Request,
+  authConfig: ReturnType<typeof loadMcpAuthConfig>,
+): string {
+  const resourceBaseUrl = authConfig.resourceUrl ?? request.url;
+  return new URL("/.well-known/oauth-protected-resource/mcp", resourceBaseUrl).toString();
 }
 
-function authorizationChallenge(request: Request): string {
-  return `Bearer resource_metadata="${protectedResourceMetadataUrl(request)}"`;
+function authorizationChallenge(
+  request: Request,
+  authConfig: ReturnType<typeof loadMcpAuthConfig>,
+): string {
+  return `Bearer resource_metadata="${protectedResourceMetadataUrl(request, authConfig)}"`;
 }
 
 function protectedResourceMetadata(request: Request, authConfig: ReturnType<typeof loadMcpAuthConfig>): Record<string, unknown> {
@@ -115,7 +122,7 @@ export async function handleMcpHttpRequest(
       return json(
         { error: "Autenticación OAuth o API key de servicio requerida", code: "MCP_AUTH_REQUIRED" },
         401,
-        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request) },
+        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request, authConfig) },
       );
     }
 
@@ -123,7 +130,7 @@ export async function handleMcpHttpRequest(
       return json(
         { error: "Esta tool requiere autenticación OAuth", code: "MCP_OAUTH_REQUIRED" },
         401,
-        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request) },
+        { ...corsHeaders, "WWW-Authenticate": authorizationChallenge(request, authConfig) },
       );
     }
 
