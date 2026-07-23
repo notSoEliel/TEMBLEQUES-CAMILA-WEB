@@ -42,8 +42,10 @@ export default function MissionVision() {
           <div className="md:col-span-7">
             <div className="aspect-[16/9] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg relative group">
               <img 
-                src="/mision.jpg" 
+                src="/mision.webp"
                 alt="Nuestra Misión" 
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               />
               <div className="absolute inset-0 bg-primary/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />
@@ -56,8 +58,10 @@ export default function MissionVision() {
           <div className="md:col-span-7 order-2 md:order-1">
             <div className="aspect-[16/9] bg-muted rounded-[2rem] overflow-hidden shadow-elegant-lg relative group">
               <img 
-                src="/vision.jpg" 
+                src="/vision.webp"
                 alt="Nuestra Visión" 
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               />
               <div className="absolute inset-0 bg-accent/5 group-hover:bg-transparent transition-colors duration-700 pointer-events-none" />

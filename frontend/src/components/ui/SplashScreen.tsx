@@ -21,7 +21,7 @@ export default function SplashScreen() {
           className="relative"
         >
           <img
-            src="/logo.png"
+            src="/logo.webp"
             alt="Tembleques Camila"
             className="h-24 w-24 object-contain"
             onError={(e) => {
