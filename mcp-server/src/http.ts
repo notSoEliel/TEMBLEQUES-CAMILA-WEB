@@ -175,8 +175,9 @@ export async function handleMcpHttpRequest(
         response.headers.set(key, value);
       }
       return response;
-    } catch (error) {
-      console.error("[MCP HTTP] Error handling request", error);
+    } catch {
+      const requestId = request.headers.get("x-request-id")?.slice(0, 128) ?? crypto.randomUUID();
+      console.error("[MCP HTTP] Error handling request", { requestId });
       await transport.close().catch(() => undefined);
       await server.close().catch(() => undefined);
       return json({
