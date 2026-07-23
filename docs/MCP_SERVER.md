@@ -66,6 +66,8 @@ openid profile email
 
 Los scopes MCP de negocio son internos. Se derivan del rol de Clerk y no se confían al contenido de la solicitud.
 
+La metadata del recurso protegido publica la matriz completa de scopes MCP en `scopes_supported` para que los clientes compatibles puedan descubrirla. Esa publicación es descriptiva; los scopes efectivos siguen limitados por el rol real de Clerk o por el principal de servicio.
+
 MCP valida mediante Clerk:
 
 - firma del token;
