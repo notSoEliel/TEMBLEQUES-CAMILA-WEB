@@ -35,6 +35,36 @@ export type McpScope =
   | "users.read"
   | "users.roles.write";
 
+export const MCP_SCOPES: readonly McpScope[] = [
+  "audit.read",
+  "availability.read",
+  "catalog.read",
+  "contacts.manage",
+  "coupons.manage",
+  "dashboard.read",
+  "incidents.read",
+  "incidents.write",
+  "inventory.read",
+  "inventory.write",
+  "maintenance.write",
+  "observability.read",
+  "payments.reconcile",
+  "payments.create",
+  "payments.refund",
+  "products.read",
+  "products.write",
+  "reports.fiscal",
+  "reports.read",
+  "reservations.read",
+  "reservations.write",
+  "rentals.cancel.own",
+  "rentals.create",
+  "rentals.read.own",
+  "settings.write",
+  "users.read",
+  "users.roles.write",
+];
+
 export interface McpPrincipal {
   id: string;
   kind: McpPrincipalKind;

@@ -5,6 +5,7 @@ import {
   getMcpCorsHeaders,
   isMcpOriginAllowed,
   loadMcpAuthConfig,
+  MCP_SCOPES,
   type McpPrincipal,
 } from "./auth.js";
 
@@ -48,7 +49,7 @@ function protectedResourceMetadata(request: Request, authConfig: ReturnType<type
   return {
     resource: resourceUrl,
     authorization_servers: authorizationServers,
-    scopes_supported: ["openid", "profile", "email"],
+    scopes_supported: MCP_SCOPES,
     bearer_methods_supported: ["header"],
   };
 }

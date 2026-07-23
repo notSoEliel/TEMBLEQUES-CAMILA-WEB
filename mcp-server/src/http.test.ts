@@ -66,6 +66,8 @@ describe("transporte HTTP MCP", () => {
       authorization_servers: ["https://clerk.example.com"],
       bearer_methods_supported: ["header"],
     });
+    expect(payload.scopes_supported).toContain("catalog.read");
+    expect(payload.scopes_supported).toContain("payments.reconcile");
     expect(JSON.stringify(payload)).not.toContain("admin-secret-key");
   });
 });
