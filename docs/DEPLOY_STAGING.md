@@ -74,9 +74,17 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 - `MCP_BACKEND_MCP_TOKEN`
 - `MCP_OAUTH_ENABLED=true`
 - `CLERK_SECRET_KEY`
-- `MCP_OAUTH_ISSUER`
+- `MCP_OAUTH_ISSUER=https://mcp-server-production-321a.up.railway.app`
 - `MCP_RESOURCE_URL=https://mcp-server-production-321a.up.railway.app/mcp`
 - `MCP_OAUTH_AUDIENCE=https://mcp-server-production-321a.up.railway.app/mcp`
+- `MCP_CLERK_OAUTH_ISSUER`
+- `MCP_CLERK_OAUTH_CLIENT_ID`
+- `MCP_CLERK_OAUTH_CLIENT_SECRET`
+- `MCP_CLERK_OAUTH_REDIRECT_URI=https://mcp-server-production-321a.up.railway.app/oauth/clerk/callback`
+- `MCP_OAUTH_SIGNING_PRIVATE_KEY`
+- `MCP_OAUTH_SIGNING_PUBLIC_KEY`
+- `MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS=600`
+- `MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS=2592000`
 - `MCP_IDENTITY_PRIVATE_KEY`
 - `MCP_IDENTITY_ISSUER=tembleques-camila-mcp`
 - `MCP_BACKEND_AUDIENCE=tembleques-camila-backend`
@@ -104,7 +112,7 @@ railway up ./mcp-server --path-as-root --service mcp-server
 railway domain list --service mcp-server
 ```
 
-El workflow `MCP Staging Smoke` requiere los secretos de GitHub Actions `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY`. Si se configura `E2E_MCP_OAUTH_TOKEN`, el smoke también valida el filtrado de tools de un usuario OAuth. Los tokens se utilizan únicamente en memoria y nunca se imprimen.
+El workflow `MCP Staging Smoke` requiere los secretos de GitHub Actions `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY`. El smoke de OAuth interactivo se ejecuta con un cliente MCP compatible y el bridge de staging; no se guarda un token humano en el repositorio. Si se usa `E2E_MCP_OAUTH_TOKEN` para una comprobación automatizada excepcional, se utiliza únicamente en memoria y nunca se imprime.
 
 ## Vercel
 

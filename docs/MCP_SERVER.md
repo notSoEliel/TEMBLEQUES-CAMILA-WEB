@@ -151,9 +151,17 @@ Para probar OAuth real en staging se añaden, desde el gestor de secretos del am
 ```text
 MCP_OAUTH_ENABLED=true
 CLERK_SECRET_KEY
-MCP_OAUTH_ISSUER=https://<instancia-clerk>.clerk.accounts.dev
+MCP_OAUTH_ISSUER=https://<dominio-mcp>
 MCP_RESOURCE_URL=https://<dominio-mcp>/mcp
 MCP_OAUTH_AUDIENCE=https://<dominio-mcp>/mcp
+MCP_CLERK_OAUTH_ISSUER=https://<instancia-clerk>.clerk.accounts.dev
+MCP_CLERK_OAUTH_CLIENT_ID
+MCP_CLERK_OAUTH_CLIENT_SECRET
+MCP_CLERK_OAUTH_REDIRECT_URI=https://<dominio-mcp>/oauth/clerk/callback
+MCP_OAUTH_SIGNING_PRIVATE_KEY
+MCP_OAUTH_SIGNING_PUBLIC_KEY
+MCP_OAUTH_ACCESS_TOKEN_TTL_SECONDS=600
+MCP_OAUTH_REFRESH_TOKEN_TTL_SECONDS=2592000
 MCP_BACKEND_MCP_TOKEN
 MCP_IDENTITY_PRIVATE_KEY
 MCP_IDENTITY_ISSUER=tembleques-camila-mcp
@@ -171,18 +179,28 @@ MCP_BACKEND_AUDIENCE
 
 La clave privada solo existe en Railway en el servicio MCP. La clave pública solo existe en el backend. Ninguna se guarda en el repositorio.
 
-### Metadata OAuth
+### Bridge OAuth MCP
 
 El servidor publica:
 
 ```text
 GET /.well-known/oauth-protected-resource/mcp
 GET /.well-known/oauth-protected-resource
+GET /.well-known/oauth-authorization-server
+GET /.well-known/oauth-authorization-server/mcp
+POST /oauth/register
+GET /oauth/authorize
+POST /oauth/token
+POST /oauth/revoke
 ```
 
-La metadata apunta a Clerk como Authorization Server. El MCP no implementa un Authorization Server falso ni almacena contraseñas, access tokens o refresh tokens.
+El recurso protegido anuncia al propio servidor MCP como Authorization Server. Esto es intencional: Clerk no acepta los scopes de negocio del MCP (`dashboard.read`, `payments.reconcile`, etc.) durante Dynamic Client Registration.
 
-En Clerk Development/Staging se debe configurar OAuth Application con Authorization Code + PKCE, consentimiento y Dynamic Client Registration si el cliente MCP lo necesita. Actualmente no se debe modificar la instancia de producción.
+El bridge implementa Authorization Code + PKCE con `S256`, registra clientes MCP públicos con redirect URI validada, redirige el login humano a Clerk usando scopes OIDC estándar, valida el `id_token` y el `userinfo`, consulta el rol real en `publicMetadata` y emite un access token MCP EdDSA. El access token dura 10 minutos por defecto y el refresh token es opaco, rotativo y revocable.
+
+El bridge nunca recibe ni almacena contraseñas. Los authorization codes, transacciones y refresh sessions se mantienen en memoria y expiran; un reinicio invalida las sesiones y obliga a autorizar de nuevo. Para producción multi-instancia se debe sustituir ese almacén por Redis o una colección persistente con TTL y bloqueo atómico.
+
+En Clerk Development/Staging se configura una OAuth Application confidencial exclusivamente para el bridge, con callback `/oauth/clerk/callback`, `pkce_required=true`, consentimiento habilitado y scopes `openid profile email public_metadata`. Los clientes MCP no se registran directamente en Clerk.
 
 ## Smoke reproducible
 
