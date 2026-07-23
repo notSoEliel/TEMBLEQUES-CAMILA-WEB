@@ -54,7 +54,7 @@ export default function AdminLayout() {
         <div className="p-6 pb-5">
           <div className="flex items-center gap-2.5">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="Tembleques Camila"
               className="h-8 w-8 object-contain"
               onError={(e) => {
@@ -135,7 +135,7 @@ export default function AdminLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/60 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2">
           <img
-            src="/logo.png"
+              src="/logo.webp"
             alt="Tembleques Camila"
             className="h-7 w-7 object-contain"
             onError={(e) => {

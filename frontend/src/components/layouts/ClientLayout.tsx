@@ -121,7 +121,7 @@ export default function ClientLayout() {
             <div className="flex items-center justify-center md:justify-start absolute left-1/2 -translate-x-1/2 md:relative md:left-auto md:translate-x-0">
               <Link to="/" aria-label="Ir a la página de inicio" className="flex items-center gap-3 group">
                 <img
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt="Logo Tembleques Camila"
                   className="h-11 w-11 object-contain transition-transform duration-500 group-hover:rotate-6"
                   onError={(e) => {
@@ -355,7 +355,7 @@ export default function ClientLayout() {
             <div>
               <div className="flex items-center gap-2.5 mb-4">
                 <img
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt="Tembleques Camila"
                   className="h-8 w-8 object-contain"
                   onError={(e) => {
