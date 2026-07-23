@@ -106,6 +106,30 @@ Las API keys y los tokens internos no se incluyen en logs, respuestas, issues, P
 
 El valor legacy `admin` se normaliza a `owner` únicamente en el backend. No es un rol MCP visible.
 
+## Estrategia de validación por rol
+
+La autorización se valida en dos capas complementarias:
+
+1. `mcp-server/src/server.test.ts` ejecuta una matriz de historias contra principales sintéticos de los cinco roles. Esta capa comprueba que cada tool se descubra únicamente para los roles permitidos y que una llamada no autorizada sea rechazada. No sustituye la autenticación real ni se utiliza como credencial de staging.
+2. `tests/e2e/mcp-staging.spec.ts` ejecuta el smoke remoto con las API keys de servicio de CI. Esta capa comprueba respuestas, mutaciones, limpieza, redacción y compatibilidad máquina a máquina.
+3. El flujo OAuth de staging utiliza una cuenta humana disponible: `client` para las historias de cliente y `owner` para las historias administrativas. El token es temporal y se entrega únicamente mediante el entorno protegido del test o el cliente MCP autenticado.
+
+No es necesario crear una cuenta de Clerk por cada rol. Los roles `operator`, `inventory` y `support` se prueban mediante principales sintéticos en la suite unitaria y mediante sus límites de autorización. Para cerrar una historia que cambie datos o consulte información remota se necesita además evidencia de staging con una identidad de servicio o humana que tenga el rol correspondiente.
+
+| Historias | Identidad real recomendada | Cobertura automatizada adicional | Condición para Done |
+|---|---|---|---|
+| H91 / #117 — Cambiar estado de reserva | `owner` u `operator` | `client`, `inventory` y `support` reciben rechazo | Estado cambia en una reserva temporal y se verifica la respuesta |
+| H93 / #119 — Crear y editar productos | `owner` o `inventory` | `client`, `operator` y `support` reciben rechazo | Producto temporal creado, actualizado y eliminado |
+| H94 / #120 — Gestionar mantenimiento de variantes | `owner` o `inventory` | `client`, `operator` y `support` reciben rechazo | Mantenimiento activado y revertido en una variante temporal |
+| H95 / #121 — Buscar usuarios | `owner`, `operator` o `support` | `client` e `inventory` reciben rechazo | Resultados remotos sin secretos ni datos fuera del alcance |
+| H96 / #122 — Consultar detalle de usuario | `owner`, `operator` o `support` | `client` e `inventory` reciben rechazo | Detalle remoto filtrado y limitado al permiso otorgado |
+| H97 / #123 — Generar reportes operativos | `owner` u `operator` | `client`, `inventory` y `support` reciben rechazo | Reporte JSON/CSV reproducible sin secretos |
+| H98 / #124 — Consultar auditoría global | `owner` | Todos los demás roles reciben rechazo | Consulta remota con redacción y request ID |
+| H99 / #125 — Consultar salud técnica | `owner` u `operator` | `client`, `inventory` y `support` reciben rechazo | Estado técnico remoto redactado y verificable |
+| H100 / #126 — Conciliar pagos | `owner` | Todos los demás roles reciben rechazo | Conciliación real demostrada después de H45 / #54 |
+
+La suite de roles no crea cuentas, no llama a Clerk y no debe recibir tokens reales. Su propósito es evitar que un cambio de scopes o de registro de tools rompa silenciosamente una historia ya aprobada.
+
 ## Matriz de tools
 
 | Historia / issue | Nombre en código | Nombre natural | Acceso | Scope | Rol de negocio | OAuth | Clerk | Ubicación | Prueba sencilla |

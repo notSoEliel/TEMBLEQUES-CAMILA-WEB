@@ -190,6 +190,87 @@ const expectedToolsByRole: Readonly<Record<McpRole, readonly string[]>> = {
   ],
 };
 
+type StoryRoleAccess = {
+  story: string;
+  issue: number;
+  tool: string;
+  allowedRoles: readonly McpRole[];
+  deniedRoles: readonly McpRole[];
+};
+
+/**
+ * Matriz ejecutable de las historias MCP administrativas pendientes.
+ *
+ * Las aserciones de esta matriz prueban autorización y descubrimiento de
+ * tools. La validación de efectos reales se realiza en el smoke de staging,
+ * con API keys de servicio y OAuth cuando existe una sesión humana válida.
+ */
+const pendingStoryRoleMatrix: readonly StoryRoleAccess[] = [
+  {
+    story: "H91 - Cambiar estado de reserva",
+    issue: 117,
+    tool: "admin.rentals.status.update",
+    allowedRoles: ["owner", "operator"],
+    deniedRoles: ["client", "inventory", "support"],
+  },
+  {
+    story: "H93 - Crear y editar productos",
+    issue: 119,
+    tool: "admin.products.upsert",
+    allowedRoles: ["owner", "inventory"],
+    deniedRoles: ["client", "operator", "support"],
+  },
+  {
+    story: "H94 - Gestionar mantenimiento de variantes",
+    issue: 120,
+    tool: "admin.inventory.variantMaintenance.set",
+    allowedRoles: ["owner", "inventory"],
+    deniedRoles: ["client", "operator", "support"],
+  },
+  {
+    story: "H95 - Buscar usuarios",
+    issue: 121,
+    tool: "admin.users.search",
+    allowedRoles: ["owner", "operator", "support"],
+    deniedRoles: ["client", "inventory"],
+  },
+  {
+    story: "H96 - Consultar detalle de usuario",
+    issue: 122,
+    tool: "admin.users.detail",
+    allowedRoles: ["owner", "operator", "support"],
+    deniedRoles: ["client", "inventory"],
+  },
+  {
+    story: "H97 - Generar reportes operativos",
+    issue: 123,
+    tool: "reports.operations.generate",
+    allowedRoles: ["owner", "operator"],
+    deniedRoles: ["client", "inventory", "support"],
+  },
+  {
+    story: "H98 - Consultar auditoría global",
+    issue: 124,
+    tool: "security.audit.search",
+    allowedRoles: ["owner"],
+    deniedRoles: ["client", "operator", "inventory", "support"],
+  },
+  {
+    story: "H99 - Consultar salud técnica",
+    issue: 125,
+    tool: "ops.health.check",
+    allowedRoles: ["owner", "operator"],
+    deniedRoles: ["client", "inventory", "support"],
+  },
+  {
+    story: "H100 - Conciliar pagos",
+    issue: 126,
+    tool: "payments.reconcile.run",
+    allowedRoles: ["owner"],
+    deniedRoles: ["client", "operator", "inventory", "support"],
+  },
+];
+
 describe("tools MCP visibles por principal", () => {
   it("guest solo descubre catálogo y disponibilidad", async () => {
     await expect(listedTools(guest)).resolves.toEqual([
@@ -225,6 +306,27 @@ describe("tools MCP visibles por principal", () => {
     for (const check of checks) {
       const result = await calledTool(check.principal, check.tool);
       expect(result.error ?? result.result?.isError).toBeTruthy();
+    }
+  });
+
+  it("mantiene trazabilidad de acceso para cada historia administrativa pendiente", () => {
+    for (const story of pendingStoryRoleMatrix) {
+      expect(story.issue).toBeGreaterThan(0);
+      for (const role of story.allowedRoles) {
+        expect(expectedToolsByRole[role]).toContain(story.tool);
+      }
+      for (const role of story.deniedRoles) {
+        expect(expectedToolsByRole[role]).not.toContain(story.tool);
+      }
+    }
+  });
+
+  it("rechaza cada tool administrativa pendiente para los roles no autorizados", async () => {
+    for (const story of pendingStoryRoleMatrix) {
+      for (const role of story.deniedRoles) {
+        const result = await calledTool(rolePrincipal(role), story.tool);
+        expect(result.error ?? result.result?.isError).toBeTruthy();
+      }
     }
   });
 
