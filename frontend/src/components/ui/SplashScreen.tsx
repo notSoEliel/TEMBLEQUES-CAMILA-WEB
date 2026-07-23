@@ -23,7 +23,11 @@ export default function SplashScreen() {
           <img
             src="/logo.webp"
             alt="Tembleques Camila"
-            className="h-24 w-24 object-contain"
+            width={1636}
+            height={1725}
+            loading="eager"
+            fetchPriority="high"
+            className="h-24 w-auto object-contain"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}

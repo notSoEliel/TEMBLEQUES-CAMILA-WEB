@@ -56,7 +56,11 @@ export default function AdminLayout() {
             <img
               src="/logo.webp"
               alt="Tembleques Camila"
-              className="h-8 w-8 object-contain"
+              width={1636}
+              height={1725}
+              loading="eager"
+              fetchPriority="high"
+              className="h-8 w-auto object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
@@ -137,7 +141,11 @@ export default function AdminLayout() {
           <img
               src="/logo.webp"
             alt="Tembleques Camila"
-            className="h-7 w-7 object-contain"
+            width={1636}
+            height={1725}
+            loading="eager"
+            fetchPriority="high"
+            className="h-7 w-auto object-contain"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
