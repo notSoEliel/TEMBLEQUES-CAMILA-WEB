@@ -29,9 +29,6 @@ jobs:
           MCP_ADMIN_API_KEY: ${{ secrets.MCP_ADMIN_API_KEY }}
           MCP_CLIENT_API_KEY: ${{ secrets.MCP_CLIENT_API_KEY }}
           E2E_MCP_BACKEND_ADMIN_TOKEN: ${{ secrets.MCP_BACKEND_ADMIN_TOKEN }}
-          E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
           test -n "$E2E_STAGING_URL"
           test -n "$E2E_MCP_REMOTE_URL"
@@ -39,9 +36,6 @@ jobs:
           test -n "$MCP_ADMIN_API_KEY"
           test -n "$MCP_CLIENT_API_KEY"
           test -n "$E2E_MCP_BACKEND_ADMIN_TOKEN"
-          test -n "$E2E_CLERK_EMAIL"
-          test -n "$CLERK_SECRET_KEY"
-          test -n "$CLERK_PUBLISHABLE_KEY"
 
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
@@ -55,9 +49,7 @@ jobs:
           MCP_ADMIN_API_KEY: ${{ secrets.MCP_ADMIN_API_KEY }}
           MCP_CLIENT_API_KEY: ${{ secrets.MCP_CLIENT_API_KEY }}
           E2E_MCP_BACKEND_ADMIN_TOKEN: ${{ secrets.MCP_BACKEND_ADMIN_TOKEN }}
-          E2E_CLERK_EMAIL: ${{ secrets.E2E_CLERK_EMAIL }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+          E2E_MCP_OAUTH_TOKEN: ${{ secrets.E2E_MCP_OAUTH_TOKEN }}
         run: bunx playwright test tests/e2e/mcp-staging.spec.ts
 
       - name: Upload MCP smoke artifacts

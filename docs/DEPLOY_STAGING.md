@@ -44,6 +44,12 @@ Usar Railway para backend, base de datos y MCP; usar Vercel para frontend. Railw
 - `RATE_LIMIT_CHECKOUT_PER_MINUTE`
 - `RATE_LIMIT_ADMIN_PER_MINUTE`
 - `RATE_LIMIT_MAX_KEYS`
+- `MCP_BACKEND_ADMIN_TOKEN`
+- `MCP_BACKEND_CLIENT_TOKEN`
+- `MCP_BACKEND_MCP_TOKEN`
+- `MCP_IDENTITY_PUBLIC_KEY`
+- `MCP_IDENTITY_ISSUER=tembleques-camila-mcp`
+- `MCP_BACKEND_AUDIENCE=tembleques-camila-backend`
 - `SEED_ENABLED=true`
 - `SEED_PROFILE=staging`
 - `SEED_MODE=upsert`
@@ -60,12 +66,20 @@ El frontend no necesita variables `VITE_CLOUDINARY_*`: recibe el nombre de la nu
 ## Variables de MCP
 
 - `MCP_BACKEND_URL=https://backend-production-e696.up.railway.app`
-- `MCP_AUTH_REQUIRED=true`
+- `MCP_GUEST_ENABLED=true`
 - `MCP_ADMIN_API_KEY`
 - `MCP_CLIENT_API_KEY`
 - `MCP_BACKEND_ADMIN_TOKEN`
 - `MCP_BACKEND_CLIENT_TOKEN`
-- `MCP_CLIENT_IDENTITY=clerk`
+- `MCP_BACKEND_MCP_TOKEN`
+- `MCP_OAUTH_ENABLED=true`
+- `CLERK_SECRET_KEY`
+- `MCP_OAUTH_ISSUER`
+- `MCP_RESOURCE_URL=https://mcp-server-production-321a.up.railway.app/mcp`
+- `MCP_OAUTH_AUDIENCE=https://mcp-server-production-321a.up.railway.app/mcp`
+- `MCP_IDENTITY_PRIVATE_KEY`
+- `MCP_IDENTITY_ISSUER=tembleques-camila-mcp`
+- `MCP_BACKEND_AUDIENCE=tembleques-camila-backend`
 - `MCP_ALLOWED_ORIGIN=https://temblequescamila.vercel.app,https://frontend-navy-five-22.vercel.app`
 - `NIXPACKS_NODE_VERSION=22`
 - `NODE_ENV=production`
@@ -90,7 +104,7 @@ railway up ./mcp-server --path-as-root --service mcp-server
 railway domain list --service mcp-server
 ```
 
-El workflow `MCP Staging Smoke` requiere además los secretos de GitHub Actions `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY`. El token de sesión Clerk se obtiene durante el smoke con la cuenta QA y se utiliza únicamente en memoria para validar la identidad real del cliente.
+El workflow `MCP Staging Smoke` requiere los secretos de GitHub Actions `MCP_REMOTE_URL`, `MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY`. Si se configura `E2E_MCP_OAUTH_TOKEN`, el smoke también valida el filtrado de tools de un usuario OAuth. Los tokens se utilizan únicamente en memoria y nunca se imprimen.
 
 ## Vercel
 

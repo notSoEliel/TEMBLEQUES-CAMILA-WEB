@@ -15,6 +15,10 @@ const secureStaging = {
   STRIPE_WEBHOOK_SECRET: "whsec_stripe",
   MCP_BACKEND_ADMIN_TOKEN: "internal-admin-token",
   MCP_BACKEND_CLIENT_TOKEN: "internal-client-token",
+  MCP_BACKEND_MCP_TOKEN: "internal-mcp-token",
+  MCP_IDENTITY_PUBLIC_KEY: "public-key",
+  MCP_IDENTITY_ISSUER: "tembleques-camila-mcp",
+  MCP_BACKEND_AUDIENCE: "tembleques-camila-backend",
 };
 
 describe("configuración segura", () => {

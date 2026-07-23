@@ -37,9 +37,11 @@ El valor legacy `admin` solo se acepta como entrada de compatibilidad y se norma
 
 ## MCP remoto
 
-`MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY` son credenciales externas con scopes separados. `MCP_BACKEND_ADMIN_TOKEN` y `MCP_BACKEND_CLIENT_TOKEN` son credenciales internas distintas para que el MCP llame a Hono. En HTTP remoto, `MCP_CLIENT_IDENTITY=clerk` obliga a las tools de cliente a recibir además `X-MCP-Clerk-Token`; así una key cliente no convierte a todos los usuarios en un único usuario técnico.
+`MCP_ADMIN_API_KEY` y `MCP_CLIENT_API_KEY` son credenciales de servicio para CI e integraciones internas. `MCP_BACKEND_ADMIN_TOKEN` y `MCP_BACKEND_CLIENT_TOKEN` mantienen compatibilidad con esas identidades de máquina. Los usuarios humanos usan OAuth con Clerk; el rol se obtiene en el servidor y no mediante una cabecera enviada por el cliente.
 
-Todas las solicitudes HTTP a `/mcp`, incluidas `tools/list`, requieren Bearer cuando `MCP_AUTH_REQUIRED=true`. Las tools públicas solo omiten la identidad Clerk y los scopes administrativos; no abren el transporte.
+El endpoint `/mcp` acepta guest explícito. Sin token solo permite catálogo y disponibilidad. Una llamada guest a una tool protegida responde `401` con metadata OAuth. `MCP_AUTH_REQUIRED=false` nunca concede scopes administrativos.
+
+Las llamadas OAuth no reenvían el token de Clerk al backend. MCP utiliza una aserción EdDSA breve y el backend valida issuer, audiencia, expiración, firma y usuario antes de aplicar los permisos reales. `MCP_BACKEND_MCP_TOKEN` autentica únicamente el transporte interno entre ambos servicios.
 
 El MCP comprueba scopes antes de llamar al backend y mantiene una lista de orígenes exactos. El endpoint `/health` no devuelve URLs, flags ni presencia de secretos.
 
@@ -54,9 +56,10 @@ Las comprobaciones realizadas después del despliegue de la fase 2 fueron:
 - backend `/health`: `200`;
 - `/api/admin/dashboard` sin token: `401 AUTH_TOKEN_REQUIRED`;
 - preflight CORS desde origen no permitido: `403 ORIGIN_NOT_ALLOWED`;
-- MCP `/mcp` sin token: `401 MCP_AUTH_REQUIRED`;
+- MCP `/mcp` sin token ejecutando `tools/list`: `200` y solo dos tools públicas;
+- MCP guest ejecutando una tool administrativa: `401 MCP_OAUTH_REQUIRED`;
 - MCP con API key administrativa ejecutando `admin.dashboard.summary`: `200`;
-- MCP con API key cliente sin `X-MCP-Clerk-Token` rechazando una tool de reservas;
-- MCP con `X-MCP-Clerk-Token` ejecutando una tool sobre las reservas del usuario real;
+- MCP con API key cliente descubriendo solo las seis tools de cliente;
+- MCP OAuth con rol real y aserción MCP→backend;
 - rate limiting de autenticación: `429 RATE_LIMIT_EXCEEDED` después del límite configurado;
 - seed de staging: 12 productos, 3 reservas, 2 usuarios y 3 aceptaciones de términos.
