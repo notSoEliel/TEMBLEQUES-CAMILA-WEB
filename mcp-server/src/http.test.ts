@@ -49,7 +49,9 @@ describe("transporte HTTP MCP", () => {
     }), config);
 
     expect(response.status).toBe(401);
-    expect(response.headers.get("WWW-Authenticate")).toContain("oauth-protected-resource/mcp");
+    expect(response.headers.get("WWW-Authenticate")).toBe(
+      'Bearer resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/mcp"',
+    );
     const payload = await responsePayload(response);
     expect(payload).toMatchObject({ code: "MCP_OAUTH_REQUIRED" });
   });
