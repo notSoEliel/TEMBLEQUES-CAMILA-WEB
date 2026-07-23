@@ -217,6 +217,19 @@ Valida:
 - tools administrativas y scopes;
 - DTOs sin IP, User-Agent ni secretos;
 - limpieza de productos y reservas temporales;
-- OAuth real cuando `E2E_MCP_OAUTH_TOKEN` está configurado en staging.
+- OAuth real cuando `E2E_MCP_OAUTH_TOKEN` está configurado en staging;
+- filtrado de las seis tools de cliente;
+- creación de un borrador con identidad OAuth;
+- creación de Checkout Session sin completar el pago;
+- cancelación de la reserva pendiente;
+- comprobación de que la reserva temporal no queda activa.
+
+### Smoke OAuth de cliente
+
+El test OAuth se activa únicamente cuando existe `E2E_MCP_OAUTH_TOKEN`. El token debe ser temporal, pertenecer a una cuenta de staging y entregarse mediante el gestor de secretos o el entorno local protegido. Se utiliza solo en memoria y no se guarda en el repositorio, artefactos, logs ni issues.
+
+El flujo no introduce datos de tarjeta ni abre Checkout. Comprueba que la identidad OAuth pueda consultar catálogo y disponibilidad, crear una reserva pendiente propia, generar una Checkout Session y cancelar la reserva antes de cualquier pago. Si la creación ocurre y un paso posterior falla, el test intenta cancelar la reserva en el bloque de limpieza; una limpieza fallida debe marcar el smoke como fallido.
+
+Esta prueba complementa la validación con API keys de servicio. La API key demuestra compatibilidad máquina-a-máquina; OAuth demuestra identidad humana, scopes solicitados y pertenencia de la reserva al usuario autenticado. Ninguna de las dos pruebas sustituye al E2E de Stripe que confirma el pago y el webhook.
 
 Antes de cerrar H83–H100 se exige CI verde, typecheck, pruebas, deployment exitoso, smoke remoto y evidencia enlazada entre historia, issue, PR, commit, workflow y deployment. H100 / #126 permanece condicionado a H45 / #54.

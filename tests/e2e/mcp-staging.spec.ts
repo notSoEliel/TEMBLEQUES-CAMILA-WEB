@@ -43,6 +43,11 @@ function key(name: "admin" | "client"): string {
   return requireEnvironment(name === "admin" ? "MCP_ADMIN_API_KEY" : "MCP_CLIENT_API_KEY");
 }
 
+function optionalEnvironment(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+}
+
 function adminBackendHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${requireEnvironment("E2E_MCP_BACKEND_ADMIN_TOKEN")}` };
 }
@@ -267,8 +272,106 @@ test.describe("MCP remoto de staging", () => {
     }
   });
 
+  test("OAuth de cliente valida el ciclo de reserva sin pago", async ({ request }) => {
+    const oauthToken = optionalEnvironment("E2E_MCP_OAUTH_TOKEN");
+    test.skip(!oauthToken, "Requiere E2E_MCP_OAUTH_TOKEN temporal y seguro.");
+    if (!oauthToken) return;
+
+    const productResponse = await request.get(`${backendUrl()}/api/products?page=1&limit=50`);
+    expect(productResponse.ok()).toBeTruthy();
+    const products = await productResponse.json() as ProductResponse;
+    const product = products.data.find((candidate) =>
+      candidate.variants.some((variant) => !variant.in_maintenance && variant.stock > 0),
+    );
+    if (!product) throw new Error("No hay producto semilla disponible para el smoke OAuth de MCP.");
+    const variant = product.variants.find((candidate) => !candidate.in_maintenance && candidate.stock > 0);
+    if (!variant) throw new Error("No hay variante disponible para el smoke OAuth de MCP.");
+
+    const clientTools = await listTools(request, oauthToken);
+    expect(clientTools).toEqual(expect.arrayContaining([
+      "catalog.products.search",
+      "catalog.availability.check",
+      "rentals.draft.create",
+      "payments.checkout.create",
+      "rentals.mine.list",
+      "rentals.pending.cancel",
+    ]));
+    expect(clientTools).not.toContain("admin.dashboard.summary");
+
+    const startDate = futureDate(30);
+    const endDate = futureDate(31);
+    let draftRentalId: string | undefined;
+    let cancelled = false;
+
+    try {
+      await mcpCall(request, oauthToken, "catalog.products.search", {
+        search: product.name,
+        page: 1,
+        limit: 10,
+      });
+      await mcpCall(request, oauthToken, "catalog.availability.check", {
+        productId: product._id,
+        from: startDate,
+        to: endDate,
+      });
+
+      const draft = await mcpCall(request, oauthToken, "rentals.draft.create", {
+        productId: product._id,
+        selectedSize: variant.size,
+        startDate,
+        endDate,
+        termsAccepted: true,
+        paymentType: "reservation",
+      });
+      const draftData = isRecord(draft.data) ? draft.data : {};
+      const rental = isRecord(draftData.rental) ? draftData.rental : undefined;
+      draftRentalId = typeof rental?._id === "string" ? rental._id : undefined;
+      expect(draftRentalId).toBeTruthy();
+      expect(rental?.status).toBe("pending");
+      if (!draftRentalId) throw new Error("La reserva OAuth no devolvió un identificador.");
+
+      const ownReservations = await mcpCall(request, oauthToken, "rentals.mine.list", {
+        view: "active",
+        page: 1,
+        limit: 10,
+      });
+      const ownData = isRecord(ownReservations.data) ? ownReservations.data : {};
+      const ownRows = Array.isArray(ownData.data) ? ownData.data : [];
+      expect(ownRows.some((row) => isRecord(row) && row._id === draftRentalId)).toBeTruthy();
+
+      const checkout = await mcpCall(request, oauthToken, "payments.checkout.create", {
+        rentalId: draftRentalId,
+        paymentType: "reservation",
+      });
+      const checkoutData = isRecord(checkout.data) ? checkout.data : {};
+      expect(typeof checkoutData.url).toBe("string");
+      expect(typeof checkoutData.sessionId).toBe("string");
+
+      const cancelledRental = await mcpCall(request, oauthToken, "rentals.pending.cancel", {
+        rentalId: draftRentalId,
+      });
+      const cancelledData = isRecord(cancelledRental.data) ? cancelledRental.data : {};
+      const cancelledRecord = isRecord(cancelledData.rental) ? cancelledData.rental : cancelledData;
+      expect(cancelledRecord.status).toBe("cancelled");
+      cancelled = true;
+
+      const remaining = await mcpCall(request, oauthToken, "rentals.mine.list", {
+        view: "active",
+        page: 1,
+        limit: 10,
+      });
+      const remainingData = isRecord(remaining.data) ? remaining.data : {};
+      const remainingRows = Array.isArray(remainingData.data) ? remainingData.data : [];
+      expect(remainingRows.some((row) => isRecord(row) && row._id === draftRentalId)).toBeFalsy();
+    } finally {
+      if (draftRentalId && !cancelled) {
+        await mcpCall(request, oauthToken, "rentals.pending.cancel", { rentalId: draftRentalId });
+      }
+    }
+  });
+
   test("OAuth remoto filtra tools por rol real", async ({ request }) => {
-    const oauthToken = process.env.E2E_MCP_OAUTH_TOKEN;
+    const oauthToken = optionalEnvironment("E2E_MCP_OAUTH_TOKEN");
     test.skip(!oauthToken, "Requiere E2E_MCP_OAUTH_TOKEN configurado en staging.");
     const tools = await listTools(request, oauthToken);
     expect(tools).toContain("catalog.products.search");
