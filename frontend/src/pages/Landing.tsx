@@ -26,7 +26,7 @@ import {
 import { useI18n } from "@/i18n";
 import { settingsApi } from "@/services/api";
 import type { ICategoryConfig } from "@/types";
-import { getLocalizedText } from "@/lib/utils";
+import { getLocalizedCategoryLabel } from "@/lib/utils";
 
 export default function Landing() {
   const { t, language } = useI18n();
@@ -68,9 +68,7 @@ export default function Landing() {
   ];
   const getCategoryName = (slug: string, fallback: string): string => {
     const configuredCategory = categoryConfigs.find((category) => category.id === slug);
-    return configuredCategory
-      ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
-      : fallback;
+    return getLocalizedCategoryLabel(slug, configuredCategory, language, fallback);
   };
   const steps = [
     { icon: Calendar, title: t("landing.step1Title"), description: t("landing.step1Text"), number: "01" },
