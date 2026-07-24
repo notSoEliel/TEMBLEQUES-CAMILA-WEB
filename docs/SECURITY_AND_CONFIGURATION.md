@@ -60,7 +60,7 @@ Las comprobaciones realizadas después del despliegue de la fase 2 fueron:
 - preflight CORS desde origen no permitido: `403 ORIGIN_NOT_ALLOWED`;
 - MCP `/mcp` sin token ejecutando `tools/list`: `200` y solo dos tools públicas;
 - MCP guest ejecutando una tool administrativa: `401 MCP_OAUTH_REQUIRED`;
-- MCP con API key administrativa ejecutando `admin.dashboard.summary`: `200`;
+- MCP con API key administrativa ejecutando `admin_dashboard_summary`: `200`;
 - MCP con API key cliente descubriendo solo las seis tools de cliente;
 - MCP OAuth con rol real y aserción MCP→backend;
 - rate limiting de autenticación: `429 RATE_LIMIT_EXCEEDED` después del límite configurado;

@@ -39,24 +39,24 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const PAYMENT_TIMEOUT_MS = 30_000;
 
 const TOOL_SCOPES: Readonly<Record<string, McpScope>> = {
-  "admin.dashboard.summary": "dashboard.read",
-  "catalog.products.search": "catalog.read",
-  "catalog.availability.check": "availability.read",
-  "rentals.draft.create": "rentals.create",
-  "payments.checkout.create": "payments.create",
-  "rentals.mine.list": "rentals.read.own",
-  "rentals.pending.cancel": "rentals.cancel.own",
-  "admin.rentals.list": "reservations.read",
-  "admin.rentals.status.update": "reservations.write",
-  "admin.calendar.range": "reservations.read",
-  "admin.products.upsert": "products.write",
-  "admin.inventory.variantMaintenance.set": "maintenance.write",
-  "admin.users.search": "users.read",
-  "admin.users.detail": "users.read",
-  "reports.operations.generate": "reports.read",
-  "security.audit.search": "audit.read",
-  "ops.health.check": "observability.read",
-  "payments.reconcile.run": "payments.reconcile",
+  "admin_dashboard_summary": "dashboard.read",
+  "catalog_products_search": "catalog.read",
+  "catalog_availability_check": "availability.read",
+  "rentals_draft_create": "rentals.create",
+  "payments_checkout_create": "payments.create",
+  "rentals_mine_list": "rentals.read.own",
+  "rentals_pending_cancel": "rentals.cancel.own",
+  "admin_rentals_list": "reservations.read",
+  "admin_rentals_status_update": "reservations.write",
+  "admin_calendar_range": "reservations.read",
+  "admin_products_upsert": "products.write",
+  "admin_inventory_variant_maintenance_set": "maintenance.write",
+  "admin_users_search": "users.read",
+  "admin_users_detail": "users.read",
+  "reports_operations_generate": "reports.read",
+  "security_audit_search": "audit.read",
+  "ops_health_check": "observability.read",
+  "payments_reconcile_run": "payments.reconcile",
 };
 
 function toolIsVisible(name: string, principal: McpPrincipal): boolean {
@@ -293,7 +293,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
   const api = createBackendApi(effectivePrincipal);
   const server = new McpServer({ name: "tembleques-camila", version: "1.1.0" });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.dashboard.summary", {
+  registerVisibleTool(server, effectivePrincipal, "admin_dashboard_summary", {
     title: "Resumen administrativo",
     description: "Consulta KPIs agregados del dashboard administrativo. Requiere dashboard.read.",
     inputSchema: {},
@@ -303,7 +303,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "catalog.products.search", {
+  registerVisibleTool(server, effectivePrincipal, "catalog_products_search", {
     title: "Buscar productos",
     description: "Busca productos del catálogo por texto, categoría, talla, precio y fechas.",
     inputSchema: {
@@ -323,7 +323,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactPublicProducts(result.data), result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "catalog.availability.check", {
+  registerVisibleTool(server, effectivePrincipal, "catalog_availability_check", {
     title: "Consultar disponibilidad",
     description: "Consulta fechas reservadas o bloqueadas de un producto.",
     inputSchema: {
@@ -337,7 +337,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactPublicAvailability(result.data), result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "rentals.draft.create", {
+  registerVisibleTool(server, effectivePrincipal, "rentals_draft_create", {
     title: "Crear reserva pendiente",
     description: "Crea una reserva pendiente para el usuario Clerk autenticado. Requiere consentimiento explícito.",
     inputSchema: {
@@ -358,7 +358,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "payments.checkout.create", {
+  registerVisibleTool(server, effectivePrincipal, "payments_checkout_create", {
     title: "Crear checkout",
     description: "Crea una sesión de Stripe para reservas propias pendientes.",
     inputSchema: {
@@ -377,7 +377,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "rentals.mine.list", {
+  registerVisibleTool(server, effectivePrincipal, "rentals_mine_list", {
     title: "Listar mis reservas",
     description: "Lista reservas del usuario Clerk autenticado.",
     inputSchema: {
@@ -391,7 +391,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "rentals.pending.cancel", {
+  registerVisibleTool(server, effectivePrincipal, "rentals_pending_cancel", {
     title: "Cancelar reserva pendiente",
     description: "Cancela únicamente una reserva propia en estado pending y no genera reembolso.",
     inputSchema: { rentalId: z.string().min(1) },
@@ -401,7 +401,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.rentals.list", {
+  registerVisibleTool(server, effectivePrincipal, "admin_rentals_list", {
     title: "Listar reservas administrativas",
     description: "Lista reservas administrativas con filtros por estado, texto y paginación.",
     inputSchema: {
@@ -417,7 +417,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.rentals.status.update", {
+  registerVisibleTool(server, effectivePrincipal, "admin_rentals_status_update", {
     title: "Actualizar estado de reserva",
     description: "Actualiza el estado operativo aplicando las transiciones de negocio y auditando la acción.",
     inputSchema: {
@@ -433,7 +433,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.calendar.range", {
+  registerVisibleTool(server, effectivePrincipal, "admin_calendar_range", {
     title: "Consultar calendario administrativo",
     description: "Consulta eventos de reservas por rango de fechas.",
     inputSchema: {
@@ -446,7 +446,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.products.upsert", {
+  registerVisibleTool(server, effectivePrincipal, "admin_products_upsert", {
     title: "Crear o editar producto",
     description: "Crea o edita un producto con esquema explícito y validaciones de inventario.",
     inputSchema: {
@@ -463,7 +463,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.inventory.variantMaintenance.set", {
+  registerVisibleTool(server, effectivePrincipal, "admin_inventory_variant_maintenance_set", {
     title: "Marcar variante en mantenimiento",
     description: "Activa o desactiva el mantenimiento permanente de una variante, separado de los bloqueos temporales.",
     inputSchema: {
@@ -483,7 +483,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.users.search", {
+  registerVisibleTool(server, effectivePrincipal, "admin_users_search", {
     title: "Buscar clientes",
     description: "Busca clientes por nombre, correo o teléfono con paginación.",
     inputSchema: {
@@ -497,7 +497,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "admin.users.detail", {
+  registerVisibleTool(server, effectivePrincipal, "admin_users_detail", {
     title: "Detalle de cliente",
     description: "Consulta perfil, estadísticas e historial paginado con datos sensibles filtrados.",
     inputSchema: {
@@ -521,7 +521,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     }, user.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "reports.operations.generate", {
+  registerVisibleTool(server, effectivePrincipal, "reports_operations_generate", {
     title: "Generar reporte operativo",
     description: "Genera reportes de inventario y rotación en JSON, CSV o resumen textual.",
     inputSchema: {
@@ -542,7 +542,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(result.data, result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "security.audit.search", {
+  registerVisibleTool(server, effectivePrincipal, "security_audit_search", {
     title: "Consultar auditoría",
     description: "Consulta el registro global de acciones administrativas con filtros y paginación.",
     inputSchema: {
@@ -558,7 +558,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactAudit(result.data), result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "ops.health.check", {
+  registerVisibleTool(server, effectivePrincipal, "ops_health_check", {
     title: "Salud técnica",
     description: "Consulta observabilidad protegida de backend y dependencias configuradas.",
     inputSchema: {},
@@ -568,7 +568,7 @@ export function createTemblequesMcpServer(principal?: McpPrincipal): McpServer {
     return response(redactObservability(result.data), result.requestId);
   });
 
-  registerVisibleTool(server, effectivePrincipal, "payments.reconcile.run", {
+  registerVisibleTool(server, effectivePrincipal, "payments_reconcile_run", {
     title: "Conciliación de pagos",
     description: "Compara reservas internas, Checkout Sessions, PaymentIntents y webhooks de Stripe.",
     inputSchema: {},
