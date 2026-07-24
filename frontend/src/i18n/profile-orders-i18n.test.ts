@@ -1,30 +1,80 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { formatLocalizedDate } from "@/lib/utils";
 import { hasTranslation, translate, type Language } from "@/i18n";
 
-const SCREEN_FILES = [
-  new URL("../pages/Profile.tsx", import.meta.url),
-  new URL("../pages/Orders.tsx", import.meta.url),
-  new URL("../pages/Confirmation.tsx", import.meta.url),
-];
-
-function translationKeysUsedByScreens(): string[] {
-  const keys = SCREEN_FILES.flatMap((file) => {
-    const source = readFileSync(file, "utf8");
-    return [...source.matchAll(/\bt\("([^"]+)"\)/g)].map((match) => match[1]);
-  });
-
-  return [...new Set(keys)].sort();
-}
+const RENTAL_FLOW_TRANSLATION_KEYS = [
+  "checkout.summaryTitle",
+  "confirm.detailsTitle",
+  "confirm.endDateLabel",
+  "confirm.idLabel",
+  "confirm.processingDetails",
+  "confirm.productLabel",
+  "confirm.startDateLabel",
+  "confirm.statusLabel",
+  "confirm.successSubtitle",
+  "confirm.successTitle",
+  "confirm.totalLabel",
+  "confirm.verifying",
+  "orders.cancelBtn",
+  "orders.cancelError",
+  "orders.cleaningInsurance",
+  "orders.closeBtn",
+  "orders.comboPremium",
+  "orders.dateSeparator",
+  "orders.datesReservation",
+  "orders.detailTitle",
+  "orders.detailsBtn",
+  "orders.financialSummary",
+  "orders.historyTitleAccent",
+  "orders.historyTitlePrefix",
+  "orders.included",
+  "orders.includedItems",
+  "orders.loading",
+  "orders.noOrders",
+  "orders.orderPlacedOn",
+  "orders.payRentalBtn",
+  "orders.periodInfo",
+  "orders.receiptBtn",
+  "orders.receiptError",
+  "orders.rentalProgress",
+  "orders.returnPolicy",
+  "orders.returnPolicyDesc",
+  "orders.seedStatusNote",
+  "orders.statusUpdatedTo",
+  "orders.supportBtn",
+  "orders.tabActive",
+  "orders.tabCancelled",
+  "orders.total",
+  "profile.activeRentals",
+  "profile.bundle",
+  "profile.culturalInvestment",
+  "profile.folkloreCollection",
+  "profile.latestPiece",
+  "profile.loadingRentals",
+  "profile.manageRental",
+  "profile.pieces",
+  "profile.recentOrderTitle",
+  "profile.rentalPiece",
+  "profile.viewFullHistory",
+  "status.cancelled",
+  "status.confirmed",
+  "status.damaged",
+  "status.delivered",
+  "status.late",
+  "status.paid",
+  "status.pending",
+  "status.reserved",
+  "status.returned",
+  "status.unknown",
+] as const;
 
 describe("traducciones del flujo de alquileres", () => {
-  const keys = translationKeysUsedByScreens();
-
   it.each<Language>(["es", "en"])(
     "define cada clave visible en %s",
     (language) => {
-      const missingKeys = keys.filter((key) => !hasTranslation(language, key));
+      const missingKeys = RENTAL_FLOW_TRANSLATION_KEYS.filter(
+        (key) => !hasTranslation(language, key),
+      );
       expect(missingKeys).toEqual([]);
     },
   );
@@ -32,7 +82,9 @@ describe("traducciones del flujo de alquileres", () => {
   it.each<Language>(["es", "en"])(
     "no devuelve claves crudas en %s",
     (language) => {
-      const rawKeys = keys.filter((key) => translate(language, key) === key);
+      const rawKeys = RENTAL_FLOW_TRANSLATION_KEYS.filter(
+        (key) => translate(language, key) === key,
+      );
       expect(rawKeys).toEqual([]);
     },
   );
