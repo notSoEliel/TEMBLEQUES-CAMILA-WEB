@@ -8,6 +8,7 @@ import { X, Eye, Calendar, Package, ShoppingBag, ArrowLeft } from "lucide-react"
 import type { SizeVariant } from "@/components/SizeManager";
 import { useI18n } from "@/i18n";
 import { getLocalizedText } from "@/lib/utils";
+import type { ICategoryConfig } from "@/types";
 
 const CATEGORY_LABELS: Record<string, string> = {
   pollera: "Polleras",
@@ -31,11 +32,12 @@ interface ProductPreviewData {
 
 interface ProductPreviewProps {
   product: ProductPreviewData;
+  categories?: ICategoryConfig[];
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function ProductPreview({ product, isOpen, onClose }: ProductPreviewProps) {
+export default function ProductPreview({ product, categories = [], isOpen, onClose }: ProductPreviewProps) {
   const { language } = useI18n();
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -171,9 +173,13 @@ export default function ProductPreview({ product, isOpen, onClose }: ProductPrev
                   <div>
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <div className="flex flex-wrap gap-1">
-                        {product.category.map((cat) => (
-                          <Badge key={cat} variant="outline">{CATEGORY_LABELS[cat] || cat}</Badge>
-                        ))}
+                        {product.category.map((cat) => {
+                          const configuredCategory = categories.find((item) => item.id === cat);
+                          const label = configuredCategory
+                            ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
+                            : CATEGORY_LABELS[cat] || cat;
+                          return <Badge key={cat} variant="outline">{label}</Badge>;
+                        })}
                       </div>
                       {availableVariants.length > 0 ? (
                         <Badge variant="default">Disponible</Badge>

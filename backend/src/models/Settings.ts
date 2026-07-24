@@ -4,6 +4,7 @@ export interface ICategoryConfig {
   _id?: Types.ObjectId;
   id: string;
   label: string;
+  label_en?: string;
 }
 
 export interface ISizeGroupConfig {
@@ -20,6 +21,7 @@ export interface ISettings extends Document {
 const categorySchema = new Schema<ICategoryConfig>({
   id: { type: String, required: true },
   label: { type: String, required: true },
+  label_en: { type: String, trim: true },
 });
 
 const sizeGroupSchema = new Schema<ISizeGroupConfig>({

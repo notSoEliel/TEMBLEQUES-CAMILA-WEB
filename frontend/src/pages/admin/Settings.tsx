@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, Info, Lock, Unlock } from "lucide-react";
+import { Plus, Trash2, Loader2, ChevronUp, ChevronDown, Info, Lock, Unlock, Languages } from "lucide-react";
 import { useErrorModal } from "@/components/ErrorModal";
 import {
   Pagination,
@@ -25,6 +25,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 interface Category {
   id: string;
   label: string;
+  label_en?: string;
 }
 
 interface SizeGroup {
@@ -278,13 +279,25 @@ export default function AdminSettings() {
                       </Button>
                     </div>
                     <div className="flex-1 space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">Nombre Público</Label>
+                          <Label className="text-xs">Nombre público (ES)</Label>
                           <Input 
                             value={cat.label} 
                             onChange={e => updateCategory(globalIndex, "label", e.target.value)} 
                             className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            <Languages className="h-3.5 w-3.5 text-primary" />
+                            Nombre público (EN)
+                          </Label>
+                          <Input
+                            value={cat.label_en || ""}
+                            onChange={e => updateCategory(globalIndex, "label_en", e.target.value)}
+                            className="h-9"
+                            placeholder="Visible al cambiar a English"
                           />
                         </div>
                         <div className="space-y-1">
@@ -320,6 +333,9 @@ export default function AdminSettings() {
                           )}
                         </div>
                       </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        El ID permanece estable para conservar los productos y filtros guardados. Solo cambia el texto visible.
+                      </p>
                     </div>
                     <ConfirmModal
                       title="Eliminar Categoría"

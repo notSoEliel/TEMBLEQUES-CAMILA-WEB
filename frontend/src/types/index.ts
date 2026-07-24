@@ -84,6 +84,7 @@ export interface IUserAudit {
 export interface ICategoryConfig {
   id: string;
   label: string;
+  label_en?: string;
 }
 
 export interface ISizeGroupConfig {

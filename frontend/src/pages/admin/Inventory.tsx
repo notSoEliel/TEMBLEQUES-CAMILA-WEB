@@ -21,6 +21,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { getLocalizedText } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useErrorModal } from "@/components/ErrorModal";
+import { useI18n } from "@/i18n";
 
 interface LowStockItem {
   _id: string;
@@ -55,6 +57,12 @@ interface ProductForm {
   };
 }
 
+interface CategoryOption {
+  id: string;
+  label: string;
+  label_en?: string;
+}
+
 const emptyForm: ProductForm = {
   name: "", category: [], description: "", rental_price: 0,
   variants: [], images: [],
@@ -63,6 +71,7 @@ const emptyForm: ProductForm = {
 
 export default function AdminInventory() {
   const { token } = useAuth();
+  const { language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
@@ -146,7 +155,7 @@ export default function AdminInventory() {
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
 
-  const [categories, setCategories] = useState<{id: string, label: string}[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [sizeGroups, setSizeGroups] = useState<{label: string, sizes: string[]}[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -571,11 +580,17 @@ export default function AdminInventory() {
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           {Array.isArray(product.category) ? product.category.map((catId: string) => (
                             <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
-                              {categories.find(c => c.id === catId)?.label || catId}
+                              {(() => {
+                                const category = categories.find((item) => item.id === catId);
+                                return category ? getLocalizedText(category.label, category.label_en, language) : catId;
+                              })()}
                             </Badge>
                           )) : (
                             <Badge variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
-                              {categories.find(c => c.id === product.category)?.label || product.category}
+                              {(() => {
+                                const category = categories.find((item) => item.id === product.category);
+                                return category ? getLocalizedText(category.label, category.label_en, language) : product.category;
+                              })()}
                             </Badge>
                           )}
                           <span className="text-sm text-primary font-bold ml-1">
@@ -685,6 +700,7 @@ export default function AdminInventory() {
       {previewProduct && (
         <ProductPreview
           product={previewProduct}
+          categories={categories}
           isOpen={previewOpen}
           onClose={() => { setPreviewOpen(false); setPreviewProduct(null); }}
         />
