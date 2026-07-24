@@ -7,17 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { X, Eye, Calendar, Package, ShoppingBag, ArrowLeft } from "lucide-react";
 import type { SizeVariant } from "@/components/SizeManager";
 import { useI18n } from "@/i18n";
-import { getLocalizedText } from "@/lib/utils";
+import { getLocalizedCategoryLabel, getLocalizedText } from "@/lib/utils";
 import type { ICategoryConfig } from "@/types";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  pollera: "Polleras",
-  vestuario_masculino: "Vestuario Masculino",
-  infantil: "Infantil",
-  tembleques: "Tembleques",
-  accesorios: "Accesorios",
-  paquete_completo: "Paquetes Completos",
-};
 
 interface ProductPreviewData {
   name: string;
@@ -175,9 +166,7 @@ export default function ProductPreview({ product, categories = [], isOpen, onClo
                       <div className="flex flex-wrap gap-1">
                         {product.category.map((cat) => {
                           const configuredCategory = categories.find((item) => item.id === cat);
-                          const label = configuredCategory
-                            ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
-                            : CATEGORY_LABELS[cat] || cat;
+                          const label = getLocalizedCategoryLabel(cat, configuredCategory, language);
                           return <Badge key={cat} variant="outline">{label}</Badge>;
                         })}
                       </div>

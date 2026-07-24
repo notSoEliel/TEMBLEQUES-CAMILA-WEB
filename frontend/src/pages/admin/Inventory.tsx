@@ -21,7 +21,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
-import { getLocalizedText } from "@/lib/utils";
+import { getLocalizedCategoryLabel, getLocalizedText } from "@/lib/utils";
 import { useSearchParams } from "react-router-dom";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
@@ -586,14 +586,14 @@ export default function AdminInventory() {
                             <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
                               {(() => {
                                 const category = categories.find((item) => item.id === catId);
-                                return category ? getLocalizedText(category.label, category.label_en, language) : catId;
+                                return getLocalizedCategoryLabel(catId, category, language);
                               })()}
                             </Badge>
                           )) : (
                             <Badge variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
                               {(() => {
                                 const category = categories.find((item) => item.id === product.category);
-                                return category ? getLocalizedText(category.label, category.label_en, language) : product.category;
+                                return getLocalizedCategoryLabel(product.category, category, language);
                               })()}
                             </Badge>
                           )}

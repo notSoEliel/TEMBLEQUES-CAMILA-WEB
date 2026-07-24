@@ -17,3 +17,30 @@ export function getLocalizedText(esText: string, enText: string | undefined | nu
   }
   return esText;
 }
+
+const DEFAULT_CATEGORY_LABELS: Record<string, { es: string; en: string }> = {
+  pollera: { es: "Polleras", en: "Polleras" },
+  vestuario_masculino: { es: "Vestuario Masculino", en: "Men's Attire" },
+  infantil: { es: "Infantil", en: "Children's" },
+  tembleques: { es: "Tembleques", en: "Tembleques" },
+  accesorios: { es: "Accesorios", en: "Accessories" },
+  paquete_completo: { es: "Paquetes Completos", en: "Complete Sets" },
+};
+
+interface CategoryLabelConfig {
+  label?: string | null;
+  label_en?: string | null;
+}
+
+export function getLocalizedCategoryLabel(
+  categoryId: string,
+  category: CategoryLabelConfig | undefined,
+  currentLang: string,
+  fallbackLabel?: string,
+): string {
+  const defaults = DEFAULT_CATEGORY_LABELS[categoryId];
+  const spanishLabel = category?.label?.trim() || defaults?.es || fallbackLabel || categoryId;
+  const englishLabel = category?.label_en?.trim() || defaults?.en || spanishLabel;
+
+  return currentLang === "en" ? englishLabel : spanishLabel;
+}

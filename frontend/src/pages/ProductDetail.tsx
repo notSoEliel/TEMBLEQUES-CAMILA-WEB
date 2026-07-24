@@ -14,7 +14,7 @@ import { useErrorModal } from "@/components/ErrorModal";
 import ErrorPage from "@/pages/ErrorPage";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
-import { getLocalizedText } from "@/lib/utils";
+import { getLocalizedCategoryLabel, getLocalizedText } from "@/lib/utils";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -56,9 +56,7 @@ export default function ProductDetail() {
 
   const getCategoryLabel = (categoryId: string): string => {
     const configuredCategory = categories.find((category) => category.id === categoryId);
-    return configuredCategory
-      ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
-      : categoryLabels[categoryId] || categoryId;
+    return getLocalizedCategoryLabel(categoryId, configuredCategory, language, categoryLabels[categoryId]);
   };
 
   if (loading) {
