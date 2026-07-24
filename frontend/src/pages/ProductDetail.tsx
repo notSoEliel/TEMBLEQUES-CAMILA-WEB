@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { productsApi } from "@/services/api";
+import { productsApi, settingsApi } from "@/services/api";
+import type { ICategoryConfig } from "@/types";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export default function ProductDetail() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [calendarConflict, setCalendarConflict] = useState(false);
+  const [categories, setCategories] = useState<ICategoryConfig[]>([]);
   
   const { items, addItem, getAvailableStock } = useCart();
   const { errorModal, showError } = useErrorModal();
@@ -44,12 +46,20 @@ export default function ProductDetail() {
 
   useEffect(() => {
     if (id) {
-      productsApi.get(id).then((data) => {
-        setProduct(data.product);
+      Promise.all([productsApi.get(id), settingsApi.get()]).then(([productResponse, settingsResponse]) => {
+        setProduct(productResponse.product);
+        setCategories(settingsResponse.settings.categories || []);
         setLoading(false);
       }).catch(() => setLoading(false));
     }
   }, [id]);
+
+  const getCategoryLabel = (categoryId: string): string => {
+    const configuredCategory = categories.find((category) => category.id === categoryId);
+    return configuredCategory
+      ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
+      : categoryLabels[categoryId] || categoryId;
+  };
 
   if (loading) {
     return (
@@ -202,7 +212,9 @@ export default function ProductDetail() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <Badge variant="outline">{categoryLabels[product.category]}</Badge>
+              {(Array.isArray(product.category) ? product.category : [product.category]).map((categoryId: string) => (
+                <Badge key={categoryId} variant="outline">{getCategoryLabel(categoryId)}</Badge>
+              ))}
               {isAvailable ? (
                 <Badge variant="default">{t("product.availLabel")}</Badge>
               ) : (

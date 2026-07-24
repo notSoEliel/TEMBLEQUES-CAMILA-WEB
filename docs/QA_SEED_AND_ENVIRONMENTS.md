@@ -16,7 +16,13 @@ Cada ambiente usa una base de datos distinta. El seed nunca se ejecuta contra pr
 
 Los productos se identifican por `seed_key` y las reservas por `fixture_key`. Esto evita depender de nombres o de ObjectId generados por MongoDB.
 
-- `upsert`: crea o actualiza únicamente las fixtures conocidas; no borra productos reales.
+### Imágenes y contenido del catálogo
+
+Las imágenes, nombres, traducciones, descripciones, precios, categorías, tallas, cantidades y configuración de depósito de `backend/src/seed.ts` reflejan el catálogo vigente de staging y sirven como datos iniciales para productos nuevos. El seeder no sobrescribe ningún producto existente en modo `upsert`; por tanto, conserva también las fotografías reales alojadas en Cloudinary y cualquier edición realizada desde el panel administrativo.
+
+El perfil `ci` parte normalmente de una base limpia y utiliza estos mismos 12 productos para mantener los contratos de disponibilidad y reservas reproducibles. El seeder no debe utilizarse para actualizar el catálogo operativo.
+
+- `upsert`: crea las fixtures que no existen y deja intactos los productos existentes; no borra ni actualiza productos reales.
 - `reset`: elimina únicamente el namespace semilla y lo reconstruye. Es el modo recomendado para CI.
 - `SEED_PRUNE=true`: elimina fixtures semilla obsoletas que ya no estén en el catálogo actual. No debe activarse en una base compartida con datos operativos sin revisar primero el alcance.
 
