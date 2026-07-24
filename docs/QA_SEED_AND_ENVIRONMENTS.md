@@ -16,6 +16,12 @@ Cada ambiente usa una base de datos distinta. El seed nunca se ejecuta contra pr
 
 Los productos se identifican por `seed_key` y las reservas por `fixture_key`. Esto evita depender de nombres o de ObjectId generados por MongoDB.
 
+### Imágenes del catálogo
+
+Las imágenes definidas en `backend/src/seed.ts` son el fallback reproducible de stock mediante `picsum.photos`. En modo `upsert`, el seeder busca primero las imágenes existentes del producto y conserva las URLs válidas de Cloudinary cuando están disponibles. Esto permite que las bases local, demo y staging reutilicen sus propias fotografías reales sin copiar datos entre ambientes.
+
+Si no existe una imagen Cloudinary para un producto, el seeder conserva las imágenes de stock del fixture. El perfil `ci` parte normalmente de una base limpia, por lo que sus pruebas siguen siendo deterministas y no dependen de Cloudinary. El seeder continúa gestionando exactamente los 12 productos definidos en el fixture.
+
 - `upsert`: crea o actualiza únicamente las fixtures conocidas; no borra productos reales.
 - `reset`: elimina únicamente el namespace semilla y lo reconstruye. Es el modo recomendado para CI.
 - `SEED_PRUNE=true`: elimina fixtures semilla obsoletas que ya no estén en el catálogo actual. No debe activarse en una base compartida con datos operativos sin revisar primero el alcance.
