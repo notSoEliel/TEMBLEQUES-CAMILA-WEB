@@ -5,7 +5,12 @@ import { Rental } from "../models/Rental.js";
 import { createRental } from "../services/rental.js";
 import { AppError } from "../lib/errors.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
-import { isStripeConfigured } from "../services/stripe.js";
+import { calculateCancellationDecision } from "../services/cancellation-policy.js";
+import { createRentalRefund } from "../services/refunds.js";
+import { generatePaymentReceiptPdf } from "../services/receipts.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "../services/notifications.js";
+import { structuredLog } from "../services/observability.js";
 
 const rentals = new Hono<{ Variables: AuthVariables }>();
 
@@ -96,46 +101,6 @@ rentals.get("/my", async (c) => {
     filter.status = { $ne: "cancelled" };
   }
 
-  // PROACTIVE SYNC: Check for pending rentals that might have been paid (legacy/limbo data)
-  // Only check rentals that have a stripe_session_id and are still pending
-  const pendingWithSession = await Rental.find({
-    user_id: user._id,
-    status: "pending",
-    stripe_session_id: { $exists: true, $ne: null }
-  });
-
-  if (pendingWithSession.length > 0 && isStripeConfigured()) {
-    try {
-      const { getStripeClient } = await import("../services/stripe.js");
-      const stripe = await getStripeClient();
-      
-      // Process groups first to be efficient
-      const groupIds = [...new Set(pendingWithSession.map(r => r.order_group_id).filter(id => !!id))];
-      
-      for (const groupId of groupIds) {
-        // Find session by searching Stripe (or retrieving by ID from first rental)
-        const firstRental = pendingWithSession.find(r => r.order_group_id === groupId);
-        if (firstRental?.stripe_session_id) {
-          const session = await stripe.checkout.sessions.retrieve(firstRental.stripe_session_id);
-          if (session.payment_status === "paid") {
-             // Force update all rentals in this group
-             await Rental.updateMany(
-               { order_group_id: groupId },
-               { 
-                 $set: { 
-                   status: firstRental.payment_type === "full" ? "paid" : "reserved",
-                   payment_status: "completed"
-                 } 
-               }
-             );
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Sync error in /my:", err);
-    }
-  }
-
   const [myRentals, total] = await Promise.all([
     Rental.find(filter)
       .populate("product_id", "name category images rental_price variants")
@@ -146,6 +111,55 @@ rentals.get("/my", async (c) => {
   ]);
 
   return c.json(createPaginatedResponse(myRentals, total, page, limit));
+});
+
+// POST /api/rentals/:id/cancel-pending - MCP-safe cancellation without refund policy
+rentals.post("/:id/cancel-pending", async (c) => {
+  const user = c.get("user");
+  const rental = await Rental.findOne({
+    _id: c.req.param("id"),
+    user_id: user._id,
+  });
+
+  if (!rental) {
+    throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  }
+
+  if (rental.status !== "pending") {
+    throw new AppError(
+      "La tool MCP solo puede cancelar reservas en estado pendiente.",
+      409,
+      "RENTAL_PENDING_CANCELLATION_ONLY",
+    );
+  }
+
+  rental.status = "cancelled";
+  rental.payment_status = "cancelled";
+  await rental.save();
+
+  void User.findById(rental.user_id).select("email").lean()
+    .then((recipient) => dispatchNotification({
+      userId: rental.user_id.toString(),
+      email: recipient?.email,
+      type: "reservation_cancelled",
+      title: "Reserva cancelada",
+      message: "Tu reserva pendiente fue cancelada correctamente.",
+      idempotencyKey: `rental:pending-cancelled:${rental._id.toString()}`,
+      metadata: { rentalId: rental._id.toString(), source: "mcp" },
+    }))
+    .catch((error: unknown) => {
+      structuredLog("error", "notification.dispatch_failed", {
+        source: "mcp.rental.pending_cancel",
+        rentalId: rental._id.toString(),
+        type: "reservation_cancelled",
+        errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+      });
+    });
+
+  return c.json({
+    message: "Reserva pendiente cancelada correctamente.",
+    rental,
+  });
 });
 
 // GET /api/rentals/:id - Single rental
@@ -162,7 +176,36 @@ rentals.get("/:id", async (c) => {
   return c.json({ rental });
 });
 
-// DELETE /api/rentals/:id - Cancel a pending rental
+// GET /api/rentals/:id/cancellation-preview - Calculate policy without mutating state
+rentals.get("/:id/cancellation-preview", async (c) => {
+  const user = c.get("user") as any;
+  const rental = await Rental.findOne({ _id: c.req.param("id"), user_id: user._id });
+  if (!rental) throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
+  if (rental.status === "cancelled") throw new AppError("La reserva ya está cancelada.", 409, "RENTAL_ALREADY_CANCELLED");
+  const decision = calculateCancellationDecision(rental);
+  const paid = rental.payment_status === "completed" || rental.payment_status === "refunded";
+  return c.json({
+    cancellable: rental.status === "pending" || rental.status === "reserved" || rental.status === "paid" || rental.status === "confirmed",
+    paid,
+    ...decision,
+  });
+});
+
+// GET /api/rentals/:id/receipt.pdf - Receipt available only to the owner
+rentals.get("/:id/receipt.pdf", async (c) => {
+  const user = c.get("user") as any;
+  const pdf = await generatePaymentReceiptPdf(c.req.param("id"), user._id.toString());
+  return new Response(new Uint8Array(pdf), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="comprobante-${c.req.param("id")}.pdf"`,
+      "Cache-Control": "no-store",
+    },
+  });
+});
+
+// DELETE /api/rentals/:id - Cancel an owned rental and apply the policy
 rentals.delete("/:id", async (c) => {
   const user = c.get("user") as any;
   const rental = await Rental.findOne({
@@ -174,7 +217,7 @@ rentals.delete("/:id", async (c) => {
     throw new AppError("Reserva no encontrada", 404, "RENTAL_NOT_FOUND");
   }
 
-  if (rental.status !== "pending") {
+  if (!["pending", "reserved", "paid", "confirmed"].includes(rental.status)) {
     throw new AppError(
       `Solo se pueden cancelar reservas en estado pendiente. Estado actual: ${rental.status}.`,
       400,
@@ -182,10 +225,47 @@ rentals.delete("/:id", async (c) => {
     );
   }
 
+  const hasConfirmedPayment = rental.payment_status === "completed" || rental.payment_status === "refunded";
+  let refund: unknown;
+  if (hasConfirmedPayment && rental.payment_status !== "refunded") {
+    const decision = calculateCancellationDecision(rental);
+    if (decision.refundableAmount > 0) {
+      const refundResult = await createRentalRefund({
+        rentalId: rental._id.toString(),
+        requestedBy: user._id.toString(),
+        amount: decision.refundableAmount,
+        reason: "Cancelación solicitada por el cliente según la política de cancelación.",
+        idempotencyKey: c.req.header("idempotency-key") ?? `cancel:${rental._id.toString()}`,
+        requestId: c.req.header("x-request-id"),
+      });
+      refund = refundResult.refund;
+    }
+  }
+
   rental.status = "cancelled";
+  if (!hasConfirmedPayment) rental.payment_status = "cancelled";
   await rental.save();
 
-  return c.json({ message: "Reserva cancelada exitosamente.", rental });
+  void User.findById(rental.user_id).select("email").lean()
+    .then((recipient) => dispatchNotification({
+      userId: rental.user_id.toString(),
+      email: recipient?.email,
+      type: "reservation_cancelled",
+      title: "Reserva cancelada",
+      message: "Tu reserva fue cancelada correctamente. Revisa el estado del reembolso si correspondía.",
+      idempotencyKey: `rental:cancelled:${rental._id.toString()}`,
+      metadata: { rentalId: rental._id.toString() },
+    }))
+    .catch((error: unknown) => {
+      structuredLog("error", "notification.dispatch_failed", {
+        source: "rental.cancel",
+        rentalId: rental._id.toString(),
+        type: "reservation_cancelled",
+        errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+      });
+    });
+
+  return c.json({ message: "Reserva cancelada exitosamente.", rental, refund });
 });
 
 export default rentals;

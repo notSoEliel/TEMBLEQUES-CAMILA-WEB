@@ -5,6 +5,10 @@ import { getBookedDates } from "../services/availability.js";
 import { AppError } from "../lib/errors.js";
 import { getPaginationParams, createPaginatedResponse } from "../lib/pagination.js";
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const products = new Hono();
 
 // GET /api/products - List with filters
@@ -24,7 +28,8 @@ products.get("/", async (c) => {
     if (maxPrice) filter.rental_price.$lte = Number(maxPrice);
   }
   if (search) {
-    filter.name = { $regex: search, $options: "i" };
+    const expression = new RegExp(escapeRegex(search.trim()), "i");
+    filter.$or = [{ name: expression }, { name_en: expression }];
   }
 
   // If there's NO date filter, we can paginate directly in the DB
@@ -39,7 +44,7 @@ products.get("/", async (c) => {
 
   // If there IS a date filter, we currently filter in memory
   // Optimization: Still use initial DB filter
-  let allMatchingProducts = await Product.find(filter).sort({ createdAt: -1 });
+  const allMatchingProducts = await Product.find(filter).sort({ createdAt: -1 });
 
   const start = new Date(startDate);
   const end = new Date(endDate);

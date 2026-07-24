@@ -1,33 +1,42 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ClerkProvider } from "@clerk/clerk-react";
-import { esES } from "@clerk/localizations";
 import App from "./App";
 import "./index.css";
+import { useI18n, I18nProvider } from "@/i18n";
+import { esES, enUS } from "@clerk/localizations";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const isMockClerkMode = PUBLISHABLE_KEY?.includes("your_clerk_publishable_key");
 
-if (!PUBLISHABLE_KEY) {
+if (!PUBLISHABLE_KEY && !isMockClerkMode) {
   throw new Error("VITE_CLERK_PUBLISHABLE_KEY is not defined. Check your .env file.");
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
+function ClerkProviderWithI18n({ children }: { children: React.ReactNode }) {
+  const { language } = useI18n();
+  const localization = language === "en" ? enUS : esES;
+
+  if (isMockClerkMode) {
+    return <>{children}</>;
+  }
+
+  return (
     <ClerkProvider 
-      publishableKey={PUBLISHABLE_KEY} 
+      publishableKey={PUBLISHABLE_KEY!} 
       afterSignOutUrl="/" 
-      localization={esES}
+      localization={localization}
       appearance={{
         layout: {
           socialButtonsVariant: "blockButton",
           logoPlacement: "inside",
         },
         variables: {
-          colorPrimary: "#b01c4c",
-          colorBackground: "#fdfcfc",
-          colorText: "#2d161a",
-          colorInputBackground: "#ffffff",
-          colorInputText: "#2d161a",
+          colorPrimary: "oklch(56.7% 0.207 3.55)",
+          colorBackground: "oklch(99.6% 0.001 3.55)",
+          colorText: "oklch(18.2% 0.038 3.55)",
+          colorInputBackground: "oklch(100% 0 0)",
+          colorInputText: "oklch(18.2% 0.038 3.55)",
           borderRadius: "2rem",
           fontFamily: "Outfit, system-ui, sans-serif",
         },
@@ -37,7 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           headerSubtitle: "text-muted-foreground font-medium",
           socialButtonsBlockButton: "rounded-full border border-border/40 hover:bg-muted/50 transition-all !shadow-none",
           socialButtonsBlockButtonText: "font-bold text-foreground",
-          formButtonPrimary: "rounded-full shadow-elegant bg-brand-gradient hover:opacity-90 transition-all font-bold py-3",
+          formButtonPrimary: "rounded-full shadow-elegant bg-primary hover:bg-accent transition-all font-bold py-3",
           formFieldInput: "rounded-xl border border-border/40 focus:ring-2 focus:ring-primary/20 transition-all !shadow-none",
           formFieldLabel: "text-xs font-black uppercase tracking-widest text-muted-foreground/70",
           footerActionLink: "text-primary hover:text-primary/80 font-bold transition-colors",
@@ -48,7 +57,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         }
       }}
     >
-      <App />
+      {children}
     </ClerkProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <I18nProvider>
+      <ClerkProviderWithI18n>
+        <App />
+      </ClerkProviderWithI18n>
+    </I18nProvider>
   </React.StrictMode>
 );

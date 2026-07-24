@@ -5,14 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Trash2, ArrowLeft, ShoppingBag, CreditCard, Info, Plus, Minus } from "lucide-react";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, total, totalDeposit, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const { t, language } = useI18n();
+
+  const handleReserve = () => {
+    if (!user) {
+      navigate("/login?redirect=/checkout/multi");
+      return;
+    }
+    navigate("/checkout/multi");
+  };
 
   if (items.length === 0) {
     return (
@@ -24,13 +34,13 @@ export default function Cart() {
           className="text-3xl font-bold mb-2"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
-          Tu carrito está vacío
+          {t("cart.emptyTitle")}
         </h1>
         <p className="text-muted-foreground mb-8">
-          Parece que aún no has añadido ninguna prenda típica panameña.
+          {t("cart.emptySubtitle")}
         </p>
         <Button asChild>
-          <Link to="/catalog">Explorar Catálogo</Link>
+          <Link to="/catalog">{t("cart.exploreBtn")}</Link>
         </Button>
       </div>
     );
@@ -44,13 +54,13 @@ export default function Cart() {
             className="text-3xl lg:text-4xl font-bold"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Tu Carrito
+            {t("cart.title")}
           </h1>
-          <p className="text-muted-foreground mt-1">Revisa tus prendas seleccionadas antes de reservar.</p>
+          <p className="text-muted-foreground mt-1">{t("cart.subtitle")}</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate("/catalog")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Seguir comprando
+          {t("cart.continueBtn")}
         </Button>
       </div>
 
@@ -70,16 +80,16 @@ export default function Cart() {
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <h3 className="text-lg font-semibold leading-tight text-foreground" style={{ fontFamily: "'Playfair Display', serif" }}>
-                          {item.name}
+                          {getLocalizedText(item.name, item.name_en, language)}
                         </h3>
                         <div className="flex flex-wrap gap-2 mt-2">
                           <span className="text-xs bg-muted px-2.5 py-0.5 rounded-full font-medium text-muted-foreground">
-                            Talla: {item.size}
+                            {t("cart.size")} {item.size}
                           </span>
                           <span className="text-xs bg-primary/8 border border-primary/20 px-2.5 py-0.5 rounded-full font-medium text-primary">
-                            {new Date(item.startDate + "T12:00:00").toLocaleDateString("es-PA", { day: "numeric", month: "short" })}
+                            {new Date(item.startDate + "T12:00:00").toLocaleDateString(language === "en" ? "en-US" : "es-PA", { day: "numeric", month: "short" })}
                             {" – "}
-                            {new Date(item.endDate + "T12:00:00").toLocaleDateString("es-PA", { day: "numeric", month: "short" })}
+                            {new Date(item.endDate + "T12:00:00").toLocaleDateString(language === "en" ? "en-US" : "es-PA", { day: "numeric", month: "short" })}
                           </span>
                         </div>
                       </div>
@@ -118,9 +128,9 @@ export default function Cart() {
 
                       <div className="text-right">
                         {item.quantity >= item.stock && (
-                          <p className="text-[10px] text-destructive font-medium uppercase mb-1 tracking-wide">Stock máximo</p>
+                          <p className="text-[10px] text-destructive font-medium uppercase mb-1 tracking-wide">{t("cart.maxStock")}</p>
                         )}
-                        <p className="text-xs text-muted-foreground">Alquiler x {item.quantity}</p>
+                        <p className="text-xs text-muted-foreground">{t("cart.rentalQty")} {item.quantity}</p>
                         <p className="text-xl font-bold text-primary" style={{ fontFamily: "'Playfair Display', serif" }}>
                           {formatCurrency(item.price * item.quantity)}
                         </p>
@@ -136,7 +146,7 @@ export default function Cart() {
             onClick={clearCart}
             className="text-sm text-muted-foreground hover:text-destructive transition-colors px-1 py-2"
           >
-            Vaciar carrito
+            {t("cart.clearCart")}
           </button>
         </div>
 
@@ -150,16 +160,16 @@ export default function Cart() {
                   className="font-semibold text-foreground text-sm tracking-wide"
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
-                  Resumen de Reserva
+                  {t("cart.summaryTitle")}
                 </h2>
               </div>
               <CardContent className="p-6 space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal Alquiler</span>
+                  <span className="text-muted-foreground">{t("cart.subtotalRental")}</span>
                   <span className="font-semibold">{formatCurrency(total)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Reserva de Garantía</span>
+                  <span className="text-muted-foreground">{t("cart.depositGuarantee")}</span>
                   <span className="font-semibold">{formatCurrency(totalDeposit)}</span>
                 </div>
 
@@ -167,7 +177,7 @@ export default function Cart() {
                 <Separator />
 
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-foreground">Subtotal a Pagar</span>
+                  <span className="font-semibold text-foreground">{t("cart.subtotalToPay")}</span>
                   <span
                     className="font-bold text-2xl text-primary"
                     style={{ fontFamily: "'Playfair Display', serif" }}
@@ -179,14 +189,14 @@ export default function Cart() {
                 <Button
                   size="lg"
                   className="w-full mt-2 shadow-md"
-                  onClick={() => navigate("/checkout/multi")}
+                  onClick={handleReserve}
                 >
                   <CreditCard className="h-5 w-5 mr-2" />
-                  Reservar Ahora
+                  {t("cart.reserveBtn")}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground/60">
-                  Pago seguro procesado por Stripe
+                  {t("cart.securePayment")}
                 </p>
               </CardContent>
             </Card>

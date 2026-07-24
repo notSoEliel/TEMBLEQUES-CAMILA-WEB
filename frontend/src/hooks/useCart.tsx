@@ -5,6 +5,7 @@ export interface CartItem {
   id: string;
   productId: string;
   name: string;
+  name_en?: string;
   image: string;
   size: string;
   quantity: number;
@@ -13,6 +14,7 @@ export interface CartItem {
   startDate: string;
   endDate: string;
   stock: number;
+  category: string;
 }
 
 interface CartContextType {
@@ -29,27 +31,70 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+function readCart(value: string | null): CartItem[] {
+  if (!value) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as CartItem[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function mergeCartItems(accountItems: CartItem[], guestItems: CartItem[]): CartItem[] {
+  const merged = [...accountItems];
+
+  for (const guestItem of guestItems) {
+    const existingIndex = merged.findIndex((item) =>
+      item.productId === guestItem.productId
+      && item.size === guestItem.size
+      && item.startDate === guestItem.startDate
+      && item.endDate === guestItem.endDate,
+    );
+
+    if (existingIndex === -1) {
+      merged.push(guestItem);
+      continue;
+    }
+
+    const existingItem = merged[existingIndex];
+    merged[existingIndex] = {
+      ...existingItem,
+      quantity: Math.min(existingItem.stock, existingItem.quantity + guestItem.quantity),
+    };
+  }
+
+  return merged;
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [prevUser, setPrevUser] = useState<string | undefined>(undefined);
+  const [prevUser, setPrevUser] = useState<string | null | undefined>(undefined);
 
   // Load cart when auth is ready or user changes
   useEffect(() => {
     if (authLoading) return;
 
+    const currentUserId = user?.id ?? null;
     const cartKey = user ? `cart_${user.id}` : "cart_guest";
     
     // Logic to handle user switching or initial load
-    if (user?.id !== prevUser) {
-      const saved = localStorage.getItem(cartKey);
-      if (saved) {
-        setItems(JSON.parse(saved));
-      } else {
-        setItems([]);
+    if (currentUserId !== prevUser) {
+      const accountItems = readCart(localStorage.getItem(cartKey));
+      const guestItems = user ? readCart(localStorage.getItem("cart_guest")) : [];
+      const nextItems = user ? mergeCartItems(accountItems, guestItems) : accountItems;
+
+      setItems(nextItems);
+
+      if (user && guestItems.length > 0) {
+        localStorage.setItem(cartKey, JSON.stringify(nextItems));
+        localStorage.removeItem("cart_guest");
       }
-      setPrevUser(user?.id);
+
+      setPrevUser(currentUserId);
     }
     
     setIsLoading(false);

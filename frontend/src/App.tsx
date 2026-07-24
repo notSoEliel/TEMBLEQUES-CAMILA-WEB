@@ -24,10 +24,17 @@ import ErrorPage from "@/pages/ErrorPage";
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminInventory from "@/pages/admin/Inventory";
 import AdminReservations from "@/pages/admin/Reservations";
+import AdminReservationDetail from "@/pages/admin/ReservationDetail";
+import AdminIncidents from "@/pages/admin/Incidents";
 import AdminUsers from "@/pages/admin/Users";
 import AdminUserDetail from "@/pages/admin/UserDetail";
+import AdminContacts from "@/pages/admin/Contacts";
 import AdminSettings from "@/pages/admin/Settings";
 import AdminBusinessRules from "@/pages/admin/BusinessRules";
+import AdminCoupons from "@/pages/admin/CouponsAdmin";
+import AdminReports from "@/pages/admin/Reports";
+import Notifications from "@/pages/Notifications";
+import { RouteFocusManager } from "@/components/ui/AccessibilityTools";
 
 /**
  * Guards a route that requires the user to be logged in.
@@ -53,8 +60,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Guards a route that requires admin role.
- * Shows a forbidden page if the user is not an admin.
+ * Guards a route that requires an operational role.
+ * Detailed permissions remain enforced by the backend per endpoint.
  */
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -71,7 +78,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     return <ErrorPage variant="unauthorized" />;
   }
 
-  if (user.role !== "admin") {
+  if (user.role === "client") {
     return <ErrorPage variant="forbidden" />;
   }
 
@@ -110,6 +117,7 @@ export default function App() {
       <GlobalAuthLoader>
         <CartProvider>
           <BrowserRouter>
+            <RouteFocusManager />
             <ScrollToTop />
             <Routes>
               {/* Client Routes */}
@@ -163,16 +171,20 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <Notifications />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
                   path="/contacto"
                   element={<Contact />}
                 />
                 <Route
                   path="/cart"
-                  element={
-                    <ProtectedRoute>
-                      <Cart />
-                    </ProtectedRoute>
-                  }
+                  element={<Cart />}
                 />
                 <Route path="/historia" element={<History />} />
                 <Route path="/credencial" element={<ArtisanCredential />} />
@@ -195,8 +207,13 @@ export default function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/inventory" element={<AdminInventory />} />
                 <Route path="/admin/reservations" element={<AdminReservations />} />
+                <Route path="/admin/reservations/:id" element={<AdminReservationDetail />} />
+                <Route path="/admin/incidents" element={<AdminIncidents />} />
+                <Route path="/admin/coupons" element={<AdminCoupons />} />
+                <Route path="/admin/reports" element={<AdminReports />} />
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/admin/contacts" element={<AdminContacts />} />
                 <Route path="/admin/settings" element={<AdminSettings />} />
                 <Route path="/admin/business-rules" element={<AdminBusinessRules />} />
               </Route>

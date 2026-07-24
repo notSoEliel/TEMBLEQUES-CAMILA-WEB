@@ -57,6 +57,7 @@ interface CalendarViewProps {
 }
 
 export default function CalendarView({ token, filterStatus }: CalendarViewProps) {
+  const { getToken } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -77,7 +78,8 @@ export default function CalendarView({ token, filterStatus }: CalendarViewProps)
 
       const from = start.toISOString();
       const to = end.toISOString();
-      const response = await adminApi.calendarRentals(token, from, to);
+      const freshToken = await getToken();
+      const response = await adminApi.calendarRentals(freshToken || token, from, to);
       
       const mappedEvents = response.data
         .filter((r: any) => !filterStatus || r.status === filterStatus)

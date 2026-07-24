@@ -8,19 +8,28 @@ import {
   Package,
   CalendarCheck,
   Users,
+  Mail,
   ArrowLeft,
   LogOut,
   Menu,
   X,
   Settings,
   Info,
+  Ticket,
+  BarChart3,
+  AlertTriangle,
 } from "lucide-react";
+import { SkipLink } from "@/components/ui/AccessibilityTools";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/inventory", label: "Inventario", icon: Package },
   { href: "/admin/reservations", label: "Reservas", icon: CalendarCheck },
+  { href: "/admin/coupons", label: "Cupones", icon: Ticket },
+  { href: "/admin/reports", label: "Reportes", icon: BarChart3 },
   { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/contacts", label: "Mensajes", icon: Mail },
+  { href: "/admin/incidents", label: "Incidencias", icon: AlertTriangle },
   { href: "/admin/business-rules", label: "Info y Reglas", icon: Info },
   { href: "/admin/settings", label: "Ajustes", icon: Settings },
 ];
@@ -38,15 +47,20 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen flex bg-muted/30">
+      <SkipLink />
       {/* Sidebar - Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-background border-r border-border/60 h-[100dvh] sticky top-0 overflow-y-auto shadow-elegant">
         {/* Brand */}
         <div className="p-6 pb-5">
           <div className="flex items-center gap-2.5">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               alt="Tembleques Camila"
-              className="h-8 w-8 object-contain"
+              width={1636}
+              height={1725}
+              loading="eager"
+              fetchPriority="high"
+              className="h-8 w-auto object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
               }}
@@ -77,6 +91,7 @@ export default function AdminLayout() {
                     ? "bg-primary/10 text-primary border-l-2 border-primary pl-[calc(0.875rem-2px)]"
                     : "text-muted-foreground hover:bg-primary/5 hover:text-foreground border-l-2 border-transparent pl-[calc(0.875rem-2px)]"
                 }`}
+                aria-current={isActive ? "page" : undefined}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
@@ -124,9 +139,13 @@ export default function AdminLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/60 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2">
           <img
-            src="/logo.png"
+              src="/logo.webp"
             alt="Tembleques Camila"
-            className="h-7 w-7 object-contain"
+            width={1636}
+            height={1725}
+            loading="eager"
+            fetchPriority="high"
+            className="h-7 w-auto object-contain"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
@@ -168,6 +187,7 @@ export default function AdminLayout() {
                         ? "bg-primary/10 text-primary border-l-2 border-primary pl-[calc(0.875rem-2px)]"
                         : "text-muted-foreground hover:bg-primary/5 hover:text-foreground border-l-2 border-transparent pl-[calc(0.875rem-2px)]"
                     }`}
+                    aria-current={isActive ? "page" : undefined}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
                     {item.label}
@@ -198,7 +218,7 @@ export default function AdminLayout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-w-0">
+      <main id="main-content" tabIndex={-1} className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 min-w-0 outline-none">
         <div className="max-w-7xl mx-auto">
           <Outlet />
         </div>

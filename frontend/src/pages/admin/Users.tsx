@@ -15,6 +15,9 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { useSearchParams, Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 
 export default function AdminUsers() {
   const { token } = useAuth();
@@ -24,6 +27,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [userRentals, setUserRentals] = useState<any[]>([]);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 15);
@@ -54,7 +58,7 @@ export default function AdminUsers() {
 
     setLoading(true);
     try {
-      const response = await adminApi.users(token!, { page, limit });
+      const response = await adminApi.users(token!, { page, limit, search: searchParams.get("search") || undefined });
       setUsers(response.data);
       setPagination(response.pagination);
     } catch (err) {
@@ -89,12 +93,27 @@ export default function AdminUsers() {
     setSearchParams(newParams);
   };
 
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const newParams = new URLSearchParams(searchParams);
+    const normalizedSearch = search.trim();
+    if (normalizedSearch) newParams.set("search", normalizedSearch);
+    else newParams.delete("search");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Usuarios</h1>
         <p className="text-muted-foreground mt-1">Clientes registrados en la plataforma.</p>
       </div>
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2" role="search">
+        <label htmlFor="admin-user-search" className="sr-only">Buscar usuarios</label>
+        <Input id="admin-user-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo o teléfono" />
+        <Button type="submit"><Search className="h-4 w-4 mr-2" />Buscar</Button>
+      </form>
       {loading ? (
         <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Card key={i} className="animate-pulse"><CardContent className="p-4"><div className="h-12 bg-muted rounded" /></CardContent></Card>)}</div>
       ) : users.length === 0 ? (

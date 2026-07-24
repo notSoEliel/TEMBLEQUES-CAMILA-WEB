@@ -1,175 +1,113 @@
-<h1 align="center">Tembleques Camila</h1>
+# Tembleques Camila
 
-<p align="center">
-  Plataforma e-commerce premium de alta disponibilidad para la gestión y alquiler de vestimenta folclórica panameña.
-</p>
+Plataforma e-commerce B2C para alquiler de vestimenta folclorica panamena, con catalogo, reservas por fecha, pagos, administracion operativa, pruebas automatizadas y servidor MCP remoto.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-  <img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" />
-  <img src="https://img.shields.io/badge/Hono-E36002?style=for-the-badge&logo=hono&logoColor=white" alt="Hono" />
-  <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
-  <img src="https://img.shields.io/badge/Stripe-626CD9?style=for-the-badge&logo=stripe&logoColor=white" alt="Stripe" />
-  <img src="https://img.shields.io/badge/Clerk-6C47FF?style=for-the-badge&logo=clerk&logoColor=white" alt="Clerk" />
-</p>
+## Integrantes
 
----
+- Angelica Rodriguez - 2-751-41
+- Eliel Garcia - 8-990-1192
 
-## Integrantes del Grupo
--  *Angelica Rodriguez* - 2-751-41
--  *Eliel Garcia* - 8-990-1192
+## Enlaces de entrega
 
----
+- Repositorio: https://github.com/notSoEliel/TEMBLEQUES-CAMILA-WEB
+- GitHub Project: https://github.com/users/notSoEliel/projects/3
+- Frontend staging: https://temblequescamila.vercel.app
+- Backend staging: https://backend-production-e696.up.railway.app
+- Backend healthcheck: https://backend-production-e696.up.railway.app/health
+- MCP remoto: https://mcp-server-production-321a.up.railway.app/mcp
+- MCP healthcheck: https://mcp-server-production-321a.up.railway.app/health
 
-## Entregables del Parcial 2
-Los documentos requeridos para la evaluación se encuentran en la raíz de este repositorio:
-1. **[PRD.md](PRD.md):** Documento de Requisitos de Producto.
-2. **[REQUIREMENTS.md](REQUIREMENTS.md):** Requerimientos Funcionales y No Funcionales explícitos.
-3. **[ARCHITECTURE.md](ARCHITECTURE.md):** Visión arquitectónica, capas y componentes.
-4. **[STARTUP_SHEET.md](STARTUP_SHEET.md):** Guía de arranque rápido y comandos.
-5. **[PITCH.md](PITCH.md):** Pitch comercial corto de valor.
-6. **[README.md](README.md):** Visión general e integrantes del grupo.
+## Stack
 
----
+- Frontend: React 19, Vite, TypeScript, React Router v7, Tailwind CSS v4, Radix UI, Clerk.
+- Backend: Bun, Hono, TypeScript, MongoDB/Mongoose, Clerk, Stripe, Svix.
+- MCP: Model Context Protocol SDK, Streamable HTTP remoto y modo `stdio` local.
+- QA: GitHub Actions, TypeScript, build y Playwright.
+- Deploy: Vercel para frontend, Railway para backend, MongoDB y MCP.
 
-## Índice General de Documentación
+## Documentacion principal
 
-Navegue rápidamente a través de los diferentes módulos del sistema:
+- [Setup local](docs/SETUP_GUIDE.md)
+- [Despliegue staging](docs/DEPLOY_STAGING.md)
+- [Servidor MCP](docs/MCP_SERVER.md)
+- [Entrega Avance 15](docs/AVANCE_15_ENTREGA.md)
+- [QA Avance 15](docs/QA_AVANCE_15.md)
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Backend deep dive](docs/BACKEND_DEEP_DIVE.md)
+- [Frontend deep dive](docs/FRONTEND_DEEP_DIVE.md)
+- [Pagos y webhooks](docs/PAYMENTS_WEBHOOKS.md)
+- [Operación administrativa](docs/ADMIN_OPERATIONS.md)
+- [Autenticacion y Clerk](docs/AUTH_FLOW.md)
+- [Seguridad y configuracion](docs/SECURITY_AND_CONFIGURATION.md)
+- [Modelo de datos](docs/DATABASE_SCHEMA.md)
+- [Contribucion](docs/CONTRIBUTING.md)
+- [Decisiones tecnicas](docs/ADRS.md)
 
-1.  **[Infraestructura y Operaciones](#infraestructura-y-operaciones)**
-2.  **[Arquitectura y Núcleo Técnico](#arquitectura-y-núcleo-técnico)**
-3.  **[Flujos Críticos de Negocio](#flujos-críticos-de-negocio)**
-4.  **[Estándares y Decisiones](#estándares-y-decisiones)**
-5.  **[Inicio Rápido (Quick Start)](#quick-start)**
+## Inicio rapido local
 
----
-
-## Ecosistema Documental
-
-Este mapa ilustra la jerarquía y relación entre los diferentes módulos que componen el mapa de conocimiento del proyecto.
-
-```mermaid
-graph TD
-    README[README.md: Portal Maestro] --> INFRA[Infraestructura y Operaciones]
-    README --> CORE[Arquitectura y Núcleo Técnico]
-    README --> FLOWS[Flujos Críticos]
-    README --> DECISIONS[Decisiones y Estándares]
-
-    INFRA --> SG[SETUP_GUIDE.md]
-    INFRA --> CG[CONTRIBUTING.md]
-
-    CORE --> ARCH[ARCHITECTURE.md]
-    CORE --> BDD[BACKEND_DEEP_DIVE.md]
-    CORE --> FDD[FRONTEND_DEEP_DIVE.md]
-    CORE --> DB[DATABASE_SCHEMA.md]
-
-    FLOWS --> PW[PAYMENTS_WEBHOOKS.md]
-    FLOWS --> AF[AUTH_FLOW.md]
-
-    DECISIONS --> ADR[ADRS.md]
-```
-
----
-
-## Infraestructura y Operaciones
-
-### [SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
-Este documento es el punto de partida obligatorio para cualquier desarrollador que se integre al proyecto. Detalla de forma exhaustiva el proceso de "Onboarding", desde la instalación del runtime Bun hasta la orquestación de contenedores con Docker Compose. Incluye guías específicas sobre la configuración de túneles de red para webhooks y la inicialización de la Stripe CLI para entornos de desarrollo locales.
-
-**Brief**: Guía paso a paso para levantar el entorno de desarrollo y servicios de terceros.
-
-### [CONTRIBUTING.md](docs/CONTRIBUTING.md)
-Define el marco de trabajo colaborativo y la gobernanza del repositorio. Establece estándares estrictos sobre el flujo de Git, convenciones de nomenclatura para ramas y una política de "Cero Emojis" en los mensajes de commit. Además, detalla los criterios de aceptación para las revisiones de código y las directrices de testing unitario y de integración.
-
-**Brief**: Manual de estándares, calidad de código y protocolos de colaboración.
-
----
-
-## Arquitectura y Núcleo Técnico
-
-### [ARCHITECTURE.md](docs/ARCHITECTURE.md)
-Presenta la visión técnica global de Tembleques Camila. Explica la arquitectura de "Identidad Delegada" y cómo se desacoplan las capas de presentación, lógica de negocio y persistencia. Este documento sirve como mapa estructural para comprender cómo el stack tecnológico (React 19, Bun, Hono) interactúa para ofrecer una plataforma de alta disponibilidad.
-
-**Brief**: Esquema conceptual y estructural de alto nivel de toda la plataforma.
-
-### [BACKEND_DEEP_DIVE.md](docs/BACKEND_DEEP_DIVE.md)
-Una inmersión profunda en las entrañas del servidor. Documenta la implementación técnica de la validación de payloads mediante Zod, la arquitectura de la clase `AppError` para el manejo global de excepciones y, lo más importante, el algoritmo matemático que rige el motor de disponibilidad y la regla logística del corte de reservas a las 18:00 (Panamá).
-
-**Brief**: Análisis exhaustivo de lógica de servidor, algoritmos y manejo de errores.
-
-### [FRONTEND_DEEP_DIVE.md](docs/FRONTEND_DEEP_DIVE.md)
-Detalla la implementación del cliente de React. Se centra en el paradigma de "URL como Fuente de Verdad" (Source of Truth), explicando cómo se sincronizan los filtros complejos y la paginación con la barra de direcciones. Incluye detalles sobre el selector inteligente de tallas y el uso de patrones avanzados de React Router v7 para la carga de datos.
-
-**Brief**: Documentación técnica sobre gestión de estado en URL y componentes inteligentes.
-
-### [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
-Manual completo de la capa de persistencia en MongoDB. Incluye el diccionario de colecciones, la arquitectura de documentos anidados para variantes de productos y las estrategias de integridad referencial gestionadas por Mongoose. Explica cómo el esquema NoSQL permite la flexibilidad necesaria para un catálogo folclórico dinámico.
-
-**Brief**: Definición detallada de modelos de datos, índices y relaciones NoSQL.
-
----
-
-## Flujos Críticos de Negocio
-
-### [PAYMENTS_WEBHOOKS.md](docs/PAYMENTS_WEBHOOKS.md)
-Documenta el flujo más sensible del sistema: el procesamiento financiero. Detalla la máquina de estados de las reservas, la lógica de "Abono de Reserva" y la integración segura con Stripe y Svix. Explica la gestión de la idempotencia para asegurar que ningún pago se procese por duplicado y cómo funcionan los cargos automáticos por mora o daños.
-
-**Brief**: Guía de integración financiera, webhooks de seguridad y estados de reserva.
-
-### [AUTH_FLOW.md](docs/AUTH_FLOW.md)
-Describe el ecosistema de seguridad e identidad. Detalla cómo Clerk gestiona las sesiones de usuario y cómo el backend de Hono valida los JWTs. Incluye el flujo de sincronización activa que mantiene los roles de administrador y perfiles de usuario actualizados en MongoDB mediante eventos asíncronos y fallbacks de seguridad.
-
-**Brief**: Arquitectura de identidad delegada, validación de JWT y sincronización de perfiles.
-
----
-
-## Estándares y Decisiones
-
-### [ADRS.md](docs/ADRS.md)
-El registro histórico de las decisiones de diseño arquitectónico. Cada entrada responde al "por qué" de una elección tecnológica, evaluando alternativas descartadas y analizando los riesgos y beneficios a largo plazo. Es el documento fundamental para comprender la evolución técnica del proyecto hacia finales de 2026.
-
-**Brief**: Registro formal de decisiones técnicas, trade-offs y justificaciones de arquitectura.
-
----
-
-## Quick Start
-
-### 1. Prerrequisitos
-Antes de comenzar, asegúrese de tener instaladas las siguientes herramientas:
-- **Bun**: Runtime principal y gestor de dependencias.
-- **Docker & Docker Compose**: Para la orquestación de servicios y base de datos.
-- **Git**: Para el control de versiones.
-
-### 2. Inicio y Onboarding
-Para comenzar a colaborar en el proyecto, siga estos comandos iniciales:
+1. Instalar dependencias con Bun.
 
 ```bash
-# Clonar el repositorio
-git clone https://github.com/tu-usuario/parcial-dsix.git
-cd parcial-dsix
-
-# Instalación de dependencias globales
 bun install
+cd backend && bun install
+cd ../frontend && bun install
+cd ../mcp-server && bun install
 ```
 
-### 3. Ejecución del Entorno
-Puede levantar el ecosistema completo o ejecutar los servicios de forma independiente:
+2. Crear variables de entorno desde la plantilla.
 
 ```bash
-# Opción A: Ecosistema completo (Recomendado)
-# Levanta Frontend, Backend y MongoDB automáticamente
-docker-compose up --build
+cp .env.example .env
+```
 
-# Opción B: Ejecución local de desarrollo
-# Nota: Requiere una instancia de MongoDB activa (local o Atlas)
-# Puede levantar solo la DB con: docker-compose up mongodb -d
+3. Levantar MongoDB local con Docker si no se usa Atlas.
+
+```bash
+docker-compose up mongodb -d
+```
+
+4. Correr backend y frontend.
+
+```bash
 cd backend && bun run dev
 cd frontend && bun run dev
 ```
 
-> [!IMPORTANT]
-> **Configuración Crítica**: Antes de ejecutar el sistema, es obligatorio configurar las variables de entorno en el archivo `.env`. Para un manual detallado sobre este paso y la configuración de Stripe/Clerk, consulte la **[Guía de Configuración (SETUP_GUIDE.md)](docs/SETUP_GUIDE.md)**.
+5. Correr MCP local en modo importable por Codex o Claude Code.
 
----
+```bash
+cd mcp-server
+MCP_BACKEND_URL=http://localhost:3000 \
+MCP_AUTH_REQUIRED=false \
+MCP_BACKEND_ADMIN_TOKEN=mock-admin-token \
+MCP_BACKEND_CLIENT_TOKEN=mock-client-token \
+bun run start:stdio
+```
 
-Desarrollado con enfoque en la excelencia técnica y el respeto por las tradiciones folclóricas panameñas.
+## MCP remoto
+
+El MCP desplegado en Railway expone 18 tools por Streamable HTTP en:
+
+```text
+https://mcp-server-production-321a.up.railway.app/mcp
+```
+
+Healthcheck:
+
+```text
+https://mcp-server-production-321a.up.railway.app/health
+```
+
+Para detalles de autenticacion, tools y pruebas, ver [docs/MCP_SERVER.md](docs/MCP_SERVER.md).
+
+## Flujo de trabajo
+
+- La rama de integracion es `staging`.
+- No se trabaja directo sobre `master` o `main`.
+- Cada funcionalidad debe tener issue en GitHub Project.
+- Cada PR debe apuntar a `staging`, pasar CI y vincular issue cuando corresponda.
+- El GitHub Project debe reflejar el estado real: Todo, In progress y Done.
+
+## Variables sensibles
+
+No subir `.env` reales al repositorio. Usar `.env.example` como plantilla compartible y configurar secretos reales en Railway/Vercel o en archivos locales ignorados por Git.

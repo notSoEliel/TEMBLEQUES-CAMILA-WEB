@@ -8,6 +8,7 @@ import {
   calculateLateFeeAmount,
   calculateRentalDays,
   evaluateDeposit,
+  getMinimumRentalStartDate,
   getPanamaTodayUTC,
 } from "./payment-rules.js";
 import {
@@ -16,6 +17,9 @@ import {
   isStripeConfigured,
   releaseDepositHold,
 } from "./stripe.js";
+import { User } from "../models/User.js";
+import { dispatchNotification } from "./notifications.js";
+import { structuredLog } from "./observability.js";
 
 /**
  * Calculates the total rental cost based on price per day and the date range.
@@ -75,21 +79,9 @@ export async function createRental(params: {
     );
   }
 
-  // Validar usando la zona horaria de Panamá (UTC-5)
-  const now = new Date();
-  const panamaTime = new Date(now.getTime() - 5 * 60 * 60 * 1000);
-  const panamaHour = panamaTime.getUTCHours();
-  const panamaToday = new Date(
-    Date.UTC(
-      panamaTime.getUTCFullYear(),
-      panamaTime.getUTCMonth(),
-      panamaTime.getUTCDate(),
-    ),
-  );
-
-  const isPast6pm = panamaHour >= 18;
-  const minAllowedDate = new Date(panamaToday.getTime());
-  minAllowedDate.setUTCDate(minAllowedDate.getUTCDate() + (isPast6pm ? 2 : 1));
+  const minAllowedDate = getMinimumRentalStartDate();
+  const panamaTime = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  const isPast6pm = panamaTime.getUTCHours() >= 18;
 
   if (startDate.getTime() < minAllowedDate.getTime()) {
     throw new AppError(
@@ -205,7 +197,9 @@ export async function updateRentalStatus(
   newStatus: RentalStatus,
 ) {
   const validTransitions: Record<string, string[]> = {
-    pending: ["reserved", "paid", "cancelled"],
+    // paid solo lo confirma un webhook válido de Stripe. reserved puede
+    // representar una gestión operativa sin convertir el pago en completed.
+    pending: ["reserved", "cancelled"],
     reserved: ["delivered", "cancelled"],
     paid: ["confirmed", "delivered", "cancelled"],
     confirmed: ["delivered", "cancelled"],
@@ -252,9 +246,6 @@ export async function updateRentalStatus(
 
   rental.status = newStatus;
 
-  if (newStatus === "paid" || newStatus === "reserved") {
-    rental.payment_status = "completed";
-  }
 
   // Si se pasa a entregado, la deuda se cancela automáticamente
   if (newStatus === "delivered" && rental.balance_due > 0) {
@@ -278,6 +269,27 @@ export async function updateRentalStatus(
 
   await rental.save();
 
+  if (newStatus === "cancelled") {
+    void User.findById(rental.user_id).select("email").lean()
+      .then((recipient) => dispatchNotification({
+        userId: rental.user_id.toString(),
+        email: recipient?.email,
+        type: "reservation_cancelled",
+        title: "Reserva cancelada",
+        message: "Tu reserva fue cancelada por el equipo de Tembleques Camila. Contacta al equipo si necesitas más información.",
+        idempotencyKey: `admin:rental-cancelled:${rental._id.toString()}`,
+        metadata: { rentalId: rental._id.toString() },
+      }))
+      .catch((error: unknown) => {
+        structuredLog("error", "notification.dispatch_failed", {
+          source: "admin.rental_status",
+          rentalId: rental._id.toString(),
+          type: "reservation_cancelled",
+          errorCode: error instanceof Error ? error.name : "NOTIFICATION_DISPATCH_FAILED",
+        });
+      });
+  }
+
   if (newStatus === "late" && rental.late_fee_amount > 0) {
     if (!isStripeConfigured()) {
       rental.late_fee_status = "charged";
@@ -289,10 +301,10 @@ export async function updateRentalStatus(
       await chargeLateFee(rental);
       rental.late_fee_status = "charged";
       rental.late_fee_failure_reason = undefined;
-    } catch (error: any) {
+    } catch (error: unknown) {
       rental.late_fee_status = "failed";
       rental.late_fee_failure_reason =
-        error?.message || "No se pudo cobrar la penalidad por atraso.";
+        error instanceof Error ? error.message : "No se pudo cobrar la penalidad por atraso.";
     }
     await rental.save();
   }

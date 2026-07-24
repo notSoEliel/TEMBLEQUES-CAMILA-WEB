@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import SizeManager, { type SizeVariant } from "@/components/SizeManager";
 import ImageGalleryManager from "@/components/ImageGalleryManager";
 import ProductPreview from "@/components/ProductPreview";
-import { Plus, Pencil, Trash2, X, Loader2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, Eye, Calendar, Search } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -32,11 +32,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useErrorModal } from "@/components/ErrorModal";
+
+interface LowStockItem {
+  _id: string;
+  name: string;
+  variants: Array<{ size: string; stock: number }>;
+}
 
 interface ProductForm {
   name: string;
+  name_en?: string;
   category: string[];
   description: string;
+  description_en?: string;
   rental_price: number;
   variants: SizeVariant[];
   images: string[];
@@ -64,6 +73,75 @@ export default function AdminInventory() {
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<ProductForm | null>(null);
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+
+  const [maintenanceProduct, setMaintenanceProduct] = useState<any>(null);
+  const [maintenanceBlocks, setMaintenanceBlocks] = useState<any[]>([]);
+  const [loadingMaintenance, setLoadingMaintenance] = useState(false);
+  const [maintenanceSize, setMaintenanceSize] = useState("");
+  const [maintenanceStart, setMaintenanceStart] = useState("");
+  const [maintenanceEnd, setMaintenanceEnd] = useState("");
+  const [maintenanceReason, setMaintenanceReason] = useState("");
+  const [creatingMaintenance, setCreatingMaintenance] = useState(false);
+  const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(1);
+  const { errorModal, showError } = useErrorModal();
+
+  const openMaintenance = async (product: any) => {
+    setMaintenanceProduct(product);
+    setMaintenanceSize(product.variants?.[0]?.size || "");
+    setMaintenanceStart("");
+    setMaintenanceEnd("");
+    setMaintenanceReason("");
+    if (token) {
+      try {
+        setLoadingMaintenance(true);
+        const res = await adminApi.listMaintenance(token);
+        setMaintenanceBlocks(res.blocks || []);
+      } catch (error: unknown) {
+        showError(error instanceof Error ? error.message : "No se pudieron cargar los mantenimientos.", "generic");
+      } finally {
+        setLoadingMaintenance(false);
+      }
+    }
+  };
+
+  const handleCreateMaintenance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !maintenanceProduct) return;
+    try {
+      setCreatingMaintenance(true);
+      await adminApi.createMaintenance({
+        productId: maintenanceProduct._id,
+        selectedSize: maintenanceSize,
+        startDate: maintenanceStart,
+        endDate: maintenanceEnd,
+        reason: maintenanceReason,
+      }, token);
+      
+      setMaintenanceStart("");
+      setMaintenanceEnd("");
+      setMaintenanceReason("");
+      
+      const res = await adminApi.listMaintenance(token);
+      setMaintenanceBlocks(res.blocks || []);
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "Error al programar mantenimiento.", "validation");
+    } finally {
+      setCreatingMaintenance(false);
+    }
+  };
+
+  const handleDeleteMaintenance = async (blockId: string) => {
+    if (!token) return;
+    try {
+      await adminApi.deleteMaintenance(blockId, token);
+      const res = await adminApi.listMaintenance(token);
+      setMaintenanceBlocks(res.blocks || []);
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "Error al eliminar mantenimiento.", "generic");
+    }
+  };
   
   const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
   const [currentLimit, setCurrentLimit] = useState(Number(searchParams.get("limit")) || 10);
@@ -86,6 +164,7 @@ export default function AdminInventory() {
   useEffect(() => { 
     loadSettings();
     loadProducts(); 
+    void loadLowStock();
   }, [searchParams]);
 
   const loadSettings = async () => {
@@ -119,11 +198,32 @@ export default function AdminInventory() {
 
     setLoading(true);
     try {
-      const response = await productsApi.list({ page, limit });
+      const response = await productsApi.list({ page, limit, search: searchParams.get("search") || undefined });
       setProducts(response.data);
       setPagination(response.pagination);
     } catch (err) { console.error(err); }
     setLoading(false);
+  };
+
+  const loadLowStock = async () => {
+    if (!token) return;
+    try {
+      const response = await adminApi.lowStock(token, { page: 1, limit: 20 });
+      setLowStockItems(response.data);
+      setLowStockThreshold(response.threshold);
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : "No se pudo cargar el control de bajo stock.", "generic");
+    }
+  };
+
+  const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const newParams = new URLSearchParams(searchParams);
+    const normalizedSearch = search.trim();
+    if (normalizedSearch) newParams.set("search", normalizedSearch);
+    else newParams.delete("search");
+    newParams.set("page", "1");
+    setSearchParams(newParams);
   };
 
   const resetForm = () => {
@@ -241,6 +341,12 @@ export default function AdminInventory() {
 
   return (
     <div className="space-y-6">
+      {errorModal}
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2" role="search">
+        <label htmlFor="admin-product-search" className="sr-only">Buscar productos</label>
+        <Input id="admin-product-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre de producto" />
+        <Button type="submit"><Search className="h-4 w-4 mr-2" />Buscar</Button>
+      </form>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>Inventario</h1>
@@ -264,9 +370,15 @@ export default function AdminInventory() {
           <form onSubmit={handleSubmit} className="space-y-6 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nombre (Español)</Label>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nombre (Inglés - Opcional)</Label>
+                    <Input value={form.name_en || ""} onChange={(e) => setForm({ ...form, name_en: e.target.value })} />
+                  </div>
                 </div>
                 
                 <div className="space-y-3">
@@ -299,17 +411,29 @@ export default function AdminInventory() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Descripción</Label>
-                  <textarea
-                    ref={textareaRef}
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    required
-                    rows={3}
-                    className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
-                    placeholder="Describe el producto..."
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Descripción (Español)</Label>
+                    <textarea
+                      ref={textareaRef}
+                      value={form.description}
+                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      required
+                      rows={3}
+                      className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
+                      placeholder="Describe el producto..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción (Inglés - Opcional)</Label>
+                    <textarea
+                      value={form.description_en || ""}
+                      onChange={(e) => setForm({ ...form, description_en: e.target.value })}
+                      rows={3}
+                      className="flex w-full rounded-lg border-2 border-border bg-input px-4 py-3 text-sm min-h-[80px] resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors placeholder:text-muted-foreground"
+                      placeholder="Product details..."
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -415,6 +539,19 @@ export default function AdminInventory() {
         </div>
       ) : (
         <>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5 text-primary" />Control de bajo stock</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">Tallas con {lowStockThreshold} o menos de unidades, excluyendo mantenimiento activo.</p>
+              </div>
+              <Badge variant={lowStockItems.length > 0 ? "destructive" : "secondary"}>{lowStockItems.length} producto{lowStockItems.length === 1 ? "" : "s"}</Badge>
+            </CardHeader>
+            <CardContent>
+              {lowStockItems.length === 0 ? <p className="text-sm text-muted-foreground">No hay tallas en nivel de alerta.</p> : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{lowStockItems.map((item) => <div key={item._id} className="rounded-xl border border-border/60 bg-background p-3"><p className="font-semibold">{item.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.variants.map((variant) => `${variant.size}: ${variant.stock}`).join(" · ")}</p></div>)}</div>}
+            </CardContent>
+          </Card>
+
           <div className="space-y-3">
             {products.map((product) => {
               const stock = totalStock(product);
@@ -455,6 +592,9 @@ export default function AdminInventory() {
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => openPreviewFromProduct(product)}>
                         <Eye className="h-3.5 w-3.5 mr-1" />Vista Previa
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openMaintenance(product)}>
+                        <Calendar className="h-3.5 w-3.5 mr-1" />Mantenimiento
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />Editar
@@ -549,6 +689,120 @@ export default function AdminInventory() {
           onClose={() => { setPreviewOpen(false); setPreviewProduct(null); }}
         />
       )}
+
+      {/* Maintenance Dialog */}
+      <Dialog open={!!maintenanceProduct} onOpenChange={(open) => !open && setMaintenanceProduct(null)}>
+        <DialogContent className="max-w-xl rounded-[2rem] p-6 bg-background">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-serif">Mantenimiento de Prendas</DialogTitle>
+            <DialogDescription>
+              Programa un rango de fechas para mantenimiento artesanal en {maintenanceProduct?.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateMaintenance} className="space-y-4 my-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="maint-size" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Talla</Label>
+                <select
+                  id="maint-size"
+                  value={maintenanceSize}
+                  onChange={(e) => setMaintenanceSize(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-sm"
+                  required
+                >
+                  {maintenanceProduct?.variants?.map((v: any) => (
+                    <option key={v.size} value={v.size}>{v.size}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="maint-reason" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Razón</Label>
+                <Input
+                  id="maint-reason"
+                  type="text"
+                  placeholder="E.g. Costura de encajes"
+                  value={maintenanceReason}
+                  onChange={(e) => setMaintenanceReason(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="maint-start" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Fecha Inicio</Label>
+                <Input
+                  id="maint-start"
+                  type="date"
+                  value={maintenanceStart}
+                  onChange={(e) => setMaintenanceStart(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="maint-end" className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Fecha Fin</Label>
+                <Input
+                  id="maint-end"
+                  type="date"
+                  value={maintenanceEnd}
+                  onChange={(e) => setMaintenanceEnd(e.target.value)}
+                  className="rounded-xl border border-border/80 h-10 text-sm"
+                  required
+                />
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={creatingMaintenance}
+              className="w-full rounded-[2rem] h-10 bg-primary font-semibold"
+            >
+              {creatingMaintenance ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bloquear Fechas"}
+            </Button>
+          </form>
+
+          <Separator />
+
+          <div className="mt-4 space-y-3">
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Bloqueos Programados</h4>
+            {loadingMaintenance ? (
+              <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 text-primary animate-spin" /></div>
+            ) : maintenanceBlocks.filter(b => b.product_id?._id === maintenanceProduct?._id).length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No hay bloqueos de mantenimiento activos para esta prenda.</p>
+            ) : (
+              <div className="max-h-40 overflow-y-auto space-y-2 no-scrollbar">
+                {maintenanceBlocks
+                  .filter(b => b.product_id?._id === maintenanceProduct?._id)
+                  .map((b) => (
+                    <div key={b._id} className="flex justify-between items-center bg-muted/30 p-2.5 rounded-xl border border-border/40 text-xs">
+                      <div>
+                        <p className="font-semibold">Talla: {b.selected_size} {b.reason && `• ${b.reason}`}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {new Date(b.start_date).toLocaleDateString("es-PA")} al {new Date(b.end_date).toLocaleDateString("es-PA")}
+                        </p>
+                      </div>
+                      <ConfirmModal
+                        title="Eliminar bloqueo de mantenimiento"
+                        description="¿Seguro que deseas eliminar este bloqueo? La talla volverá a poder reservarse si no existe otro conflicto."
+                        confirmText="Eliminar bloqueo"
+                        variant="destructive"
+                        onConfirm={() => void handleDeleteMaintenance(b._id)}
+                      >
+                        <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/8 rounded-full h-8 w-8" aria-label="Eliminar bloqueo de mantenimiento">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </ConfirmModal>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

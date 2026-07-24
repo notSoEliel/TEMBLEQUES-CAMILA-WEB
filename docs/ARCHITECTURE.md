@@ -40,14 +40,19 @@ graph TD
         Redis[(Redis Cache - Proyectado)]
     end
 
-    Browser -->|HTTP/HTTPS| Vite
-    Vite -->|"/api" Reverse Proxy| Hono
-    Hono -->|TCP/27017| Mongo
-    Hono -->|REST API| Clerk
-    Hono -->|REST API| Stripe
-    Stripe -->|Webhooks| Svix
-    Svix -->|Signed POST| Hono
-    Browser -->|Unsigned Upload| Cloudinary
+    %% Frontend a Backend
+    Browser -->|Autenticación (JWT)| Hono
+    Browser -->|Solicita firma temporal| Hono
+    Browser -->|Pedidos y Pagos| Hono
+
+    %% Backend a Externos
+    Hono -->|CRUD de Datos| Mongo
+    Hono -->|Validar Pagos| Stripe
+    Stripe -->|Webhooks| Hono
+
+    %% Servicios Directos desde Cliente
+    Browser -->|Autenticación Auth| Clerk
+    Browser -->|Subida firmada JPG/PNG/WEBP| Cloudinary
 ```
 
 ---
@@ -185,7 +190,7 @@ User
 ├─ clerkId: string (ID del proveedor Clerk)
 ├─ email: string
 ├─ name: string
-├─ role: "client" | "admin"
+├─ role: "client" | "owner" | "operator" | "inventory" | "support"
 ├─ phone?: string
 ├─ metadata:
 │  ├─ ip?: string (de TermsAcceptance)
@@ -229,6 +234,7 @@ sequenceDiagram
     participant V as Vite Proxy
     participant B as Backend (Hono)
     participant C as Clerk / Stripe
+    participant CL as Cloudinary
     participant DB as MongoDB
 
     U->>V: GET /api/products?page=1
@@ -246,6 +252,13 @@ sequenceDiagram
     B->>C: Verificar Token (Middleware)
     C-->>B: User Context
     B->>DB: Operación Autorizada
+
+    Note over U,B: Flujo de imágenes firmado
+    U->>B: GET /api/media/sign (admin)
+    B-->>U: timestamp, upload_preset, signature, api_key y cloud_name
+    U->>CL: POST /image/upload con el archivo y la firma
+    CL-->>U: secure_url
+    Note over U,CL: El límite de 5 MB se valida en el navegador; el backend no recibe el archivo.
 ```
 
 ---
@@ -524,7 +537,7 @@ La arquitectura actual permite una evolución fluida hacia:
 ## 15. Seguridad Arquitectónica
 
 1.  **Validación de Origen**: Los webhooks de Stripe se validan mediante firmas criptográficas proporcionadas por Svix.
-2.  **Protección de Rutas**: Middlewares de Hono interceptan cada petición al backend para validar el token de Clerk y el rol del usuario (Admin/User).
+2.  **Protección de Rutas**: Middlewares de Hono interceptan cada petición al backend para validar el token de Clerk y el permiso operativo requerido. El prefijo `/admin` identifica el área administrativa, no un valor de rol.
 3.  **Aislamiento de Secretos**: Todas las credenciales sensibles se inyectan a través de variables de entorno, nunca se hardcodean en el repositorio.
 
 ---

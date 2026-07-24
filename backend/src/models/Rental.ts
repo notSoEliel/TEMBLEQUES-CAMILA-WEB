@@ -20,8 +20,10 @@ export type DepositStatus =
   | "failed";
 
 export type FeeStatus = "not_applicable" | "pending" | "charged" | "failed";
+export type PaymentStatus = "pending" | "completed" | "failed" | "expired" | "cancelled" | "refunded";
 
 export interface IRental extends Document {
+  fixture_key?: string;
   user_id: Types.ObjectId;
   product_id: Types.ObjectId;
   order_group_id: string;
@@ -32,10 +34,11 @@ export interface IRental extends Document {
   balance_due: number;
   payment_type: "reservation" | "full";
   status: RentalStatus;
-  payment_status: "pending" | "completed" | "failed" | "refunded";
+  payment_status: PaymentStatus;
   terms_accepted: boolean;
   stripe_session_id?: string;
   stripe_payment_intent_id?: string;
+  stripe_payment_amount?: number;
   stripe_deposit_intent_id?: string;
   stripe_late_fee_intent_id?: string;
   stripe_customer_id?: string;
@@ -48,12 +51,21 @@ export interface IRental extends Document {
   late_fee_amount: number;
   late_fee_status: FeeStatus;
   late_fee_failure_reason?: string;
+  coupon_code?: string;
+  discount_amount?: number;
+  status_history: Array<{
+    status: RentalStatus;
+    timestamp: Date;
+    notes?: string;
+    updated_by?: string;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const rentalSchema = new Schema<IRental>(
   {
+    fixture_key: { type: String, trim: true, unique: true, sparse: true, select: false },
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     product_id: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     order_group_id: { type: String, required: false },
@@ -70,12 +82,13 @@ const rentalSchema = new Schema<IRental>(
     },
     payment_status: {
       type: String,
-      enum: ["pending", "completed", "failed", "refunded"],
+      enum: ["pending", "completed", "failed", "expired", "cancelled", "refunded"],
       default: "pending",
     },
     terms_accepted: { type: Boolean, required: true, default: false },
     stripe_session_id: { type: String },
     stripe_payment_intent_id: { type: String },
+    stripe_payment_amount: { type: Number, min: 0 },
     stripe_deposit_intent_id: { type: String },
     stripe_late_fee_intent_id: { type: String },
     stripe_customer_id: { type: String },
@@ -96,9 +109,34 @@ const rentalSchema = new Schema<IRental>(
       default: "not_applicable",
     },
     late_fee_failure_reason: { type: String },
+    coupon_code: { type: String },
+    discount_amount: { type: Number, default: 0 },
+    status_history: [
+      {
+        status: { type: String, required: true },
+        timestamp: { type: Date, required: true, default: Date.now },
+        notes: { type: String },
+        updated_by: { type: String },
+      },
+    ],
   },
   { timestamps: true }
 );
+
+rentalSchema.pre("save", function (next) {
+  if (this.isNew || this.isModified("status")) {
+    const statusVal = this.status;
+    const alreadyExists = this.status_history.some(h => h.status === statusVal);
+    if (!alreadyExists) {
+      this.status_history.push({
+        status: statusVal,
+        timestamp: new Date(),
+        notes: `Estado de la reserva actualizado a: ${statusVal}`,
+      });
+    }
+  }
+  next();
+});
 
 rentalSchema.index({ product_id: 1, start_date: 1, end_date: 1 });
 rentalSchema.index({ user_id: 1 });

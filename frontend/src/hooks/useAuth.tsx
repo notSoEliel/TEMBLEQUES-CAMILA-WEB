@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useUser, useAuth as useClerkAuth, useClerk } from "@clerk/clerk-react";
+import { authApi } from "@/services/api";
 
 interface User {
   id: string;
   clerkId: string;
   name: string;
   email: string;
-  role: "client" | "admin";
+  role: "client" | "owner" | "operator" | "inventory" | "support";
   phone?: string;
+  preferredAddress?: string;
+  preferredLanguage?: "es" | "en";
   avatarUrl?: string;
   createdAt?: string;
 }
@@ -16,13 +19,91 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   getToken: () => Promise<string | null>;
+  updateProfile: (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => Promise<User>;
   logout: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+const isMockClerkMode = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.includes("your_clerk_publishable_key");
+
+function MockAuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadMockUser = async () => {
+    const mockToken = localStorage.getItem("mock_auth_token");
+    if (!mockToken) {
+      setUser(null);
+      setToken(null);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${mockToken}` },
+      });
+      if (!res.ok) throw new Error("No se pudo cargar el usuario de prueba.");
+      const data = await res.json();
+      setUser(data.user);
+      setToken(mockToken);
+    } catch {
+      setUser(null);
+      setToken(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMockUser();
+  }, []);
+
+  const getToken = async () => {
+    const mockToken = localStorage.getItem("mock_auth_token");
+    setToken(mockToken);
+    return mockToken;
+  };
+
+  const updateProfile = async (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => {
+    const currentToken = token ?? await getToken();
+    if (!currentToken) {
+      throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
+    }
+
+    const res = await fetch("/api/auth/me", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${currentToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const payload = await res.json();
+    if (!res.ok) {
+      throw new Error(payload?.error || "No se pudo guardar el perfil.");
+    }
+    setUser(payload.user);
+    return payload.user;
+  };
+
+  const logout = () => {
+    localStorage.removeItem("mock_auth_token");
+    setUser(null);
+    setToken(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, token, getToken, updateProfile, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+function ClerkAuthProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user: clerkUser } = useUser();
   const { getToken: clerkGetToken } = useClerkAuth();
   const { signOut } = useClerk();
@@ -32,9 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const mockToken = localStorage.getItem("mock_auth_token");
+    // Los tokens mock solo son válidos en el modo local/CI. Nunca deben
+    // tener prioridad sobre una sesión real de Clerk en staging.
+    const mockToken = isMockClerkMode ? localStorage.getItem("mock_auth_token") : null;
+    if (!isMockClerkMode) {
+      localStorage.removeItem("mock_auth_token");
+    }
+
     if (mockToken) {
-      const role = mockToken === "mock-admin-token" ? "admin" : "client";
+      const role = mockToken === "mock-owner-token" ? "owner" : "client";
       const email = `${role}@test.com`;
       const name = `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
       const clerkId = `mock_${role}_id`;
@@ -85,20 +172,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(freshToken);
 
         if (freshToken) {
-          const res = await fetch("/api/auth/me", {
-            headers: { Authorization: `Bearer ${freshToken}` },
-          });
-
-          if (res.ok) {
-            const data = await res.json();
+          try {
+            const data = await authApi.me(freshToken);
             setUser({ ...data.user, avatarUrl: clerkUser.imageUrl });
-          } else {
+          } catch {
             // Token valid in Clerk but no MongoDB profile yet — build minimal user
             // from Clerk data. The upsert in the middleware will create it on next protected call.
             const primaryEmail =
               clerkUser.primaryEmailAddress?.emailAddress ?? "";
             const role =
-              (clerkUser.publicMetadata?.role as "client" | "admin") ?? "client";
+              (clerkUser.publicMetadata?.role as "client" | "owner" | "operator" | "inventory" | "support") ?? "client";
             setUser({
               id: clerkUser.id,
               clerkId: clerkUser.id,
@@ -126,6 +209,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return t;
   };
 
+  const updateProfile = async (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }) => {
+    const currentToken = token ?? await getToken();
+    if (!currentToken) {
+      throw new Error("Sesión no disponible. Inicia sesión nuevamente.");
+    }
+
+    const payload = await authApi.updateMe(data, currentToken);
+    const updatedUser = { ...payload.user, avatarUrl: user?.avatarUrl };
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   const logout = () => {
     localStorage.removeItem("mock_auth_token");
     signOut();
@@ -134,10 +229,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, getToken, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, getToken, updateProfile, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  if (isMockClerkMode) {
+    return <MockAuthProvider>{children}</MockAuthProvider>;
+  }
+
+  return <ClerkAuthProvider>{children}</ClerkAuthProvider>;
 }
 
 export function useAuth() {

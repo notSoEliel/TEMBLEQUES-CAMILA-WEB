@@ -5,20 +5,28 @@
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
+    "test": "vitest run",
     "seed": "bun src/seed.ts",
+    "migrate:legacy-roles": "bun scripts/migrate-legacy-admin-role.ts",
+    "backup": "bun scripts/backup.ts",
+    "restore": "bun scripts/restore.ts",
     "tunnel": "bunx localtunnel --port 3000 --subdomain tembleques-camila"
   },
   "dependencies": {
-    "hono": "^4.7.0",
-    "mongoose": "^8.9.0",
     "@clerk/backend": "^1.21.0",
-    "zod": "^3.24.0",
+    "cloudinary": "^2.10.0",
+    "hono": "^4.7.0",
+    "jose": "^6.2.3",
+    "mongoose": "^8.9.0",
+    "pdfkit": "^0.19.1",
     "stripe": "^17.5.0",
-    "svix": "^1.60.0"
+    "svix": "^1.60.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@types/pdfkit": "^0.17.6",
     "bun-types": "latest",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.10"
   }
 }
-

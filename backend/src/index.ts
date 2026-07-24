@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import mongoose from "mongoose";
 import { ZodError } from "zod";
 import { connectDB } from "./db.js";
@@ -13,20 +12,58 @@ import rentalRoutes from "./routes/rentals.js";
 import adminRoutes from "./routes/admin.js";
 import stripeRoutes from "./routes/stripe.js";
 import settingsRoutes from "./routes/settings.js";
+// Aquí unimos los imports de ambas ramas sin dejar marcas
+import couponRoutes from "./routes/coupons.js";
+import maintenanceRoutes from "./routes/maintenance.js";
+import reportRoutes from "./routes/reports.js";
+import contactRoutes from "./routes/contact.js";
+import mediaRoutes from "./routes/media.js";
+import observabilityRoutes from "./routes/observability.js";
+import incidentRoutes from "./routes/incidents.js";
+import privacyRoutes from "./routes/privacy.js";
+import notificationRoutes from "./routes/notifications.js";
 import { startCronJobs } from "./services/cron.js";
+import { loadConfig } from "./config.js";
+import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
+import { recordRecentError, requestObservabilityMiddleware, structuredLog } from "./services/observability.js";
+import { startBackupScheduler } from "./services/backup-scheduler.js";
+
+const appConfig = loadConfig();
+
+const allowedOrigins = new Set(
+  [
+    "http://localhost:5173",
+    "http://frontend:5173",
+    appConfig.frontendUrl,
+    ...(process.env.CORS_ALLOWED_ORIGINS ?? "").split(","),
+  ]
+    .map((origin) => origin?.trim())
+    .filter((origin): origin is string => Boolean(origin)),
+);
 
 const app = new Hono();
 
+app.use("/api/*", async (c, next) => {
+  const origin = c.req.header("Origin");
+  const method = c.req.method.toUpperCase();
+  const isMutable = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+  if (origin && !allowedOrigins.has(origin) && (isMutable || method === "OPTIONS")) {
+    throw new AppError("Origen no permitido", 403, "ORIGIN_NOT_ALLOWED");
+  }
+
+  await next();
+});
+
 // Middleware
 app.use("/*", cors({
-  origin: [
-    "http://localhost:5173", 
-    "http://frontend:5173",
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
-  ],
-  credentials: true,
+  origin: (origin) => allowedOrigins.has(origin) ? origin : undefined,
+  allowHeaders: ["Content-Type", "Authorization"],
+  allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: false,
 }));
-app.use("/*", logger());
+app.use("/*", requestObservabilityMiddleware);
+app.use("/api/*", createRateLimitMiddleware());
 
 // Avoid route-level DB errors while Mongo is still booting.
 app.use("/api/*", async (c, next) => {
@@ -40,10 +77,16 @@ app.use("/api/*", async (c, next) => {
 });
 
 // ─── Global Error Handler ─────────────────────────────────────────────────────
-// All unhandled errors bubble up here. Never exposes raw stack traces or
-// internal MongoDB/Mongoose messages to the client.
 app.onError((err, c) => {
-  // Known application errors (thrown with AppError)
+  const statusCode = err instanceof AppError ? err.statusCode : err instanceof ZodError ? 400 : 500;
+  const errorCode = err instanceof AppError ? (err.code ?? "APP_ERROR") : err instanceof ZodError ? "VALIDATION_ERROR" : "INTERNAL_ERROR";
+  recordRecentError({
+    timestamp: new Date().toISOString(),
+    requestId: c.req.header("x-request-id"),
+    path: c.req.path,
+    code: errorCode,
+    statusCode,
+  });
   if (err instanceof AppError) {
     return c.json(
       { error: err.message, ...(err.code && { code: err.code }) },
@@ -51,14 +94,13 @@ app.onError((err, c) => {
     );
   }
 
-  // Zod validation errors — extract the first human-readable message
   if (err instanceof ZodError) {
     const message = err.issues[0]?.message ?? "Error de validación";
     return c.json({ error: message, code: "VALIDATION_ERROR" }, 400);
   }
 
-  // Unexpected server errors — log internally, return safe message
-  console.error("[Server] Error no controlado:", err);
+  const requestId = c.req.header("x-request-id");
+  structuredLog("error", "http.unhandled_error", { requestId, path: c.req.path });
   return c.json(
     { error: "Ocurrió un error interno. Por favor, intenta de nuevo.", code: "INTERNAL_ERROR" },
     500,
@@ -76,21 +118,51 @@ app.route("/api/rentals", rentalRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/stripe", stripeRoutes);
 app.route("/api/settings", settingsRoutes);
+// Aquí registramos pacíficamente todas las rutas combinadas
+app.route("/api/coupons", couponRoutes);
+app.route("/api/admin/maintenance", maintenanceRoutes);
+app.route("/api/admin/reports", reportRoutes);
+app.route("/api/contact", contactRoutes);
+app.route("/api/media", mediaRoutes);
+app.route("/api/admin/observability", observabilityRoutes);
+app.route("/api/admin/incidents", incidentRoutes);
+app.route("/api/privacy", privacyRoutes);
+app.route("/api/notifications", notificationRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;
 
+function shouldRunSeed(): boolean {
+  if (appConfig.appEnv === "production" || process.env.SEED_ENABLED === "false") {
+    return false;
+  }
+
+  if (process.env.SEED_ENABLED === "true") {
+    return true;
+  }
+
+  return appConfig.appEnv === "local"
+    || appConfig.appEnv === "ci"
+    || process.env.NODE_ENV === "development";
+}
+
 async function start() {
   await connectDB();
-  await seedDatabase();
+  if (shouldRunSeed()) {
+    await seedDatabase();
+  }
   await migrateToVariants();
 
   startCronJobs();
+  startBackupScheduler();
 
   console.log(`[Server] Tembleques Camila API running on port ${PORT}`);
 }
 
-start();
+start().catch((error: unknown) => {
+  console.error("[Server] No se pudo iniciar el backend:", error);
+  process.exitCode = 1;
+});
 
 export default {
   port: PORT,

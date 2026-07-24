@@ -154,7 +154,7 @@ Adoptar **Clerk** como proveedor de identidad gestionado (IdP).
 
 ### Impacto en Código (Code-Level Impact)
 - **Middleware de Hono**: Validador de JWT que intercepta el header `Authorization`.
-- **Metadata de Usuario**: Uso de `publicMetadata` en Clerk para roles de `admin`.
+- **Metadata de Usuario**: Uso de `publicMetadata.role` en Clerk para roles operativos; `owner` reemplaza al rol legacy `admin`.
 
 ### Trade-offs y Consecuencias
 - **Pros**: Seguridad de vanguardia desde el día 1.
@@ -198,11 +198,13 @@ Servir imágenes de alta resolución consume ancho de banda y CPU. Necesitábamo
 2. **AWS S3 Puro**: Requiere lógica adicional para transformación.
 
 ### Decisión
-Usar **Cloudinary** con subidas no firmadas desde el cliente.
+Usar **Cloudinary** con subidas firmadas (Signed Uploads) directamente desde el cliente. La firma criptográfica se genera en nuestro backend y solo cubre el `timestamp` y el preset `tembleques_products_signed`. Ese preset restringe los formatos a JPG, PNG y WEBP.
 
 ### Impacto en Código (Code-Level Impact)
-- **Optimización Automática**: Uso de flags `f_auto,q_auto` en las URLs.
-- **Seguridad de Cliente**: Validación previa de tipos de archivo en el frontend.
+- **Firma Segura**: El frontend solicita una firma en `/api/media/sign` que exige autenticación de administrador.
+- **Restricción de formatos**: El frontend envía el `upload_preset` firmado y Cloudinary aplica los formatos configurados en ese preset.
+- **Límite de tamaño**: El frontend bloquea archivos mayores de 5 MB como regla de interfaz. Este límite no es una garantía server-side porque el archivo no atraviesa nuestro backend.
+- **Optimización Automática**: Uso de flags `f_auto,q_auto` en las URLs generadas.
 
 ### Trade-offs y Consecuencias
 - **Pros**: Carga ultra-rápida vía CDN.

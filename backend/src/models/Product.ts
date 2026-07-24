@@ -10,9 +10,12 @@ export interface ISizeVariant {
 }
 
 export interface IProduct extends Document {
+  seed_key?: string;
   name: string;
+  name_en?: string;
   category: ProductCategory[];
   description: string;
+  description_en?: string;
   rental_price: number;
   variants: ISizeVariant[];
   images: string[];
@@ -36,12 +39,15 @@ const sizeVariantSchema = new Schema<ISizeVariant>(
 
 const productSchema = new Schema<IProduct>(
   {
+    seed_key: { type: String, trim: true, unique: true, sparse: true, select: false },
     name: { type: String, required: true, trim: true },
+    name_en: { type: String, trim: true },
     category: [{
       type: String,
       required: true,
     }],
     description: { type: String, required: true },
+    description_en: { type: String },
     rental_price: { type: Number, required: true, min: 0 },
     variants: { type: [sizeVariantSchema], default: [] },
     images: [{ type: String }],

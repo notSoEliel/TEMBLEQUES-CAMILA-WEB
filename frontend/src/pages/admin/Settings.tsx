@@ -37,6 +37,7 @@ export default function AdminSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [sizeGroups, setSizeGroups] = useState<SizeGroup[]>([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [originalCategories, setOriginalCategories] = useState<Category[]>([]);
@@ -73,6 +74,7 @@ export default function AdminSettings() {
       setCategories(settings.categories || []);
       setOriginalCategories(JSON.parse(JSON.stringify(settings.categories || [])));
       setSizeGroups(settings.size_groups || []);
+      setLowStockThreshold(settings.low_stock_threshold ?? 1);
     } catch (err) {
       console.error(err);
     }
@@ -82,7 +84,7 @@ export default function AdminSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await settingsApi.update({ categories, size_groups: sizeGroups }, token!);
+      await settingsApi.update({ categories, size_groups: sizeGroups, low_stock_threshold: lowStockThreshold }, token!);
       showError("Configuración guardada exitosamente.", "success");
       setOriginalCategories(JSON.parse(JSON.stringify(categories)));
       setUnlockedIds({});
@@ -221,6 +223,26 @@ export default function AdminSettings() {
           </p>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Control de bajo stock</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="low-stock-threshold">Umbral de alerta por talla</Label>
+          <Input
+            id="low-stock-threshold"
+            type="number"
+            min={0}
+            max={1000}
+            step={1}
+            value={lowStockThreshold}
+            onChange={(event) => setLowStockThreshold(Math.max(0, Number(event.target.value) || 0))}
+            className="max-w-xs"
+          />
+          <p className="text-sm text-muted-foreground">Se notificará al equipo cuando una talla tenga este número o menos de unidades disponibles. Las tallas en mantenimiento quedan excluidas.</p>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Categorías */}

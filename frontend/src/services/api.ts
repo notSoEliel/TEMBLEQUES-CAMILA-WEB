@@ -4,10 +4,32 @@ import {
   ICategoryConfig, 
   ISizeGroupConfig, 
   PaginationMetadata, 
-  ApiResponse 
+  ApiResponse,
+  IContactMessage,
+  ContactStatus,
+  IUserAudit,
+  IUserProfile,
 } from "@/types";
 
-const API_URL = "/api";
+function resolveApiUrl(): string {
+  const configuredValue = import.meta.env.VITE_API_URL?.trim();
+  if (!configuredValue) {
+    if (import.meta.env.PROD) {
+      throw new Error("VITE_API_URL no está configurada para este despliegue.");
+    }
+    return "/api";
+  }
+
+  const configuredUrl = configuredValue.replace(/\/$/, "");
+  if (import.meta.env.PROD && (configuredUrl === "/api" || configuredUrl.startsWith("/api/"))) {
+    throw new Error("VITE_API_URL no puede apuntar al frontend en un despliegue remoto.");
+  }
+
+  if (configuredUrl === "/api" || configuredUrl.endsWith("/api")) return configuredUrl;
+  return `${configuredUrl}/api`;
+}
+
+const API_URL = resolveApiUrl();
 
 export type { PaginationMetadata };
 
@@ -16,14 +38,173 @@ export interface PaginatedResponse<T> {
   pagination: PaginationMetadata;
 }
 
+export interface ObservabilityMetric {
+  name: string;
+  value: number;
+  labels: Record<string, string>;
+}
+
+export interface ObservabilityAlert {
+  _id: string;
+  type: string;
+  severity: "info" | "warning" | "critical";
+  status: "open" | "resolved";
+  message: string;
+  source: string;
+  createdAt: string;
+}
+
+export interface ObservabilityOverview {
+  health: {
+    checkedAt: string;
+    database: { status: "ok" | "unavailable"; state: number };
+    dependencies: Record<string, "configured" | "not_configured">;
+    configuration: {
+      appEnv: string;
+      cors: "configured" | "not_configured";
+      backups: "configured" | "not_configured";
+    };
+    cron: { job: string; lastRunAt?: string; lastSuccessAt?: string; lastError?: string };
+    recentErrors: Array<{ timestamp: string; requestId?: string; path?: string; code: string; statusCode: number }>;
+  };
+  metrics: {
+    counters: ObservabilityMetric[];
+    latency: { requestCount: number; averageMs: number; p95Ms: number };
+  };
+  alerts: ObservabilityAlert[];
+}
+
+export interface RentalTermsAcceptance {
+  accepted_at: string;
+  ip_address: string;
+  user_agent: string;
+}
+
+export interface AdminRentalDetail {
+  _id: string;
+  order_group_id?: string;
+  selected_size: string;
+  start_date: string;
+  end_date: string;
+  total: number;
+  balance_due: number;
+  payment_type: "reservation" | "full";
+  status: string;
+  payment_status: string;
+  deposit_required: boolean;
+  deposit_amount: number;
+  deposit_status: string;
+  late_days: number;
+  late_fee_amount: number;
+  late_fee_status: string;
+  coupon_code?: string;
+  discount_amount?: number;
+  createdAt: string;
+  updatedAt: string;
+  status_history: Array<{ status: string; timestamp: string; notes?: string; updated_by?: string }>;
+  user_id: { name: string; email: string; phone?: string; preferredAddress?: string };
+  product_id: { name: string; name_en?: string; category?: string[]; images?: string[] };
+  payment: { stripe_session_id?: string; stripe_payment_intent_id?: string; stripe_payment_amount?: number };
+}
+
+export type AdminIncidentType = "damage" | "late_return" | "payment_issue" | "customer_complaint" | "maintenance" | "other";
+export type AdminIncidentSeverity = "low" | "medium" | "high" | "critical";
+export type AdminIncidentStatus = "open" | "in_review" | "resolved" | "closed";
+
+export interface AdminIncident {
+  _id: string;
+  type: AdminIncidentType;
+  severity: AdminIncidentSeverity;
+  status: AdminIncidentStatus;
+  description: string;
+  resolution?: string;
+  createdAt: string;
+  updatedAt: string;
+  rental_id?: { _id: string; order_group_id?: string; status: string; payment_status: string };
+  user_id?: { _id: string; name: string; email: string };
+  product_id?: { _id: string; name: string };
+  timeline: Array<{ status: AdminIncidentStatus; note?: string; timestamp: string; actor_id?: { name?: string; email?: string } }>;
+}
+
+export type NotificationType =
+  | "payment_confirmed"
+  | "payment_failed"
+  | "payment_expired"
+  | "reservation_cancelled"
+  | "refund_completed"
+  | "incident_created"
+  | "incident_updated"
+  | "low_stock";
+
+export interface UserNotification {
+  _id: string;
+  type: NotificationType;
+  channel: "in_app";
+  title: string;
+  message: string;
+  read_at?: string;
+  delivery_status: "sent";
+  createdAt: string;
+}
+
+export interface ApiErrorPayload {
+  error?: unknown;
+  message?: unknown;
+  code?: unknown;
+  details?: unknown;
+}
+
+export type ApiErrorKind = "network" | "timeout" | "unauthorized" | "forbidden" | "validation" | "server" | "generic";
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly requestId?: string;
+  readonly retryable: boolean;
+  readonly kind: ApiErrorKind;
+
+  constructor(
+    message: string,
+    options: {
+      status?: number;
+      code?: string;
+      requestId?: string;
+      retryable?: boolean;
+      kind?: ApiErrorKind;
+    } = {},
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = options.status ?? 0;
+    this.code = options.code ?? "API_ERROR";
+    this.requestId = options.requestId;
+    this.retryable = options.retryable ?? false;
+    this.kind = options.kind ?? "generic";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+interface ClerkSession {
+  getToken: () => Promise<string | null>;
+}
+
+interface ClerkRuntime {
+  session?: ClerkSession;
+}
+
+interface ClerkWindow extends Window {
+  Clerk?: ClerkRuntime;
+}
+
 interface ApiOptions {
   method?: string;
-  body?: any;
+  body?: unknown;
   token?: string;
+  timeoutMs?: number;
 }
 
 async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body, token, timeoutMs = 15_000 } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -31,12 +212,15 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
 
   let currentToken = token;
   
-  if (typeof window !== "undefined" && (window as any).Clerk?.session) {
+  if (typeof window !== "undefined" && (window as ClerkWindow).Clerk?.session) {
     try {
-      const freshToken = await (window as any).Clerk.session.getToken();
+      const freshToken = await (window as ClerkWindow).Clerk?.session?.getToken();
       if (freshToken) currentToken = freshToken;
-    } catch (e) {
-      console.warn("Failed to get fresh Clerk token", e);
+    } catch {
+      throw new ApiError("Tu sesión no pudo renovarse. Inicia sesión nuevamente.", {
+        code: "AUTH_TOKEN_REFRESH_FAILED",
+        kind: "unauthorized",
+      });
     }
   }
 
@@ -44,41 +228,123 @@ async function api<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
     headers["Authorization"] = `Bearer ${currentToken}`;
   }
 
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+
   let response: Response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     });
-  } catch {
-    throw new Error("No se pudo conectar con el servidor. Verifica tu conexión a internet.");
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError("La solicitud tardó demasiado. Puedes intentarlo nuevamente.", {
+        code: "NETWORK_TIMEOUT",
+        kind: "timeout",
+        retryable: true,
+      });
+    }
+    throw new ApiError("No se pudo conectar con el servidor. Verifica tu conexión a internet.", {
+      code: "NETWORK_UNAVAILABLE",
+      kind: "network",
+      retryable: true,
+    });
+  } finally {
+    window.clearTimeout(timeout);
   }
 
-  let data: any;
+  let data: unknown;
   try {
     data = await response.json();
   } catch {
     if (!response.ok) {
-      throw new Error(
-        `El servidor respondió con un error inesperado (${response.status}). Intenta de nuevo más tarde.`,
-      );
+      throw new ApiError(`El servidor respondió con un error inesperado (${response.status}). Intenta de nuevo más tarde.`, {
+        status: response.status,
+        code: "INVALID_ERROR_RESPONSE",
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        retryable: response.status >= 500,
+        kind: response.status >= 500 ? "server" : "generic",
+      });
     }
-    throw new Error("La respuesta del servidor no pudo ser procesada.");
+    throw new ApiError("La respuesta del servidor no pudo ser procesada.", {
+      code: "INVALID_RESPONSE",
+      retryable: true,
+      kind: "server",
+    });
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || "Ocurrió un error inesperado. Por favor, intenta de nuevo.");
+    const payload = isApiErrorPayload(data) ? data : {};
+    const message = typeof payload.error === "string"
+      ? payload.error
+      : typeof payload.message === "string"
+        ? payload.message
+        : getDefaultErrorMessage(response.status);
+    const code = typeof payload.code === "string" ? payload.code : `HTTP_${response.status}`;
+    const kind = getErrorKind(response.status);
+    throw new ApiError(message, {
+      status: response.status,
+      code,
+      requestId: response.headers.get("x-request-id") ?? undefined,
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+      kind,
+    });
   }
 
-  return data;
+  return data as T;
+}
+
+function isApiErrorPayload(value: unknown): value is ApiErrorPayload {
+  return typeof value === "object" && value !== null;
+}
+
+function getDefaultErrorMessage(status: number): string {
+  if (status === 401) return "Tu sesión ha expirado. Inicia sesión nuevamente.";
+  if (status === 403) return "No tienes permisos para realizar esta acción.";
+  if (status === 404) return "No encontramos la información solicitada.";
+  if (status === 409) return "La información cambió. Revisa los datos e inténtalo nuevamente.";
+  if (status === 429) return "Se alcanzó el límite de solicitudes. Espera un momento e inténtalo nuevamente.";
+  if (status >= 500) return "El servidor no pudo completar la solicitud. Inténtalo nuevamente.";
+  return "Ocurrió un error inesperado. Por favor, intenta de nuevo.";
+}
+
+function getErrorKind(status: number): ApiErrorKind {
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  if (status === 400 || status === 409) return "validation";
+  if (status >= 500) return "server";
+  return "generic";
 }
 
 
 // Auth
 export const authApi = {
   me: (token: string) =>
-    api<{ user: any }>("/auth/me", { token }),
+    api<{ user: IUserProfile }>("/auth/me", { token }),
+  updateMe: (data: { name?: string; phone?: string; preferredAddress?: string; preferredLanguage?: "es" | "en" }, token: string) =>
+    api<{ user: IUserProfile }>("/auth/me", { method: "PATCH", body: data, token }),
+};
+
+export const notificationsApi = {
+  list: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<UserNotification> & { unreadCount: number }>(`/notifications${query}`, { token });
+  },
+
+  markRead: (id: string, token: string) =>
+    api<{ notification: UserNotification }>(`/notifications/${id}/read`, { method: "PATCH", token }),
+};
+
+// Contact
+export const contactApi = {
+  submit: (data: { name: string; email: string; message: string }) =>
+    api<{ message: string }>("/contact", { method: "POST", body: data }),
 };
 
 // Products
@@ -132,11 +398,39 @@ export const rentalsApi = {
 
   cancel: (id: string, token: string) =>
     api<{ message: string; rental: any }>(`/rentals/${id}`, { method: "DELETE", token }),
+
+  cancellationPreview: (id: string, token: string) =>
+    api<{ cancellable: boolean; paid: boolean; daysUntilStart: number; refundPercentage: number; refundableAmount: number; policyLabel: string }>(`/rentals/${id}/cancellation-preview`, { token }),
+
+  downloadReceipt: async (rentalId: string, token: string) => {
+    const response = await fetch(`${API_URL}/rentals/${rentalId}/receipt.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      let message = "No se pudo generar el comprobante.";
+      try {
+        const data = await response.json();
+        message = data?.error || message;
+      } catch {
+        message = `No se pudo generar el comprobante (${response.status}).`;
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `comprobante-${rentalId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // Stripe
 export const stripeApi = {
-  createCheckoutSession: (rentalId: string, token: string) =>
+  createCheckoutSession: (rentalId: string, token: string, couponCode?: string) =>
     api<{
       url?: string;
       mode?: string;
@@ -146,11 +440,11 @@ export const stripeApi = {
       deposit?: { required: boolean; amount: number; status: string };
     }>("/stripe/create-checkout-session", {
       method: "POST",
-      body: { rentalId },
+      body: { rentalId, couponCode },
       token,
     }),
 
-  createBulkCheckoutSession: (rentalIds: string[], token: string, orderGroupId?: string, paymentType?: "reservation" | "full") =>
+  createBulkCheckoutSession: (rentalIds: string[], token: string, orderGroupId?: string, paymentType?: "reservation" | "full", couponCode?: string) =>
     api<{
       url?: string;
       mode?: string;
@@ -159,7 +453,7 @@ export const stripeApi = {
       sessionId?: string;
     }>("/stripe/create-checkout-session", {
       method: "POST",
-      body: { rentalIds, orderGroupId, paymentType },
+      body: { rentalIds, orderGroupId, paymentType, couponCode },
       token,
     }),
   verifySession: (sessionId: string, token: string) =>
@@ -170,6 +464,15 @@ export const stripeApi = {
 export const adminApi = {
   dashboard: (token: string) =>
     api<{ dashboard: any }>("/admin/dashboard", { token }),
+
+  observabilityOverview: (token: string) =>
+    api<ObservabilityOverview>("/admin/observability/overview", { token }),
+
+  resolveObservabilityAlert: (id: string, token: string) =>
+    api<{ alert: ObservabilityAlert }>(`/admin/observability/alerts/${id}/resolve`, {
+      method: "PATCH",
+      token,
+    }),
 
   // Products CRUD
   createProduct: (data: any, token: string) =>
@@ -182,9 +485,10 @@ export const adminApi = {
     api<{ message: string }>(`/admin/products/${id}`, { method: "DELETE", token }),
 
   // Rentals
-  rentals: (token: string, params: { status?: string; page?: number; limit?: number; sort?: string } = {}) => {
+  rentals: (token: string, params: { status?: string; search?: string; page?: number; limit?: number; sort?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.status) searchParams.set("status", params.status);
+    if (params.search) searchParams.set("search", params.search);
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
     if (params.sort) searchParams.set("sort", params.sort);
@@ -202,9 +506,30 @@ export const adminApi = {
   updateRentalStatus: (id: string, status: string, token: string) =>
     api<{ rental: any }>(`/admin/rentals/${id}/status`, { method: "PATCH", body: { status }, token }),
 
-  // Users
-  users: (token: string, params: { page?: number; limit?: number } = {}) => {
+  rentalDetail: (id: string, token: string) =>
+    api<{ rental: AdminRentalDetail; terms: RentalTermsAcceptance[] }>(`/admin/rentals/${id}`, { token }),
+
+  incidents: (token: string, params: { search?: string; status?: AdminIncidentStatus; severity?: AdminIncidentSeverity; page?: number; limit?: number } = {}) => {
     const searchParams = new URLSearchParams();
+    if (params.search) searchParams.set("search", params.search);
+    if (params.status) searchParams.set("status", params.status);
+    if (params.severity) searchParams.set("severity", params.severity);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<AdminIncident>>(`/admin/incidents${query}`, { token });
+  },
+
+  createIncident: (data: { rentalId?: string; userId?: string; productId?: string; type: AdminIncidentType; severity: AdminIncidentSeverity; description: string }, token: string) =>
+    api<{ incident: AdminIncident }>("/admin/incidents", { method: "POST", body: data, token }),
+
+  updateIncident: (id: string, data: { status?: AdminIncidentStatus; severity?: AdminIncidentSeverity; resolution?: string | null; note?: string }, token: string) =>
+    api<{ incident: AdminIncident }>(`/admin/incidents/${id}`, { method: "PATCH", body: data, token }),
+
+  // Users
+  users: (token: string, params: { search?: string; page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.search) searchParams.set("search", params.search);
     if (params.page) searchParams.set("page", String(params.page));
     if (params.limit) searchParams.set("limit", String(params.limit));
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
@@ -213,7 +538,6 @@ export const adminApi = {
 
   getUser: (id: string, token: string) =>
     api<{ user: any }>(`/admin/users/${id}`, { token }),
-
 
   userRentals: (userId: string, token: string, params: { page?: number; limit?: number; status?: string } = {}) => {
     const searchParams = new URLSearchParams();
@@ -225,7 +549,150 @@ export const adminApi = {
   },
 
   userStats: (userId: string, token: string) =>
-    api<{ stats: { completed: number; cancelled: number; pending: number } }>(`/admin/users/${userId}/stats`, { token }),
+    api<{ stats: { total: number; completed?: number; cancelled: number; pending: number; reserved: number; totalSpent: number } }>(`/admin/users/${userId}/stats`, { token }),
+
+  userAudit: (userId: string, token: string) =>
+    api<{ audit: IUserAudit }>(`/admin/users/${userId}/audit`, { token }),
+
+  // Maintenance Blocks
+  listMaintenance: (token: string) =>
+    api<{ blocks: any[]; pagination: PaginationMetadata }>("/admin/maintenance?limit=100", { token }),
+
+  createMaintenance: (data: any, token: string) =>
+    api<{ block: any }>("/admin/maintenance", { method: "POST", body: data, token }),
+
+  deleteMaintenance: (id: string, token: string) =>
+    api<{ message: string; block: any }>(`/admin/maintenance/${id}`, { method: "DELETE", token }),
+
+  lowStock: (token: string, params: { page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<{ data: Array<{ _id: string; name: string; variants: Array<{ size: string; stock: number }> }>; pagination: PaginationMetadata; threshold: number }>(`/admin/maintenance/low-stock${query}`, { token });
+  },
+
+  updateLowStockThreshold: (threshold: number, token: string) =>
+    api<{ threshold: number }>("/admin/maintenance/threshold", { method: "PATCH", body: { threshold }, token }),
+
+  // Reports
+  getInventoryStats: (token: string, params: { from?: string; to?: string; search?: string; category?: string } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    if (params.search) searchParams.set("search", params.search);
+    if (params.category) searchParams.set("category", params.category);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<{ stats: any[] }>(`/admin/reports/inventory-stats${query}`, { token });
+  },
+
+  exportCsv: async (token: string, params: { from?: string; to?: string; search?: string; category?: string } = {}): Promise<string> => {
+    const freshToken = typeof window !== "undefined" && (window as any).Clerk?.session
+      ? await (window as any).Clerk.session.getToken()
+      : token;
+    
+    const searchParams = new URLSearchParams();
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    if (params.search) searchParams.set("search", params.search);
+    if (params.category) searchParams.set("category", params.category);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    const res = await fetch(`${API_URL}/admin/reports/export-csv${query}`, {
+      headers: { Authorization: `Bearer ${freshToken || token}` }
+    });
+    if (!res.ok) throw new Error("Error al exportar reporte");
+    return res.text();
+  },
+
+  exportFinancialCsv: async (token: string, from?: string, to?: string): Promise<string> => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${API_URL}/admin/reports/financial/export-csv${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("No se pudo exportar el reporte financiero.");
+    return res.text();
+  },
+
+  downloadFinancialPdf: async (token: string, from?: string, to?: string) => {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await fetch(`${API_URL}/admin/reports/financial/export.pdf${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error("No se pudo exportar el PDF financiero.");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "reporte-financiero-academico.pdf";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+
+  // Contacts
+  contacts: (token: string, params: { status?: ContactStatus; page?: number; limit?: number } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.set("status", params.status);
+    if (params.page) searchParams.set("page", String(params.page));
+    if (params.limit) searchParams.set("limit", String(params.limit));
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
+    return api<PaginatedResponse<IContactMessage>>(`/admin/contacts${query}`, { token });
+  },
+
+  updateContactStatus: (id: string, status: ContactStatus, token: string) =>
+    api<{ contact: IContactMessage }>(`/admin/contacts/${id}/status`, { method: "PATCH", body: { status }, token }),
+
+  downloadRentalContract: async (rentalId: string, token: string) => {
+    const response = await fetch(`${API_URL}/admin/rentals/${rentalId}/contract.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      let message = "No se pudo generar el contrato.";
+      try {
+        const data = await response.json();
+        message = data?.error || message;
+      } catch {
+        message = `No se pudo generar el contrato (${response.status}).`;
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `contrato-${rentalId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+};
+
+// Coupons
+export const couponsApi = {
+  validate: (code: string, subtotal: number, categories: string[], token: string) =>
+    api<{ valid: boolean; coupon: { code: string; discount_type: string; value: number } }>("/coupons/validate", {
+      method: "POST",
+      body: { code, subtotal, categories },
+      token,
+    }),
+  list: (token: string) =>
+    api<{ coupons: any[] }>("/coupons", { token }),
+  create: (data: any, token: string) =>
+    api<{ coupon: any }>("/coupons", { method: "POST", body: data, token }),
+  update: (id: string, data: any, token: string) =>
+    api<{ coupon: any }>(`/coupons/${id}`, { method: "PUT", body: data, token }),
+  delete: (id: string, token: string) =>
+    api<{ message: string; coupon: any }>(`/coupons/${id}`, { method: "DELETE", token }),
 };
 
 // Settings
@@ -233,4 +700,72 @@ export const settingsApi = {
   get: () => api<{ settings: ISettings }>("/settings"),
   update: (data: ISettings, token: string) =>
     api<{ settings: ISettings }>("/settings", { method: "PUT", body: data, token }),
+};
+
+// Media
+interface SignResponse {
+  timestamp: number;
+  signature: string;
+  apiKey: string;
+  cloudName: string;
+  uploadPreset: string;
+}
+
+interface CloudinaryUploadSuccess {
+  secure_url?: unknown;
+}
+
+interface CloudinaryUploadError {
+  error: {
+    message: string;
+  };
+}
+
+export const mediaApi = {
+  uploadImage: async (file: File, token?: string): Promise<{ success: boolean; url: string }> => {
+    try {
+      // 1. Obtener la firma de nuestro backend seguro
+      const signRes = await api<{ success: boolean; data: SignResponse }>("/media/sign", { 
+        method: "GET",
+        token 
+      });
+      const { timestamp, signature, apiKey, cloudName, uploadPreset } = signRes.data;
+
+      // 2. Preparar el payload para Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("api_key", apiKey);
+      formData.append("timestamp", timestamp.toString());
+      formData.append("upload_preset", uploadPreset);
+      formData.append("signature", signature);
+
+      // 3. Subida directa a Cloudinary
+      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      
+      const uploadRes = await fetch(cloudinaryUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errorData = (await uploadRes.json().catch(() => null)) as CloudinaryUploadError | null;
+        throw new Error(errorData?.error?.message || "Error al subir a Cloudinary");
+      }
+
+      const data = (await uploadRes.json()) as CloudinaryUploadSuccess;
+      if (typeof data.secure_url !== "string" || data.secure_url.length === 0) {
+        throw new Error("Cloudinary no devolvió la URL de la imagen");
+      }
+
+      const finalUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
+      return { success: true, url: finalUrl };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Cloudinary upload failed:", error.message);
+        throw new Error(error.message || "No se pudo completar la subida de la imagen. Inténtalo nuevamente.");
+      }
+      console.error("Cloudinary upload failed with unknown error", error);
+      throw new Error("No se pudo completar la subida de la imagen. Inténtalo nuevamente.");
+    }
+  },
 };

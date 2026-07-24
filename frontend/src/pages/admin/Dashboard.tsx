@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/utils";
 import { adminApi } from "@/services/api";
+import type { ObservabilityOverview } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,10 @@ import {
   Clock,
   Info,
   ArrowRight,
+  Activity,
+  CheckCircle2,
+  Database,
+  ShieldCheck,
 } from "lucide-react";
 
 type TopProduct = { name: string; count: number };
@@ -50,6 +56,8 @@ const STATUS_CONFIG = [
 export default function AdminDashboard() {
   const { token } = useAuth();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [observability, setObservability] = useState<ObservabilityOverview | null>(null);
+  const [resolvingAlertId, setResolvingAlertId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +71,24 @@ export default function AdminDashboard() {
         .catch(() => setLoading(false));
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    adminApi.observabilityOverview(token).then(setObservability).catch(() => setObservability(null));
+  }, [token]);
+
+  const resolveAlert = async (alertId: string) => {
+    if (!token) return;
+    setResolvingAlertId(alertId);
+    try {
+      await adminApi.resolveObservabilityAlert(alertId, token);
+      setObservability((current) => current
+        ? { ...current, alerts: current.alerts.filter((alert) => alert._id !== alertId) }
+        : current);
+    } finally {
+      setResolvingAlertId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -95,7 +121,7 @@ export default function AdminDashboard() {
     },
     {
       label: "Ingresos del Mes",
-      value: `$${dashboard?.monthlyRevenue ?? 0}`,
+      value: formatCurrency(dashboard?.monthlyRevenue ?? 0),
       icon: DollarSign,
       bgColor: "bg-emerald-50",
       iconColor: "text-emerald-600",
@@ -342,6 +368,111 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {observability && (
+        <section className="space-y-4" aria-labelledby="technical-health-title">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h2
+                id="technical-health-title"
+                className="text-xl font-semibold text-foreground flex items-center gap-2"
+                style={{ fontFamily: "'Playfair Display', serif" }}
+              >
+                <Activity className="h-5 w-5 text-primary" />
+                Salud técnica
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Estado operativo de las dependencias y señales recientes del sistema.
+              </p>
+            </div>
+            <Badge variant={observability.health.database.status === "ok" ? "success" : "destructive"}>
+              {observability.health.database.status === "ok" ? "Operativo" : "Revisar"}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: "Base de datos", value: observability.health.database.status === "ok" ? "Conectada" : "No disponible", icon: Database, good: observability.health.database.status === "ok" },
+              { label: "Servicios externos", value: Object.values(observability.health.dependencies).every((status) => status === "configured") ? "Configurados" : "Revisar configuración", icon: ShieldCheck, good: Object.values(observability.health.dependencies).every((status) => status === "configured") },
+              { label: "Latencia p95", value: `${observability.metrics.latency.p95Ms} ms`, icon: Activity, good: observability.metrics.latency.p95Ms < 1000 },
+              { label: "Respaldo", value: observability.health.configuration.backups === "configured" ? "Cifrado listo" : "Falta configurar", icon: CheckCircle2, good: observability.health.configuration.backups === "configured" },
+            ].map((item) => (
+              <Card key={item.label} className="border-border/70 shadow-none">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className={`rounded-xl p-2.5 ${item.good ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"}`}>
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{item.value}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Alertas abiertas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {observability.alerts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" /> No hay alertas pendientes.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {observability.alerts.map((alert) => (
+                      <div key={alert._id} className="flex items-start justify-between gap-3 rounded-xl bg-muted/40 p-3">
+                        <div className="min-w-0">
+                          <Badge variant={alert.severity === "critical" ? "destructive" : alert.severity === "warning" ? "warning" : "info"} className="mb-1">
+                            {alert.severity === "critical" ? "Crítica" : alert.severity === "warning" ? "Advertencia" : "Información"}
+                          </Badge>
+                          <p className="text-sm text-foreground">{alert.message}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={resolvingAlertId === alert._id}
+                          onClick={() => resolveAlert(alert._id)}
+                        >
+                          Resolver
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Última ejecución automática</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tarea</span>
+                  <span className="font-medium text-foreground">Limpieza de reservas abandonadas</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Última ejecución</span>
+                  <span className="font-medium text-foreground">
+                    {observability.health.cron.lastRunAt ? new Date(observability.health.cron.lastRunAt).toLocaleString("es-PA") : "Sin ejecución"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Estado</span>
+                  <Badge variant={observability.health.cron.lastError ? "destructive" : "success"}>
+                    {observability.health.cron.lastError ? "Con error" : "Correcta"}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       <Separator />
     </div>

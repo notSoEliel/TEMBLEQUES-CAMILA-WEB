@@ -5,15 +5,18 @@ import {
   useSearchParams,
   useLocation,
 } from "react-router-dom";
-import { productsApi, rentalsApi, stripeApi } from "@/services/api";
+import { productsApi, rentalsApi, stripeApi, couponsApi } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
   Shield,
@@ -21,6 +24,7 @@ import {
   Loader2,
   Package,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 import ErrorPage from "@/pages/ErrorPage";
 import { useErrorModal } from "@/components/ErrorModal";
@@ -28,15 +32,15 @@ import AvailabilityCalendar from "@/components/ui/AvailabilityCalendar";
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 const STEPS_SINGLE = [
-  { id: 1, label: "Producto y Fechas", icon: Package },
-  { id: 2, label: "Términos", icon: Shield },
-  { id: 3, label: "Pagar", icon: CreditCard },
+  { id: 1, label: "checkout.singleStep1", icon: Package },
+  { id: 2, label: "checkout.singleStep2", icon: Shield },
+  { id: 3, label: "checkout.singleStep3", icon: CreditCard },
 ];
 
 const STEPS_MULTI = [
-  { id: 1, label: "Productos", icon: Package },
-  { id: 2, label: "Términos", icon: Shield },
-  { id: 3, label: "Pagar", icon: CreditCard },
+  { id: 1, label: "checkout.multiStep1", icon: Package },
+  { id: 2, label: "checkout.multiStep2", icon: Shield },
+  { id: 3, label: "checkout.multiStep3", icon: CreditCard },
 ];
 
 function calculateDays(start: string, end: string): number {
@@ -60,7 +64,7 @@ function estimateDeposit(
 }
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
-function Stepper({ current, steps }: { current: number, steps: { id: number; label: string; icon: any }[] }) {
+function Stepper({ current, steps, t }: { current: number, steps: { id: number; label: string; icon: any }[], t: any }) {
   return (
     <nav
       aria-label="Progreso de reserva"
@@ -89,7 +93,7 @@ function Stepper({ current, steps }: { current: number, steps: { id: number; lab
               <span
                 className={`text-[10px] mt-1 font-medium ${active ? "text-primary" : done ? "text-foreground" : "text-muted-foreground"}`}
               >
-                {step.label}
+                {t(step.label)}
               </span>
             </div>
             {idx < steps.length - 1 && (
@@ -106,6 +110,7 @@ function Stepper({ current, steps }: { current: number, steps: { id: number; lab
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function Checkout() {
+  const { t, language } = useI18n();
   const { productId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,11 +133,60 @@ export default function Checkout() {
     (location.state as any)?.selectedSize || "",
   );
 
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState("");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  const [timeLeft, setTimeLeft] = useState(2100);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (loading || authLoading || cartLoading) return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setIsExpired(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading, authLoading, cartLoading]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim() || !token) return;
+    try {
+      setValidatingCoupon(true);
+      setCouponError("");
+      const categories = items.flatMap(i => i.category ? (Array.isArray(i.category) ? i.category : [i.category]) : []);
+      const res = await couponsApi.validate(couponCode.trim(), cartTotal, categories, token);
+      
+      if (res.valid) {
+        setAppliedCoupon(res.coupon);
+      } else {
+        setCouponError(t("checkout.couponInvalid"));
+      }
+    } catch (err: any) {
+      setCouponError(err?.message || t("checkout.couponError"));
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
   useEffect(() => {
     if (authLoading || cartLoading) return;
 
     if (!user) {
-      navigate("/login");
+      navigate("/login?redirect=/checkout/" + (productId ?? "multi"));
       return;
     }
     
@@ -162,7 +216,7 @@ export default function Checkout() {
   useEffect(() => {
     if (searchParams.get("cancelled") === "1") {
       showError(
-        "El pago fue cancelado. Puedes intentarlo de nuevo.",
+        t("checkout.cancelMsg"),
         "validation",
       );
     }
@@ -177,23 +231,30 @@ export default function Checkout() {
     selectedVariant?.price_override ?? product?.rental_price ?? 0;
   const days = calculateDays(startDate, endDate);
   
-  const subtotal = isMulti ? cartTotal : (days > 0 ? days * pricePerDay : 0);
-  const itbms = subtotal * 0.07;
-  const finalTotal = subtotal + itbms;
-  const finalDeposit = isMulti ? cartTotalDeposit : estimateDeposit(finalTotal, product?.deposit_settings).amount;
+  // cartTotal already includes 7% ITBMS from ProductDetail.tsx. We extract it to get the base subtotal.
+  const baseSubtotal = isMulti 
+    ? items.reduce((acc, item) => acc + (item.price / 1.07) * item.quantity, 0)
+    : (days > 0 ? days * pricePerDay : 0);
+
+  const subtotal = baseSubtotal;
+  const discount = appliedCoupon ? (appliedCoupon.discount_type === "percentage" ? Math.round(subtotal * (appliedCoupon.value / 100) * 100) / 100 : Math.min(subtotal, appliedCoupon.value)) : 0;
+  const netSubtotal = Math.max(0, subtotal - discount);
+  const itbms = netSubtotal * 0.07;
+  const finalTotal = netSubtotal + itbms;
+  const finalDeposit = isMulti ? Math.max(0, cartTotalDeposit - (discount * 0.25)) : estimateDeposit(finalTotal, product?.deposit_settings).amount;
   const depositRequired = isMulti ? cartTotalDeposit > 0 : estimateDeposit(finalTotal, product?.deposit_settings).required;
 
   function goToStep(step: number) {
     if (step === 2 && !isMulti && (!startDate || !endDate || days <= 0)) {
       showError(
-        "Selecciona las fechas de alquiler antes de continuar.",
+        t("checkout.dateRequired"),
         "validation",
       );
       return;
     }
     if (step === 2 && calendarConflict) {
       showError(
-        "Las fechas seleccionadas tienen conflicto de disponibilidad.",
+        t("checkout.dateConflict"),
         "validation",
       );
       return;
@@ -204,7 +265,7 @@ export default function Checkout() {
 
   async function handleSubmit() {
     if (!termsAccepted) {
-      showError("Debes aceptar los términos y condiciones.", "validation");
+      showError(t("checkout.termsRequired"), "validation");
       return;
     }
     setSubmitting(true);
@@ -246,6 +307,9 @@ export default function Checkout() {
       const paymentResult = await stripeApi.createBulkCheckoutSession(
         rentalIds,
         token!,
+        undefined,
+        paymentType,
+        appliedCoupon?.code
       );
 
       if (isMulti) clearCart();
@@ -257,7 +321,7 @@ export default function Checkout() {
       }
     } catch (err: any) {
       showError(
-        err.message || "Error al procesar la reserva. Intenta de nuevo.",
+        err.message || t("checkout.rentalError"),
         "generic",
       );
       setSubmitting(false);
@@ -279,6 +343,28 @@ export default function Checkout() {
 
   const steps = isMulti ? STEPS_MULTI : STEPS_SINGLE;
 
+  if (isExpired) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
+        <div className="h-16 w-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto border-2 border-destructive/20 animate-bounce">
+          <Clock className="h-8 w-8" />
+        </div>
+        <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
+          {t("checkout.expiredTitle")}
+        </h2>
+        <p className="text-muted-foreground">
+          {t("checkout.expiredDesc")}
+        </p>
+        <Button
+          onClick={() => navigate(isMulti ? "/cart" : "/catalog")}
+          className="rounded-[2rem] h-11 bg-primary text-primary-foreground font-semibold px-6 shadow-elegant"
+        >
+          {t("checkout.expiredBtn")}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       {errorModal}
@@ -290,16 +376,24 @@ export default function Checkout() {
         onClick={() => navigate(-1)}
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver
+        {t("checkout.backBtn")}
       </Button>
 
       <h1
         className="text-3xl font-bold mb-6 font-serif"
       >
-        Finalizar Reserva
+        {t("checkout.mainTitle")}
       </h1>
 
-      <Stepper current={currentStep} steps={steps} />
+      <Stepper current={currentStep} steps={steps} t={t} />
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 bg-primary/5 p-4 rounded-xl border border-primary/10">
+        <div className="flex items-center gap-2 text-primary font-medium">
+          <Clock className="h-5 w-5 animate-pulse" />
+          <span className="text-sm">{t("checkout.timeLeft")}</span>
+        </div>
+        <span className="text-lg font-bold text-primary font-mono">{formatTime(timeLeft)}</span>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         {/* ── Main column ── */}
@@ -313,7 +407,7 @@ export default function Checkout() {
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
                     {currentStep > 1 ? <CheckCircle2 className="w-3.5 h-3.5" /> : "1"}
                   </span>
-                  {isMulti ? `Prendas en el carrito (${items.length})` : "Producto y Fechas"}
+                  {isMulti ? t("checkout.cartItemsTitle").replace("{count}", String(items.length)) : t("checkout.singleStep1")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -330,16 +424,16 @@ export default function Checkout() {
                       <div>
                         <div className="flex justify-between items-start gap-4">
                           <h3 className="font-bold text-lg leading-tight">{product.name}</h3>
-                          <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">Alquiler x 1</p>
+                          <p className="text-sm text-muted-foreground font-medium whitespace-nowrap">{t("cart.rentalQty")} 1</p>
                         </div>
                         <Badge variant="outline" className="mt-2 border border-border/60 font-black uppercase text-[10px]">
-                          Talla: {selectedSize}
+                          {t("cart.size")} {selectedSize}
                         </Badge>
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Selecciona el período de alquiler</Label>
+                      <Label className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">{t("checkout.rentalPeriodTitle")}</Label>
                       <AvailabilityCalendar
                         productId={productId!}
                         stock={selectedVariant?.stock ?? 1}
@@ -367,13 +461,13 @@ export default function Checkout() {
                           )}
                           <div className="flex-1">
                             <div className="flex justify-between items-start">
-                              <p className="font-bold text-sm">{item.name}</p>
-                              <p className="text-xs text-muted-foreground font-medium whitespace-nowrap">Alquiler x {item.quantity}</p>
+                              <p className="font-bold text-sm">{getLocalizedText(item.name, item.name_en, language)}</p>
+                              <p className="text-xs text-muted-foreground font-medium whitespace-nowrap">{t("cart.rentalQty")} {item.quantity}</p>
                             </div>
                             <div className="flex gap-2 mt-1">
-                              <Badge variant="outline" className="text-[10px] border border-border/60 py-0">Talla: {item.size}</Badge>
+                              <Badge variant="outline" className="text-[10px] border border-border/60 py-0">{t("cart.size")} {item.size}</Badge>
                               <span className="text-[10px] text-muted-foreground font-medium">
-                                {new Date(item.startDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })} - {new Date(item.endDate + "T12:00:00").toLocaleDateString("es-PA", { month: "short", day: "numeric" })}
+                                {new Date(item.startDate + "T12:00:00").toLocaleDateString(language === "en" ? "en-US" : "es-PA", { month: "short", day: "numeric" })} - {new Date(item.endDate + "T12:00:00").toLocaleDateString(language === "en" ? "en-US" : "es-PA", { month: "short", day: "numeric" })}
                               </span>
                             </div>
                           </div>
@@ -389,7 +483,7 @@ export default function Checkout() {
                     onClick={() => goToStep(2)}
                     disabled={!isMulti && (!startDate || !endDate || days <= 0 || calendarConflict)}
                   >
-                    Continuar a Términos
+                    {t("checkout.continueTermsBtn")}
                   </Button>
                 )}
               </CardContent>
@@ -404,20 +498,20 @@ export default function Checkout() {
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
                     {currentStep > 2 ? <CheckCircle2 className="w-3.5 h-3.5" /> : "2"}
                   </span>
-                  Términos y condiciones
+                  {t("checkout.termsTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm text-muted-foreground leading-relaxed space-y-2">
                   <p>
-                    El cliente acepta devolver el producto en las mismas condiciones en que fue entregado.
+                    {t("checkout.terms1")}
                   </p>
                   <p>
-                    En caso de pérdida, daño o manchas permanentes, el cliente asume la responsabilidad total del costo de reparación o reposición.
+                    {t("checkout.terms2")}
                   </p>
                   {showFullTerms && (
                     <p>
-                      Retrasos en la devolución podrán generar cargos adicionales proporcionales al tiempo de atraso.
+                      {t("checkout.terms3")}
                     </p>
                   )}
                   <button
@@ -425,29 +519,31 @@ export default function Checkout() {
                     onClick={() => setShowFullTerms(!showFullTerms)}
                     className="text-xs text-primary underline underline-offset-2 hover:no-underline"
                   >
-                    {showFullTerms ? "Ver menos" : "Ver términos completos"}
+                    {showFullTerms ? t("checkout.termsShowLess") : t("checkout.termsShowMore")}
                   </button>
                 </div>
 
                 <div className="flex items-start gap-3">
                   <Checkbox
                     id="terms"
+                    data-testid="checkout-terms-checkbox"
                     checked={termsAccepted}
                     onCheckedChange={(v) => setTermsAccepted(v === true)}
                     className="mt-0.5"
                   />
                   <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
-                    He leído y acepto los términos y condiciones de alquiler.
+                    {t("checkout.termsCheckbox")}
                   </Label>
                 </div>
 
                 {currentStep === 2 && (
                   <Button 
+                    data-testid="checkout-continue-review"
                     className="w-full border border-border/60 shadow-elegant  transition-all py-6 text-lg font-bold"
                     onClick={() => goToStep(3)}
                     disabled={!termsAccepted}
                   >
-                    Continuar a Revisión
+                    {t("checkout.continueReviewBtn")}
                   </Button>
                 )}
               </CardContent>
@@ -462,12 +558,12 @@ export default function Checkout() {
                   <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">
                     3
                   </span>
-                  Revisar y pagar
+                  {t("checkout.reviewPayTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">
-                  <h3 className="font-bold text-sm">Modalidad de Pago</h3>
+                  <h3 className="font-bold text-sm">{t("checkout.paymentMode")}</h3>
                   
                   <div 
                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${paymentType === "reservation" ? "border-primary bg-primary/5" : "border-border"}`}
@@ -478,7 +574,7 @@ export default function Checkout() {
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentType === "reservation" ? "border-primary" : "border-muted-foreground"}`}>
                           {paymentType === "reservation" && <div className="w-2 h-2 rounded-full bg-primary" />}
                         </div>
-                        <span className="font-bold">Solo Reserva (25%)</span>
+                        <span className="font-bold">{t("checkout.onlyReservation")}</span>
                       </div>
                       <span className="font-bold text-primary">{formatCurrency(finalDeposit)}</span>
                     </div>
@@ -493,7 +589,7 @@ export default function Checkout() {
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentType === "full" ? "border-primary" : "border-muted-foreground"}`}>
                           {paymentType === "full" && <div className="w-2 h-2 rounded-full bg-primary" />}
                         </div>
-                        <span className="font-bold">Pago Completo (100%)</span>
+                        <span className="font-bold">{t("checkout.fullPayment")}</span>
                       </div>
                       <span className="font-bold text-primary">{formatCurrency(finalTotal)}</span>
                     </div>
@@ -506,7 +602,7 @@ export default function Checkout() {
                   onClick={handleSubmit}
                   disabled={submitting}
                 >
-                  {submitting ? <Loader2 className="animate-spin" /> : `Pagar ${formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}`}
+                  {submitting ? <Loader2 className="animate-spin" /> : `${t("checkout.payButton")} ${formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}`}
                 </Button>
               </CardContent>
             </Card>
@@ -518,39 +614,87 @@ export default function Checkout() {
           <Card className="border border-border/60 shadow-elegant">
             <CardHeader className="pb-3 border-b-2 border-black bg-muted/30">
               <CardTitle className="text-base font-bold uppercase tracking-widest flex justify-between items-center">
-                <span>Resumen</span>
-                {isMulti && <span className="text-xs text-muted-foreground font-normal normal-case">({items.length} ítems)</span>}
+                <span>{t("checkout.summaryTitle")}</span>
+                {isMulti && <span className="text-xs text-muted-foreground font-normal normal-case">({items.length} {language === "en" ? "items" : "ítems"})</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">{t("cart.subtotalRental")}</span>
                   <span className="font-bold">{formatCurrency(subtotal)}</span>
                 </div>
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm text-emerald-600 font-medium">
+                    <span>{t("checkout.discountLabel")} ({appliedCoupon.code})</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">ITBMS (7%)</span>
+                  <span className="text-muted-foreground">{t("review.taxLabel")}</span>
                   <span className="font-bold">{formatCurrency(itbms)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between items-center pt-2">
-                  <span className="font-bold">Total Alquiler</span>
+                  <span className="font-bold">{t("review.totalOrder")}</span>
                   <span className="font-black text-2xl text-primary">{formatCurrency(finalTotal)}</span>
                 </div>
               </div>
 
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/60">
+                <Label htmlFor="coupon" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("checkout.couponLabel")}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="coupon"
+                    type="text"
+                    placeholder={t("checkout.couponPlaceholder")}
+                    value={couponCode}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError("");
+                    }}
+                    disabled={!!appliedCoupon}
+                    className="rounded-[2rem] border border-border/80 h-9 px-3 text-sm flex-1 bg-background"
+                  />
+                  {appliedCoupon ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        setAppliedCoupon(null);
+                        setCouponCode("");
+                      }}
+                      className="rounded-[2rem] h-9 px-3 text-xs"
+                    >
+                      {t("checkout.removeBtn")}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleApplyCoupon}
+                      disabled={validatingCoupon || !couponCode}
+                      className="rounded-[2rem] h-9 px-3 border-border/60 text-xs"
+                    >
+                      {validatingCoupon ? <Loader2 className="h-3 w-3 animate-spin" /> : t("checkout.applyBtn")}
+                    </Button>
+                  )}
+                </div>
+                {couponError && <p className="text-xs text-destructive font-medium">{couponError}</p>}
+              </div>
+
               <div className="bg-primary/5 p-4 rounded-xl border-2 border-primary/10 flex flex-col items-center justify-center text-center">
-                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Monto a Pagar Hoy</span>
+                <span className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest mb-1">{t("checkout.payToday")}</span>
                 <span className="font-black text-2xl text-primary">{formatCurrency(paymentType === "full" ? finalTotal : finalDeposit)}</span>
               </div>
 
               {paymentType === "reservation" && (
                 <div className="mt-3 text-center px-1">
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                    Saldo restante: <span className="text-destructive">{formatCurrency(finalTotal - finalDeposit)}</span>
+                    {t("checkout.balanceDue")} <span className="text-destructive">{formatCurrency(finalTotal - finalDeposit)}</span>
                   </p>
                   <p className="text-[9px] text-muted-foreground font-black uppercase tracking-tight italic opacity-70">
-                    a pagar en tienda
+                    {t("checkout.payInStore")}
                   </p>
                 </div>
               )}

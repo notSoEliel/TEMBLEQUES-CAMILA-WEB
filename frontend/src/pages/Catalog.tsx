@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { productsApi } from "@/services/api";
+import { ApiError, productsApi } from "@/services/api";
 import { 
   IProduct, 
   ICategoryConfig, 
@@ -41,16 +41,18 @@ import {
 } from "@/components/ui/pagination";
 
 import { settingsApi } from "@/services/api";
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("es-PA", { style: "currency", currency: "PAB" }).format(amount);
-}
+import { formatCurrency } from "@/lib/utils";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
+import { RequestState } from "@/components/ui/RequestState";
 
 export default function Catalog() {
+  const { t, language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<IProduct[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(searchParams.getAll("category") || []);
   const [startDate, setStartDate] = useState(searchParams.get("startDate") || "");
@@ -102,6 +104,7 @@ export default function Catalog() {
     if (limit !== currentLimit) setCurrentLimit(limit);
 
     setLoading(true);
+    setLoadError(null);
     try {
       const params: Record<string, string | string[] | number> = {
         page,
@@ -116,10 +119,11 @@ export default function Catalog() {
       const response = await productsApi.list(params);
       setProducts(response.data);
       setPagination(response.pagination || null);
-    } catch (err) {
-      console.error("Error loading products:", err);
+    } catch (err: unknown) {
+      setLoadError(err instanceof ApiError ? err.message : "No pudimos cargar el catálogo. Inténtalo nuevamente.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -226,9 +230,9 @@ export default function Catalog() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl lg:text-4xl font-bold mb-2 font-serif">
-          Catálogo
+          {t("catalog.title")}
         </h1>
-        <p className="text-muted-foreground">Explora nuestra colección de vestimenta típica panameña.</p>
+        <p className="text-muted-foreground">{t("catalog.subtitle")}</p>
       </div>
 
       {/* Search & Filters */}
@@ -237,13 +241,13 @@ export default function Catalog() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar productos..."
+              placeholder={t("catalog.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Button type="submit" variant="outline">Buscar</Button>
+          <Button type="submit" variant="outline">{t("catalog.searchBtn")}</Button>
         </form>
         <Button
           variant="outline"
@@ -251,7 +255,7 @@ export default function Catalog() {
           className="sm:w-auto"
         >
           <SlidersHorizontal className="h-4 w-4 mr-2" />
-          Filtros
+          {t("catalog.filtersBtn")}
         </Button>
       </div>
 
@@ -266,7 +270,7 @@ export default function Catalog() {
           >
             <div className="p-4 border-2 border-border rounded-lg bg-card space-y-4">
           <div>
-            <h3 className="font-bold mb-3">Categoría</h3>
+            <h3 className="font-bold mb-3">{t("catalog.categoryTitle")}</h3>
             <div className="flex flex-wrap gap-2">
               {categories.map((cat) => (
                 <Button
@@ -285,7 +289,7 @@ export default function Catalog() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-bold mb-3">Fechas Disponibles</h3>
+              <h3 className="font-bold mb-3">{t("catalog.datesTitle")}</h3>
               <div className="flex items-center gap-2">
                 <Input
                   type="date"
@@ -293,7 +297,7 @@ export default function Catalog() {
                   onChange={(e) => handleDateChange('start', e.target.value)}
                   className="w-full"
                 />
-                <span className="text-muted-foreground">a</span>
+                <span className="text-muted-foreground">{t("catalog.to")}</span>
                 <Input
                   type="date"
                   value={endDate}
@@ -304,7 +308,7 @@ export default function Catalog() {
             </div>
             
             <div>
-              <h3 className="font-bold mb-3">Talla</h3>
+              <h3 className="font-bold mb-3">{t("catalog.sizeTitle")}</h3>
               <Popover open={isSizeDropdownOpen} onOpenChange={setIsSizeDropdownOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -315,17 +319,17 @@ export default function Catalog() {
                   >
                     <span className="truncate">
                       {selectedSizes.length > 0
-                        ? `${selectedSizes.length} talla${selectedSizes.length > 1 ? "s" : ""} seleccionada${selectedSizes.length > 1 ? "s" : ""}`
-                        : "Seleccionar tallas"}
+                        ? `${selectedSizes.length} ${selectedSizes.length > 1 ? t("catalog.sizesSelectedPlural") : t("catalog.sizesSelectedSingular")}`
+                        : t("catalog.selectSizes")}
                     </span>
                     <ChevronDown className={cn("ml-2 h-4 w-4 shrink-0 transition-transform duration-200", isSizeDropdownOpen && "rotate-180")} />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0 border-2 border-border shadow-elegant-lg rounded-2xl overflow-hidden" align="start">
                   <Command className="rounded-none">
-                    <CommandInput placeholder="Buscar talla..." className="h-10 border-none focus:ring-0" />
+                    <CommandInput placeholder={t("catalog.searchSizePlaceholder")} className="h-10 border-none focus:ring-0" />
                     <CommandList className="max-h-60">
-                      <CommandEmpty>No se encontraron tallas.</CommandEmpty>
+                      <CommandEmpty>{t("catalog.noSizesFound")}</CommandEmpty>
                       {sizeGroups.map((group) => (
                         <CommandGroup key={group.label} heading={group.label} className="px-2">
                           {group.sizes.map((s) => (
@@ -359,7 +363,7 @@ export default function Catalog() {
       {/* Active Filters */}
       {(selectedCategories.length > 0 || startDate || endDate || selectedSizes.length > 0) && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Filtros activos:</span>
+          <span className="text-sm text-muted-foreground">{t("catalog.activeFilters")}</span>
           {selectedCategories.map(catId => {
             const cat = categories.find(c => c.id === catId);
             return (
@@ -381,7 +385,7 @@ export default function Catalog() {
           )}
           {selectedSizes.length > 0 && (
             <Badge variant="secondary" className="gap-1">
-              Tallas: {selectedSizes.join(", ")}
+              {t("catalog.sizesLabel")} {selectedSizes.join(", ")}
               <button onClick={clearSizes}>
                 <X className="h-3 w-3" />
               </button>
@@ -405,10 +409,18 @@ export default function Catalog() {
             </Card>
           ))}
         </div>
+      ) : loadError ? (
+        <RequestState
+          title={t("catalog.errorTitle")}
+          message={loadError}
+          retryLabel={t("common.retry")}
+          onRetry={() => void loadProducts()}
+          busy={loading}
+        />
       ) : products.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-xl font-bold mb-2">No se encontraron productos</p>
-          <p className="text-muted-foreground">Intenta con otros filtros o términos de búsqueda.</p>
+          <p className="text-xl font-bold mb-2">{t("catalog.noProductsFound")}</p>
+          <p className="text-muted-foreground">{t("catalog.noProductsDesc")}</p>
         </div>
       ) : (
         <>
@@ -429,7 +441,7 @@ export default function Catalog() {
                       />
                       {!available && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                          <Badge variant="destructive" className="text-sm font-bold border border-border/60">Agotado</Badge>
+                          <Badge variant="destructive" className="text-sm font-bold border border-border/60">{t("catalog.outOfStock")}</Badge>
                         </div>
                       )}
                     </div>
@@ -445,16 +457,16 @@ export default function Catalog() {
                             </Badge>
                           )}
                         </div>
-                      <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{product.name}</h3>
+                      <h3 className="font-bold text-lg leading-tight line-clamp-1 min-h-[1.5rem]">{getLocalizedText(product.name, product.name_en, language)}</h3>
                       <p className="text-sm text-muted-foreground line-clamp-2 min-h-[2.5rem] flex-1">
-                        {product.description}
+                        {getLocalizedText(product.description, product.description_en, language)}
                       </p>
                       
                       <div className="flex items-center justify-between pt-2 border-t border-black/10 mt-auto">
                         <span className="text-lg font-black text-primary">
                           {hasRange
                             ? `${formatCurrency(min)} – ${formatCurrency(max)}`
-                            : `${formatCurrency(min)}/día`
+                            : `${formatCurrency(min)}${t("catalog.perDay")}`
                           }
                         </span>
                       </div>
@@ -488,7 +500,7 @@ export default function Catalog() {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 py-6 border-t border-border/60">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <span>Ver:</span>
+                  <span>{t("catalog.viewLimit")}</span>
                   <select
                     value={currentLimit}
                     onChange={(e) => handleLimitChange(Number(e.target.value))}
@@ -499,7 +511,7 @@ export default function Catalog() {
                     ))}
                   </select>
                 </div>
-                <span>Total: <span className="font-bold text-foreground">{pagination.total}</span></span>
+                <span>{t("catalog.totalCount")} <span className="font-bold text-foreground">{pagination.total}</span></span>
               </div>
 
               <Pagination className="w-auto mx-0">

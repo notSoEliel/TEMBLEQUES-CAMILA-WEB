@@ -35,6 +35,18 @@ export function calculateRentalDays(startDate: Date, endDate: Date): number {
   return Math.max(Math.ceil(diffTime / MS_PER_DAY), 1);
 }
 
+export function getMinimumRentalStartDate(now = new Date()): Date {
+  const panamaTime = new Date(now.getTime() + PANAMA_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+  const panamaToday = new Date(Date.UTC(
+    panamaTime.getUTCFullYear(),
+    panamaTime.getUTCMonth(),
+    panamaTime.getUTCDate(),
+  ));
+  const daysAhead = panamaTime.getUTCHours() >= 18 ? 2 : 1;
+  panamaToday.setUTCDate(panamaToday.getUTCDate() + daysAhead);
+  return panamaToday;
+}
+
 export function evaluateDeposit(
   total: number,
   productSettings?: { required: boolean; overrideAmount?: number }

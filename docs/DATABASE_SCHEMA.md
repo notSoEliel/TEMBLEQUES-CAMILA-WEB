@@ -20,7 +20,7 @@ erDiagram
         string email
         string firstName
         string lastName
-        string role "admin | user"
+        string role "client | owner | operator | inventory | support"
         date createdAt
     }
 
@@ -64,7 +64,7 @@ erDiagram
 Almacena la información de perfil sincronizada desde Clerk.
 - **Campos Críticos**:
     - `clerkId` (String, Unique): Identificador maestro para la sincronización con el IdP.
-    - `role` (String): Define el acceso a rutas protegidas (`/admin`).
+    - `role` (String): Define los permisos operativos. El prefijo de rutas administrativas (`/admin`) es una convención de API y no un rol.
 - **Integridad**: Esta colección se actualiza mediante webhooks. Si un usuario se elimina en Clerk, un hook de Svix dispara el borrado lógico o físico en esta colección.
 
 ### B. Colección: `products`

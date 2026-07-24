@@ -10,3 +10,10 @@ export function formatCurrency(amount: number): string {
     currency: "PAB",
   }).format(amount);
 }
+
+export function getLocalizedText(esText: string, enText: string | undefined | null, currentLang: string): string {
+  if (currentLang === "en" && enText && enText.trim().length > 0) {
+    return enText;
+  }
+  return esText;
+}

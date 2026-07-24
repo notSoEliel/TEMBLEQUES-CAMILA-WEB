@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { productsApi } from "@/services/api";
 import { ChevronLeft, ChevronRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/i18n";
 
 interface BookedRange {
   start: string;
@@ -46,12 +47,6 @@ function eachDayOfMonth(year: number, month: number): Date[] {
   return days;
 }
 
-const MONTH_NAMES_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-const DAY_NAMES = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
-
 // ─── Range overlap check ──────────────────────────────────────────────────────
 
 /**
@@ -91,7 +86,7 @@ function rangeHasConflict(
   stock: number
 ): boolean {
   if (rangeStart > rangeEnd) return false;
-  let current = new Date(rangeStart + "T12:00:00");
+  const current = new Date(rangeStart + "T12:00:00");
   const end = new Date(rangeEnd + "T12:00:00");
   while (current <= end) {
     const iso = isoDate(current);
@@ -125,6 +120,7 @@ export default function AvailabilityCalendar({
   onEndDateChange,
   onConflict,
 }: AvailabilityCalendarProps) {
+  const { language, t } = useI18n();
   const { minDate, isPast6pm } = useMemo(() => {
     const d = new Date();
     // Obtener la hora actual en Panamá
@@ -176,6 +172,13 @@ export default function AvailabilityCalendar({
     () => eachDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()),
     [viewDate],
   );
+
+  const monthLabel = new Intl.DateTimeFormat(language === "en" ? "en-US" : "es-PA", { month: "long" })
+    .format(viewDate)
+    .replace(/^\p{L}/u, (letter) => letter.toUpperCase());
+  const dayNames = language === "en"
+    ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    : ["Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do"];
 
   const firstDayOfWeek = useMemo(() => {
     const d = days[0].getDay();
@@ -238,7 +241,7 @@ export default function AvailabilityCalendar({
   const conflictingRentals = useMemo(() => {
     if (!startDate || !endDate) return 0;
     let maxConflicts = 0;
-    let current = new Date(startDate + "T12:00:00");
+    const current = new Date(startDate + "T12:00:00");
     const end = new Date(endDate + "T12:00:00");
     while (current <= end) {
       const iso = isoDate(current);
@@ -259,29 +262,29 @@ export default function AvailabilityCalendar({
     <div className="space-y-4 relative">
       {/* 6 PM Warning Banner */}
       <div className={`border p-4 text-sm flex gap-4 items-start font-medium shadow-elegant rounded-[2rem] ${isPast6pm ? "bg-destructive/5 border-destructive/20 text-foreground" : "bg-primary/5 border-primary/20 text-foreground"}`}>
-        <span className={`text-[10px] font-black uppercase py-1 px-2 border rounded-full shrink-0 ${isPast6pm ? "border-destructive text-destructive" : "border-primary text-primary"}`}>Nota</span>
+        <span className={`text-[10px] font-black uppercase py-1 px-2 border rounded-full shrink-0 ${isPast6pm ? "border-destructive text-destructive" : "border-primary text-primary"}`}>{t("availability.note")}</span>
         <p className="leading-snug">
-          Las reservas para el día siguiente solo están disponibles hasta las <strong>6:00 PM</strong>.
-          {isPast6pm && <span className="block mt-2 text-destructive font-bold text-xs uppercase tracking-tight">Como ya pasaron las 6:00 PM, la fecha más próxima para alquilar es pasado mañana.</span>}
+          {t("availability.nextDayUntil")} <strong>6:00 PM</strong>.
+          {isPast6pm && <span className="block mt-2 text-destructive font-bold text-xs uppercase tracking-tight">{t("availability.afterCutoff")}</span>}
         </p>
       </div>
 
       {/* Month nav */}
       <div className="flex items-center justify-between">
-        <Button type="button" variant="outline" size="sm" onClick={prevMonth} aria-label="Mes anterior">
+        <Button type="button" variant="outline" size="sm" onClick={prevMonth} aria-label={t("availability.previousMonth")}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-semibold">
-          {MONTH_NAMES_ES[viewDate.getMonth()]} {viewDate.getFullYear()}
+          {monthLabel} {viewDate.getFullYear()}
         </span>
-        <Button type="button" variant="outline" size="sm" onClick={nextMonth} aria-label="Mes siguiente">
+        <Button type="button" variant="outline" size="sm" onClick={nextMonth} aria-label={t("availability.nextMonth")}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Day headers */}
       <div className="grid grid-cols-7 gap-0.5">
-        {DAY_NAMES.map((d) => (
+        {dayNames.map((d) => (
           <div key={d} className="text-center text-[10px] font-semibold text-muted-foreground py-1 uppercase">
             {d}
           </div>
@@ -332,7 +335,7 @@ export default function AvailabilityCalendar({
               type="button"
               onClick={() => !isDisabled && handleDayClick(day)}
               className={cellClass}
-              aria-label={`${iso}${state === "booked" ? " — reservado" : state === "conflictEnd" ? " — genera conflicto" : ""}`}
+              aria-label={`${iso}${state === "booked" ? ` — ${t("availability.booked")}` : state === "conflictEnd" ? ` — ${t("availability.conflict")}` : ""}`}
               aria-pressed={state === "start" || state === "end"}
               disabled={isDisabled}
             >
@@ -345,25 +348,25 @@ export default function AvailabilityCalendar({
       {/* Legend */}
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-primary inline-block" /> Seleccionado
+          <span className="w-3 h-3 rounded-full bg-primary inline-block" /> {t("availability.selected")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-primary/15 inline-block" /> Rango
+          <span className="w-3 h-3 rounded-full bg-primary/15 inline-block" /> {t("availability.range")}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-destructive/10 border border-destructive/30 inline-block" /> No disponible
+          <span className="w-3 h-3 rounded-full bg-destructive/10 border border-destructive/30 inline-block" /> {t("availability.unavailable")}
         </span>
       </div>
 
       {loadingAvailability && (
-        <p className="text-xs text-muted-foreground animate-pulse">Cargando disponibilidad…</p>
+        <p data-testid="availability-loading" className="text-xs text-muted-foreground animate-pulse">{t("availability.loading")}</p>
       )}
 
       {/* Range conflict warning */}
       {hasRangeConflict && (
         <div className="text-sm text-destructive bg-destructive/5 border border-destructive/20 rounded-full px-4 py-2 font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
           <AlertTriangle className="h-4 w-4" />
-          <span>Error: El rango seleccionado se solapa con una reserva existente.</span>
+          <span>{t("availability.rangeConflict")}</span>
         </div>
       )}
 
@@ -378,21 +381,21 @@ export default function AvailabilityCalendar({
         >
           {availableUnits > 0 && <CheckCircle2 className="h-4 w-4 text-primary" />}
           {availableUnits > 0
-            ? `Confirmado: ${availableUnits} unidad${availableUnits !== 1 ? "es" : ""} disponible${availableUnits !== 1 ? "s" : ""} para este período`
-            : "Error: Sin unidades disponibles para las fechas seleccionadas"}
+            ? `${t("availability.confirmed")}: ${availableUnits} ${availableUnits === 1 ? t("availability.unit") : t("availability.units")} ${t("availability.availableForPeriod")}`
+            : t("availability.noUnits")}
         </div>
       )}
 
       {/* Instruction hint */}
       {!startDate && (
         <p className="text-xs text-muted-foreground">
-          Selecciona la fecha de <strong>inicio</strong> del alquiler.
+          {t("availability.selectStart")} <strong>{t("availability.start")}</strong> {t("availability.ofRental")}.
         </p>
       )}
       {waitingForEnd && startDate && !endDate && (
         <p className="text-xs text-muted-foreground">
-          Ahora selecciona la fecha de <strong>devolución</strong>.{" "}
-          <span className="text-destructive">Las fechas en rojo generarían un conflicto.</span>
+          {t("availability.selectEnd")} <strong>{t("availability.return")}</strong>.{" "}
+          <span className="text-destructive">{t("availability.redDatesConflict")}</span>
         </p>
       )}
     </div>

@@ -78,16 +78,16 @@ event = wh.verify(rawBody, {
 
 ## 5. Gestión de Roles (RBAC)
 
-La autorización se basa en el campo `role` ("client" | "admin"). 
+La autorización se basa en el campo `role` (`client`, `owner`, `operator`, `inventory` o `support`).
 
 1.  **Source of Truth**: El rol se define en el `publicMetadata` del usuario dentro del dashboard de Clerk.
 2.  **Propagación**: El rol viaja dentro de los claims del JWT y también se sincroniza en el campo `role` de la colección `users` en MongoDB.
-3.  **Protección de Rutas**: Utilizamos el middleware `requireAdmin` para bloquear el acceso a la API de administración:
+3.  **Protección de Rutas**: Utilizamos permisos por operación para bloquear el acceso a la API administrativa. `requireAdmin` se conserva como alias histórico para el permiso mínimo del dashboard:
 
 ```typescript
 export const requireAdmin = async (c: Context, next: Next) => {
   const user = c.get("user");
-  if (user.role !== "admin") {
+  if (!hasPermission(user.role, "dashboard.read")) {
     throw new AppError("Acceso denegado", 403, "AUTH_FORBIDDEN");
   }
   await next();
@@ -118,3 +118,31 @@ Implementamos un interceptor global en el punto de entrada de la aplicación (`A
 ---
 
 Este diseño de SecOps asegura que Tembleques Camila cumpla con estándares modernos de privacidad y seguridad, eliminando la responsabilidad de gestionar credenciales críticas en nuestra infraestructura.
+
+## 8. OAuth para clientes MCP
+
+Los clientes de IA no usan el JWT de sesión del frontend ni una API key administrativa. El endpoint MCP anuncia un bridge OAuth propio:
+
+```mermaid
+sequenceDiagram
+    participant IA as Cliente MCP
+    participant M as MCP OAuth Bridge
+    participant C as Clerk OIDC
+    participant B as Backend
+
+    IA->>M: Descubre metadata y registra cliente PKCE
+    IA->>M: GET /oauth/authorize con scope MCP
+    M->>C: Redirección con scope OIDC estándar y PKCE
+    C-->>M: Callback con authorization code
+    M->>C: Intercambia code y consulta userinfo
+    M->>C: Consulta publicMetadata.role
+    M-->>IA: Authorization code MCP
+    IA->>M: POST /oauth/token + code_verifier
+    M-->>IA: Access token MCP EdDSA + refresh token rotativo
+    IA->>M: tools/list o tools/call con Bearer MCP
+    M->>B: Aserción EdDSA breve, sin reenviar el token OAuth
+    B-->>M: Resultado autorizado
+    M-->>IA: Resultado MCP
+```
+
+Clerk no recibe los scopes de negocio del MCP porque su Authorization Server solo admite scopes OIDC estándar. El bridge valida la firma y el `nonce` del `id_token`, confirma el `sub` mediante `userinfo`, resuelve el rol actual en Clerk y emite únicamente los scopes permitidos para ese rol. Los access tokens MCP duran poco; los refresh tokens se rotan y pueden revocarse. Las transacciones se almacenan temporalmente en memoria en staging, por lo que un reinicio requiere volver a autorizar.

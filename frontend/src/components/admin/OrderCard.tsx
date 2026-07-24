@@ -1,16 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List } from "lucide-react";
+import { Calendar, Settings2, RefreshCw, Trash2, CheckCircle2, CreditCard, ChevronDown, ChevronUp, Info, List, FileText } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useI18n } from "@/i18n";
+import { getLocalizedText } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface OrderCardProps {
   orderGroupId: string;
   rentals: any[];
   onStatusChange: (id: string, status: string) => Promise<void>;
   onBulkStatusChange: (ids: string[], status: string) => Promise<void>;
+  onDownloadContract: (id: string) => Promise<void>;
   statusLabels: Record<string, string>;
   statusColors: Record<string, any>;
   actionLabels: Record<string, string>;
@@ -29,11 +33,13 @@ export default function OrderCard({
   rentals,
   onStatusChange,
   onBulkStatusChange,
+  onDownloadContract,
   statusLabels,
   statusColors,
   actionLabels,
   transitions,
 }: OrderCardProps) {
+  const { language } = useI18n();
   const first = rentals[0];
   const totalOrder = rentals.reduce((sum, r) => sum + (r.total || 0), 0);
   const balanceDue = rentals.reduce((sum, r) => sum + (r.balance_due || 0), 0);
@@ -76,15 +82,29 @@ export default function OrderCard({
               Deuda: {formatCurrency(balanceDue)}
             </p>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowDetails(!showDetails)}
-            className="mt-2 text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
-          >
-            {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
-            {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
-          </Button>
+          <div className="mt-2 flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadContract(first._id)}
+              className="text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
+            >
+              <FileText className="w-3 h-3 mr-1" />
+              Contrato PDF
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowDetails(!showDetails)}
+              className="text-[10px] font-black uppercase hover:bg-primary/10 hover:text-primary border border-border/60 hover:border-primary/20 transition-all px-3"
+            >
+              {showDetails ? <ChevronUp className="w-3 h-3 mr-1" /> : <ChevronDown className="w-3 h-3 mr-1" />}
+              {showDetails ? "Ocultar Detalles" : "Ver Detalles Completos"}
+            </Button>
+            <Button asChild variant="outline" size="sm" className="text-[10px] font-black uppercase border border-border/60">
+              <Link to={`/admin/reservations/${first._id}`}>Abrir expediente</Link>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -144,42 +164,69 @@ export default function OrderCard({
       <CardContent className="p-0 bg-white">
         <div className="divide-y divide-border/30">
           {rentals.map((r) => (
-            <div key={r._id} className="p-4 flex items-center justify-between gap-4 group">
-              <div className="flex items-center gap-4">
-                <div className="relative shrink-0">
-                  {r.product_id?.images?.[0] ? (
-                    <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded-xl border border-border/60" />
-                  ) : (
-                    <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
-                      <RefreshCw className="w-4 h-4 text-muted-foreground animate-spin" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-bold text-sm leading-tight uppercase group-hover:text-primary transition-colors">
-                    {r.product_id?.name || "Producto"}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">
-                      Talla: {r.selected_size}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
-                    </span>
+            <div key={r._id} className="p-4 flex flex-col gap-3 group">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative shrink-0">
+                    {r.product_id?.images?.[0] ? (
+                      <img src={r.product_id.images[0]} alt="" className="w-10 h-14 object-cover rounded-xl border border-border/60" />
+                    ) : (
+                      <div className="w-10 h-14 bg-muted border border-border/60 rounded flex items-center justify-center">
+                        <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
+                  <div>
+                    <p className="font-bold text-sm leading-tight uppercase group-hover:text-primary transition-colors">
+                      {getLocalizedText(r.product_id?.name || "Producto", r.product_id?.name_en, language)}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="text-[10px] font-black bg-muted border border-border/60 px-1.5 py-0 rounded uppercase">
+                        Talla: {r.selected_size}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-bold flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(r.start_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })} - {new Date(r.end_date).toLocaleDateString("es-PA", { timeZone: "UTC", month: "short", day: "numeric" })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
+                    <p className="font-black text-sm">{formatCurrency(r.total)}</p>
+                  </div>
+                  <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
+                    {statusLabels[r.status]}
+                  </Badge>
                 </div>
               </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">Item Total</p>
-                  <p className="font-black text-sm">{formatCurrency(r.total)}</p>
+              {/* Status history timeline */}
+              {r.status_history && r.status_history.length > 0 && (
+                <div className="mt-1 p-3 bg-muted/30 rounded-xl border border-border/60 text-xs space-y-2">
+                  <p className="font-bold text-[9px] uppercase tracking-wider text-muted-foreground">Historial de Estados</p>
+                  <div className="relative border-l-2 border-primary/20 pl-4 ml-1.5 space-y-2.5">
+                    {r.status_history.map((h: any, hIdx: number) => (
+                      <div key={hIdx} className="relative">
+                        <div className="absolute -left-[21px] top-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                        <div className="flex justify-between items-start gap-4">
+                          <div>
+                            <span className="font-semibold text-foreground uppercase text-[10px]">
+                              {statusLabels[h.status] || h.status}
+                            </span>
+                            {h.notes && <p className="text-[10px] text-muted-foreground mt-0.5">{h.notes}</p>}
+                          </div>
+                          <span className="text-[9px] text-muted-foreground font-mono font-semibold whitespace-nowrap">
+                            {new Date(h.timestamp).toLocaleDateString("es-PA")} {new Date(h.timestamp).toLocaleTimeString("es-PA", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <Badge variant={statusColors[r.status]} className="text-[10px] font-black uppercase border border-border/60 shadow-sm">
-                  {statusLabels[r.status]}
-                </Badge>
-              </div>
+              )}
             </div>
           ))}
         </div>

@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home, ShieldX, Clock, ServerCrash, SearchX } from "lucide-react";
 
+import { useI18n } from "@/i18n";
+
 export type ErrorPageVariant =
   | "not-found"        // 404 — página o recurso no existe
   | "unauthorized"     // 401 — no autenticado
@@ -25,64 +27,44 @@ const VARIANTS: Record<
   {
     icon: React.ReactNode;
     code: string;
-    title: string;
-    description: string;
-    primaryAction: { label: string; to: string };
+    primaryAction: { to: string };
     accentClass: string;
   }
 > = {
   "not-found": {
     icon: <SearchX className="w-16 h-16" />,
     code: "404",
-    title: "Página no encontrada",
-    description:
-      "La página que buscas no existe o fue movida. Verifica la URL o regresa al inicio.",
-    primaryAction: { label: "Ir al inicio", to: "/" },
+    primaryAction: { to: "/" },
     accentClass: "text-primary",
   },
   "product-not-found": {
     icon: <SearchX className="w-16 h-16" />,
     code: "404",
-    title: "Producto no encontrado",
-    description:
-      "El producto que buscas no existe o fue retirado del catálogo. Explora otras opciones disponibles.",
-    primaryAction: { label: "Ver catálogo", to: "/catalog" },
+    primaryAction: { to: "/catalog" },
     accentClass: "text-primary",
   },
   unauthorized: {
     icon: <ShieldX className="w-16 h-16" />,
     code: "401",
-    title: "Acceso restringido",
-    description:
-      "Debes iniciar sesión para ver esta página. Crea una cuenta o inicia sesión para continuar.",
-    primaryAction: { label: "Iniciar sesión", to: "/login" },
+    primaryAction: { to: "/login" },
     accentClass: "text-destructive",
   },
   "session-expired": {
     icon: <Clock className="w-16 h-16" />,
     code: "401",
-    title: "Sesión expirada",
-    description:
-      "Tu sesión ha vencido por inactividad. Inicia sesión nuevamente para continuar.",
-    primaryAction: { label: "Iniciar sesión", to: "/login" },
+    primaryAction: { to: "/login" },
     accentClass: "text-destructive",
   },
   forbidden: {
     icon: <ShieldX className="w-16 h-16" />,
     code: "403",
-    title: "Acceso denegado",
-    description:
-      "No tienes permisos para ver esta sección. Si crees que es un error, contacta al administrador.",
-    primaryAction: { label: "Ir al inicio", to: "/" },
+    primaryAction: { to: "/" },
     accentClass: "text-destructive",
   },
   "server-error": {
     icon: <ServerCrash className="w-16 h-16" />,
     code: "500",
-    title: "Error del servidor",
-    description:
-      "Ocurrió un error inesperado en nuestros servidores. Estamos trabajando para resolverlo. Intenta de nuevo en unos minutos.",
-    primaryAction: { label: "Ir al inicio", to: "/" },
+    primaryAction: { to: "/" },
     accentClass: "text-destructive",
   },
 };
@@ -96,6 +78,7 @@ export default function ErrorPage({
 }: ErrorPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useI18n();
   const config = VARIANTS[variant];
 
   const handleBack = () => {
@@ -109,7 +92,10 @@ export default function ErrorPage({
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+    <section
+      aria-labelledby="error-page-title"
+      className="min-h-[70vh] flex items-center justify-center px-4 py-16"
+    >
       <div className="max-w-md w-full text-center space-y-6">
         {/* Big code + icon */}
         <div className="relative inline-flex flex-col items-center">
@@ -127,13 +113,14 @@ export default function ErrorPage({
         {/* Text */}
         <div className="space-y-2">
           <h1
+            id="error-page-title"
             className="text-2xl font-bold"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            {title ?? config.title}
+            {title ?? t(`error.${variant}.title`)}
           </h1>
           <p className="text-muted-foreground leading-relaxed">
-            {description ?? config.description}
+            {description ?? t(`error.${variant}.description`)}
           </p>
         </div>
 
@@ -146,7 +133,7 @@ export default function ErrorPage({
             id="error-back-button"
           >
             <ArrowLeft className="h-4 w-4" />
-            {backLabel ?? "Volver atrás"}
+            {backLabel ?? t("error.backLabel")}
           </Button>
           <Button
             onClick={() => navigate(config.primaryAction.to)}
@@ -154,7 +141,7 @@ export default function ErrorPage({
             id="error-primary-button"
           >
             <Home className="h-4 w-4" />
-            {config.primaryAction.label}
+            {t(`error.${variant}.primaryLabel`)}
           </Button>
         </div>
 
@@ -165,6 +152,6 @@ export default function ErrorPage({
           </p>
         )}
       </div>
-    </div>
+    </section>
   );
 }
