@@ -47,8 +47,8 @@ describe("transporte HTTP MCP", () => {
     const payload = await responsePayload(response);
     const result = payload.result as { tools: Array<{ name: string }> };
     expect(result.tools.map((tool) => tool.name)).toEqual([
-      "catalog.products.search",
-      "catalog.availability.check",
+      "catalog_products_search",
+      "catalog_availability_check",
     ]);
   });
 
@@ -60,7 +60,7 @@ describe("transporte HTTP MCP", () => {
         jsonrpc: "2.0",
         id: 2,
         method: "tools/call",
-        params: { name: "admin.dashboard.summary", arguments: {} },
+        params: { name: "admin_dashboard_summary", arguments: {} },
       }),
     }), config);
 

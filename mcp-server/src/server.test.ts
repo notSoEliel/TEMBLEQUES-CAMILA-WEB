@@ -137,56 +137,56 @@ function rolePrincipal(role: McpRole): McpPrincipal {
 
 const expectedToolsByRole: Readonly<Record<McpRole, readonly string[]>> = {
   client: [
-    "catalog.products.search",
-    "catalog.availability.check",
-    "rentals.draft.create",
-    "payments.checkout.create",
-    "rentals.mine.list",
-    "rentals.pending.cancel",
+    "catalog_products_search",
+    "catalog_availability_check",
+    "rentals_draft_create",
+    "payments_checkout_create",
+    "rentals_mine_list",
+    "rentals_pending_cancel",
   ],
   owner: [
-    "admin.dashboard.summary",
-    "catalog.products.search",
-    "catalog.availability.check",
-    "rentals.draft.create",
-    "payments.checkout.create",
-    "rentals.mine.list",
-    "rentals.pending.cancel",
-    "admin.rentals.list",
-    "admin.rentals.status.update",
-    "admin.calendar.range",
-    "admin.products.upsert",
-    "admin.inventory.variantMaintenance.set",
-    "admin.users.search",
-    "admin.users.detail",
-    "reports.operations.generate",
-    "security.audit.search",
-    "ops.health.check",
-    "payments.reconcile.run",
+    "admin_dashboard_summary",
+    "catalog_products_search",
+    "catalog_availability_check",
+    "rentals_draft_create",
+    "payments_checkout_create",
+    "rentals_mine_list",
+    "rentals_pending_cancel",
+    "admin_rentals_list",
+    "admin_rentals_status_update",
+    "admin_calendar_range",
+    "admin_products_upsert",
+    "admin_inventory_variant_maintenance_set",
+    "admin_users_search",
+    "admin_users_detail",
+    "reports_operations_generate",
+    "security_audit_search",
+    "ops_health_check",
+    "payments_reconcile_run",
   ],
   operator: [
-    "admin.dashboard.summary",
-    "admin.rentals.list",
-    "admin.rentals.status.update",
-    "admin.calendar.range",
-    "admin.users.search",
-    "admin.users.detail",
-    "reports.operations.generate",
-    "ops.health.check",
+    "admin_dashboard_summary",
+    "admin_rentals_list",
+    "admin_rentals_status_update",
+    "admin_calendar_range",
+    "admin_users_search",
+    "admin_users_detail",
+    "reports_operations_generate",
+    "ops_health_check",
   ],
   inventory: [
-    "admin.dashboard.summary",
-    "admin.rentals.list",
-    "admin.calendar.range",
-    "admin.products.upsert",
-    "admin.inventory.variantMaintenance.set",
+    "admin_dashboard_summary",
+    "admin_rentals_list",
+    "admin_calendar_range",
+    "admin_products_upsert",
+    "admin_inventory_variant_maintenance_set",
   ],
   support: [
-    "admin.dashboard.summary",
-    "admin.rentals.list",
-    "admin.calendar.range",
-    "admin.users.search",
-    "admin.users.detail",
+    "admin_dashboard_summary",
+    "admin_rentals_list",
+    "admin_calendar_range",
+    "admin_users_search",
+    "admin_users_detail",
   ],
 };
 
@@ -209,63 +209,63 @@ const pendingStoryRoleMatrix: readonly StoryRoleAccess[] = [
   {
     story: "H91 - Cambiar estado de reserva",
     issue: 117,
-    tool: "admin.rentals.status.update",
+    tool: "admin_rentals_status_update",
     allowedRoles: ["owner", "operator"],
     deniedRoles: ["client", "inventory", "support"],
   },
   {
     story: "H93 - Crear y editar productos",
     issue: 119,
-    tool: "admin.products.upsert",
+    tool: "admin_products_upsert",
     allowedRoles: ["owner", "inventory"],
     deniedRoles: ["client", "operator", "support"],
   },
   {
     story: "H94 - Gestionar mantenimiento de variantes",
     issue: 120,
-    tool: "admin.inventory.variantMaintenance.set",
+    tool: "admin_inventory_variant_maintenance_set",
     allowedRoles: ["owner", "inventory"],
     deniedRoles: ["client", "operator", "support"],
   },
   {
     story: "H95 - Buscar usuarios",
     issue: 121,
-    tool: "admin.users.search",
+    tool: "admin_users_search",
     allowedRoles: ["owner", "operator", "support"],
     deniedRoles: ["client", "inventory"],
   },
   {
     story: "H96 - Consultar detalle de usuario",
     issue: 122,
-    tool: "admin.users.detail",
+    tool: "admin_users_detail",
     allowedRoles: ["owner", "operator", "support"],
     deniedRoles: ["client", "inventory"],
   },
   {
     story: "H97 - Generar reportes operativos",
     issue: 123,
-    tool: "reports.operations.generate",
+    tool: "reports_operations_generate",
     allowedRoles: ["owner", "operator"],
     deniedRoles: ["client", "inventory", "support"],
   },
   {
     story: "H98 - Consultar auditoría global",
     issue: 124,
-    tool: "security.audit.search",
+    tool: "security_audit_search",
     allowedRoles: ["owner"],
     deniedRoles: ["client", "operator", "inventory", "support"],
   },
   {
     story: "H99 - Consultar salud técnica",
     issue: 125,
-    tool: "ops.health.check",
+    tool: "ops_health_check",
     allowedRoles: ["owner", "operator"],
     deniedRoles: ["client", "inventory", "support"],
   },
   {
     story: "H100 - Conciliar pagos",
     issue: 126,
-    tool: "payments.reconcile.run",
+    tool: "payments_reconcile_run",
     allowedRoles: ["owner"],
     deniedRoles: ["client", "operator", "inventory", "support"],
   },
@@ -274,18 +274,18 @@ const pendingStoryRoleMatrix: readonly StoryRoleAccess[] = [
 describe("tools MCP visibles por principal", () => {
   it("guest solo descubre catálogo y disponibilidad", async () => {
     await expect(listedTools(guest)).resolves.toEqual([
-      "catalog.products.search",
-      "catalog.availability.check",
+      "catalog_products_search",
+      "catalog_availability_check",
     ]);
   });
 
   it("operator no descubre tools de productos write ni auditoría global", async () => {
     const tools = await listedTools(operator);
-    expect(tools).toContain("admin.rentals.list");
-    expect(tools).toContain("admin.rentals.status.update");
-    expect(tools).not.toContain("admin.products.upsert");
-    expect(tools).not.toContain("security.audit.search");
-    expect(tools).not.toContain("payments.reconcile.run");
+    expect(tools).toContain("admin_rentals_list");
+    expect(tools).toContain("admin_rentals_status_update");
+    expect(tools).not.toContain("admin_products_upsert");
+    expect(tools).not.toContain("security_audit_search");
+    expect(tools).not.toContain("payments_reconcile_run");
   });
 
   it("expone exactamente las tools permitidas para cada rol real", async () => {
@@ -296,11 +296,11 @@ describe("tools MCP visibles por principal", () => {
 
   it("impide ejecutar una tool que el rol no puede descubrir", async () => {
     const checks: Array<{ principal: McpPrincipal; tool: string }> = [
-      { principal: rolePrincipal("client"), tool: "admin.dashboard.summary" },
-      { principal: rolePrincipal("operator"), tool: "admin.products.upsert" },
-      { principal: rolePrincipal("inventory"), tool: "admin.users.search" },
-      { principal: rolePrincipal("support"), tool: "payments.reconcile.run" },
-      { principal: guest, tool: "rentals.draft.create" },
+      { principal: rolePrincipal("client"), tool: "admin_dashboard_summary" },
+      { principal: rolePrincipal("operator"), tool: "admin_products_upsert" },
+      { principal: rolePrincipal("inventory"), tool: "admin_users_search" },
+      { principal: rolePrincipal("support"), tool: "payments_reconcile_run" },
+      { principal: guest, tool: "rentals_draft_create" },
     ];
 
     for (const check of checks) {
@@ -346,7 +346,7 @@ describe("tools MCP visibles por principal", () => {
     );
 
     try {
-      const result = await calledTool(rolePrincipal("client"), "catalog.products.search");
+      const result = await calledTool(rolePrincipal("client"), "catalog_products_search");
       const text = result.result?.content?.find((item) => item.type === "text")?.text ?? "";
       expect(text).toContain("Producto público");
       expect(text).toContain("available");

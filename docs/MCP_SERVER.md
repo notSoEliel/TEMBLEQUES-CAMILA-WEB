@@ -24,8 +24,8 @@ No existen URLs distintas para clientes y administradores. El servidor determina
 
 Un cliente MCP puede conectarse a la URL y consultar sin configuración adicional:
 
-- `catalog.products.search`
-- `catalog.availability.check`
+- `catalog_products_search`
+- `catalog_availability_check`
 
 No se necesita login ni API key. La respuesta pública se genera mediante una lista blanca y no incluye nombres de clientes, correos, IP, User-Agent, tokens, pagos ni detalles internos de reservas.
 
@@ -134,24 +134,24 @@ La suite de roles no crea cuentas, no llama a Clerk y no debe recibir tokens rea
 
 | Historia / issue | Nombre en código | Nombre natural | Acceso | Scope | Rol de negocio | OAuth | Clerk | Ubicación | Prueba sencilla |
 |---|---|---|---|---|---|---:|---:|---|---|
-| H83 / #109 | `admin.dashboard.summary` | Resumen administrativo | Admin | `dashboard.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | `tools/list` por rol |
-| H84 / #110 | `catalog.products.search` | Buscar productos | Público | `catalog.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
-| H85 / #111 | `catalog.availability.check` | Consultar disponibilidad | Público | `availability.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
-| H86 / #112 | `rentals.draft.create` | Crear reserva pendiente | Cliente | `rentals.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea su reserva |
-| H87 / #113 | `payments.checkout.create` | Crear checkout | Cliente | `payments.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea checkout propio |
-| H88 / #114 | `rentals.mine.list` | Consultar mis reservas | Cliente | `rentals.read.own` | client | Sí | Sí | `mcp-server/src/server.ts` | No devuelve reservas ajenas |
-| H89 / #115 | `rentals.pending.cancel` | Cancelar reserva pendiente | Cliente | `rentals.cancel.own` | client | Sí | Sí | `mcp-server/src/server.ts` | Cancela solo la propia |
-| H90 / #116 | `admin.rentals.list` | Listar reservas | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Operator puede leer |
-| H91 / #117 | `admin.rentals.status.update` | Cambiar estado de reserva | Admin | `reservations.write` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Support recibe 403 |
-| H92 / #118 | `admin.calendar.range` | Consultar calendario | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Consulta por fechas |
-| H93 / #119 | `admin.products.upsert` | Crear o editar producto | Admin | `products.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
-| H94 / #120 | `admin.inventory.variantMaintenance.set` | Mantener variante | Admin | `maintenance.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Inventory puede editar |
-| H95 / #121 | `admin.users.search` | Buscar clientes | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Support puede leer |
-| H96 / #122 | `admin.users.detail` | Detalle de cliente | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Datos sensibles filtrados |
-| H97 / #123 | `reports.operations.generate` | Reporte operativo | Admin | `reports.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Summary sin secretos |
-| H98 / #124 | `security.audit.search` | Auditoría global | Admin | `audit.read` | owner | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
-| H99 / #125 | `ops.health.check` | Salud técnica | Admin | `observability.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Respuesta redactada |
-| H100 / #126 | `payments.reconcile.run` | Conciliación de pagos | Admin | `payments.reconcile` | owner | Sí | Sí | `mcp-server/src/server.ts` | Espera H45 / #54 |
+| H83 / #109 | `admin_dashboard_summary` | Resumen administrativo | Admin | `dashboard.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | `tools/list` por rol |
+| H84 / #110 | `catalog_products_search` | Buscar productos | Público | `catalog.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
+| H85 / #111 | `catalog_availability_check` | Consultar disponibilidad | Público | `availability.read` | guest y todos los roles | No | No | `mcp-server/src/server.ts` | POST sin token |
+| H86 / #112 | `rentals_draft_create` | Crear reserva pendiente | Cliente | `rentals.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea su reserva |
+| H87 / #113 | `payments_checkout_create` | Crear checkout | Cliente | `payments.create` | client | Sí | Sí | `mcp-server/src/server.ts` | Usuario crea checkout propio |
+| H88 / #114 | `rentals_mine_list` | Consultar mis reservas | Cliente | `rentals.read.own` | client | Sí | Sí | `mcp-server/src/server.ts` | No devuelve reservas ajenas |
+| H89 / #115 | `rentals_pending_cancel` | Cancelar reserva pendiente | Cliente | `rentals.cancel.own` | client | Sí | Sí | `mcp-server/src/server.ts` | Cancela solo la propia |
+| H90 / #116 | `admin_rentals_list` | Listar reservas | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Operator puede leer |
+| H91 / #117 | `admin_rentals_status_update` | Cambiar estado de reserva | Admin | `reservations.write` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Support recibe 403 |
+| H92 / #118 | `admin_calendar_range` | Consultar calendario | Admin | `reservations.read` | owner, operator, inventory, support | Sí | Sí | `mcp-server/src/server.ts` | Consulta por fechas |
+| H93 / #119 | `admin_products_upsert` | Crear o editar producto | Admin | `products.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
+| H94 / #120 | `admin_inventory_variant_maintenance_set` | Mantener variante | Admin | `maintenance.write` | owner, inventory | Sí | Sí | `mcp-server/src/server.ts` | Inventory puede editar |
+| H95 / #121 | `admin_users_search` | Buscar clientes | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Support puede leer |
+| H96 / #122 | `admin_users_detail` | Detalle de cliente | Admin | `users.read` | owner, operator, support | Sí | Sí | `mcp-server/src/server.ts` | Datos sensibles filtrados |
+| H97 / #123 | `reports_operations_generate` | Reporte operativo | Admin | `reports.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Summary sin secretos |
+| H98 / #124 | `security_audit_search` | Auditoría global | Admin | `audit.read` | owner | Sí | Sí | `mcp-server/src/server.ts` | Operator recibe 403 |
+| H99 / #125 | `ops_health_check` | Salud técnica | Admin | `observability.read` | owner, operator | Sí | Sí | `mcp-server/src/server.ts` | Respuesta redactada |
+| H100 / #126 | `payments_reconcile_run` | Conciliación de pagos | Admin | `payments.reconcile` | owner | Sí | Sí | `mcp-server/src/server.ts` | Espera H45 / #54 |
 
 ## Configuración por ambiente
 

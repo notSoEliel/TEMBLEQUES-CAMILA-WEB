@@ -30,8 +30,8 @@ function withCors(response: Response, corsHeaders: Record<string, string>): Resp
 }
 
 const PUBLIC_TOOLS = new Set([
-  "catalog.products.search",
-  "catalog.availability.check",
+  "catalog_products_search",
+  "catalog_availability_check",
 ]);
 
 function protectedResourceMetadataUrl(

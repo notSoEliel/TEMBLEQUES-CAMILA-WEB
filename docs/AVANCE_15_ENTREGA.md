@@ -31,7 +31,7 @@ El proyecto integra funcionalidades de cliente, administracion, checkout, invent
 4. Entrar como owner mock o usuario con rol `owner` y revisar reservas.
 5. Descargar contrato PDF desde una reserva.
 6. Revisar mensajes de contacto, clientes, reportes y cupones.
-7. Ejecutar una tool MCP de lectura, por ejemplo `ops.health.check` o `catalog.products.search`, usando https://mcp-server-production-321a.up.railway.app/mcp.
+7. Ejecutar una tool MCP de lectura, por ejemplo `ops_health_check` o `catalog_products_search`, usando https://mcp-server-production-321a.up.railway.app/mcp.
 8. Mostrar GitHub Project con tickets Done, En progreso y Backlog.
 
 ## Responsabilidades para presentacion

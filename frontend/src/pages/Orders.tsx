@@ -431,33 +431,39 @@ export default function Orders() {
                 </div>
               </div>
 
-              <div className="p-8 border-t border-border/10 flex flex-col sm:flex-row gap-4 items-center justify-between bg-muted/5">
-                <Button variant="ghost" className="rounded-full px-8 font-bold text-muted-foreground" onClick={() => setSelectedOrder(null)}>
-                  {t("orders.closeBtn")}
-                </Button>
-                <div className="flex gap-3 w-full sm:w-auto">
+              <div className="p-6 sm:p-8 border-t border-border/10 bg-muted/5">
+                <div className="flex flex-col gap-4">
+                  <Button
+                    variant="ghost"
+                    className="self-start rounded-full px-6 font-bold text-muted-foreground"
+                    onClick={() => setSelectedOrder(null)}
+                  >
+                    {t("orders.closeBtn")}
+                  </Button>
+                  <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 w-full">
                   {selectedOrder.status === "pending" && (
-                    <Button asChild className="flex-1 sm:flex-none rounded-full px-10 shadow-elegant font-bold">
+                    <Button asChild className="w-full min-w-0 rounded-full px-4 shadow-elegant font-bold whitespace-nowrap">
                       <Link to={`/checkout/review?orderGroupId=${encodeURIComponent(selectedOrder.id)}`}>
                         {t("orders.payRentalBtn")}
                       </Link>
                     </Button>
                   )}
                   {selectedOrder.rentals.every((rental) => ["completed", "refunded"].includes(rental.payment_status)) && (
-                    <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40" onClick={handleReceipt} disabled={actionLoading !== null}>
+                    <Button variant="outline" className="w-full min-w-0 rounded-full px-4 font-bold border-border/40 whitespace-nowrap" onClick={handleReceipt} disabled={actionLoading !== null}>
                       {actionLoading === "receipt" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                       {t("orders.receiptBtn")}
                     </Button>
                   )}
                   {selectedOrder.rentals.every((rental) => ["pending", "reserved", "paid", "confirmed"].includes(rental.status)) && (
-                    <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-destructive/30 text-destructive" onClick={handleCancel} disabled={actionLoading !== null}>
+                    <Button variant="outline" className="w-full min-w-0 rounded-full px-4 font-bold border-destructive/30 text-destructive whitespace-nowrap" onClick={handleCancel} disabled={actionLoading !== null}>
                       {actionLoading === "cancel" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
                       {t("orders.cancelBtn")}
                     </Button>
                   )}
-                  <Button asChild variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40">
+                  <Button asChild variant="outline" className="w-full min-w-0 rounded-full px-4 font-bold border-border/40 whitespace-nowrap">
                     <Link to="/contacto">{t("orders.supportBtn")}</Link>
                   </Button>
+                  </div>
                 </div>
               </div>
             </div>
