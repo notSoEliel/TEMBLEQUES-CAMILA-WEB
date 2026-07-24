@@ -65,15 +65,19 @@ export default function Landing() {
           style={{ minHeight: "520px" }}
         >
           {/* ── Fondo: foto real de la mujer con traje folclórico ── */}
-          <div
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundImage: "url('/hero.webp')",
-              backgroundSize: "cover",
-              backgroundPosition: "center right",
-              backgroundRepeat: "no-repeat",
-            }}
-          />
+          <div className="absolute inset-0 z-0">
+            <img
+              src="/hero.webp"
+              alt=""
+              aria-hidden="true"
+              width={1376}
+              height={690}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+              className="h-full w-full object-cover object-[right_center]"
+            />
+          </div>
 
           {/* ── Gradiente exacto del Figma ──
                De derecha (transparente) hacia la izquierda (rosa sólido F2CBDE)

@@ -44,7 +44,10 @@ export default function MissionVision() {
               <img 
                 src="/mision.webp"
                 alt="Nuestra Misión" 
-                loading="lazy"
+                width={1600}
+                height={1260}
+                loading="eager"
+                fetchPriority="high"
                 decoding="async"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               />
@@ -60,7 +63,9 @@ export default function MissionVision() {
               <img 
                 src="/vision.webp"
                 alt="Nuestra Visión" 
-                loading="lazy"
+                width={1300}
+                height={1600}
+                loading="eager"
                 decoding="async"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               />

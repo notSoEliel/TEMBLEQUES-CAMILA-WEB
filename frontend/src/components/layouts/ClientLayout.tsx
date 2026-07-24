@@ -123,7 +123,11 @@ export default function ClientLayout() {
                 <img
                   src="/logo.webp"
                   alt="Logo Tembleques Camila"
-                  className="h-11 w-11 object-contain transition-transform duration-500 group-hover:rotate-6"
+                  width={1636}
+                  height={1725}
+                  loading="eager"
+                  fetchPriority="high"
+                  className="h-11 w-auto object-contain transition-transform duration-500 group-hover:rotate-6"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
@@ -357,7 +361,10 @@ export default function ClientLayout() {
                 <img
                   src="/logo.webp"
                   alt="Tembleques Camila"
-                  className="h-8 w-8 object-contain"
+                  width={1636}
+                  height={1725}
+                  loading="lazy"
+                  className="h-8 w-auto object-contain"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";
                   }}
