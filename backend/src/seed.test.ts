@@ -1,30 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { isCloudinaryImageUrl, resolveSeedImages } from "./seed.js";
+import { buildProductSeedUpdate } from "./seed.js";
 
-describe("imágenes del seeder", () => {
-  it("reconoce URLs de imágenes alojadas en Cloudinary", () => {
-    expect(isCloudinaryImageUrl("https://res.cloudinary.com/demo/image/upload/f_auto/product.jpg")).toBe(true);
-    expect(isCloudinaryImageUrl("https://picsum.photos/seed/product/600/800")).toBe(false);
-  });
+describe("protección de productos existentes", () => {
+  it("solo configura datos semilla cuando el producto se inserta", () => {
+    const fixture = {
+      seed_key: "producto-de-prueba",
+      name: "Producto de prueba",
+      category: ["accesorios"],
+      description: "Descripción de prueba",
+      rental_price: 10,
+      variants: [{ size: "Único", stock: 1, in_maintenance: false }],
+      images: ["https://picsum.photos/seed/producto/600/800"],
+      deposit_settings: { required: true },
+    };
 
-  it("prioriza las imágenes Cloudinary existentes sobre las imágenes de stock", () => {
-    const fallbackImages = ["https://picsum.photos/seed/product/600/800"];
-    const existingImages = [
-      "https://picsum.photos/seed/old-product/600/800",
-      "https://res.cloudinary.com/demo/image/upload/f_auto/product.jpg",
-    ];
-
-    expect(resolveSeedImages(fallbackImages, existingImages)).toEqual([
-      "https://res.cloudinary.com/demo/image/upload/f_auto/product.jpg",
-    ]);
-  });
-
-  it("mantiene las imágenes de stock cuando no existe una imagen Cloudinary", () => {
-    const fallbackImages = [
-      "https://picsum.photos/seed/product/600/800",
-      "https://picsum.photos/seed/product-detail/600/800",
-    ];
-
-    expect(resolveSeedImages(fallbackImages, ["https://example.com/product.jpg"])).toEqual(fallbackImages);
+    expect(buildProductSeedUpdate(fixture)).toEqual({
+      $setOnInsert: fixture,
+    });
+    expect(buildProductSeedUpdate(fixture)).not.toHaveProperty("$set");
   });
 });

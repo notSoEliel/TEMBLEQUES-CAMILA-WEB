@@ -276,9 +276,9 @@ const SEED_RENTALS: RentalFixture[] = [
 
 const LEGACY_PRODUCT_NAMES: Record<string, string[]> = {
   "camisilla-chacara": ["Camisilla Típica Panameña"],
+  "tembleques-blancos": ["Juego de Flores para Pollera Congo"],
+  "peinetas-pajuela-oro": ["Conjunto de la Etnia Negra"],
 };
-
-const CLOUDINARY_IMAGE_URL = /^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//i;
 
 function getProfile(value: string | undefined): SeedProfile {
   if (value === "ci" || value === "staging" || value === "demo") return value;
@@ -293,13 +293,15 @@ function getPrune(value: string | undefined): boolean {
   return value === "true";
 }
 
-export function isCloudinaryImageUrl(value: string): boolean {
-  return CLOUDINARY_IMAGE_URL.test(value);
-}
-
-export function resolveSeedImages(fallbackImages: readonly string[], existingImages: readonly string[] = []): string[] {
-  const cloudinaryImages = existingImages.filter(isCloudinaryImageUrl);
-  return cloudinaryImages.length > 0 ? [...cloudinaryImages] : [...fallbackImages];
+export function buildProductSeedUpdate(fixture: ProductFixture): {
+  $setOnInsert: ProductFixture;
+} {
+  return {
+    $setOnInsert: {
+      ...fixture,
+      images: [...fixture.images],
+    },
+  };
 }
 
 function productNameCandidates(fixture: ProductFixture): string[] {
@@ -324,27 +326,14 @@ async function migrateLegacyProductKey(fixture: ProductFixture): Promise<void> {
   }
 }
 
-async function findExistingProductImages(fixture: ProductFixture): Promise<string[]> {
-  const existing = await Product.findOne({
-    $or: [
-      { seed_key: fixture.seed_key },
-      { name: { $in: productNameCandidates(fixture) } },
-    ],
-  }).select("images");
-
-  return existing?.images ?? [];
-}
-
 async function seedProducts(): Promise<Map<string, string>> {
   const productIds = new Map<string, string>();
 
   for (const fixture of SEED_PRODUCTS) {
     await migrateLegacyProductKey(fixture);
-    const existingImages = await findExistingProductImages(fixture);
-    const images = resolveSeedImages(fixture.images, existingImages);
     const product = await Product.findOneAndUpdate(
       { seed_key: fixture.seed_key },
-      { $set: { ...fixture, images } },
+      buildProductSeedUpdate(fixture),
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).select("_id seed_key");
 
