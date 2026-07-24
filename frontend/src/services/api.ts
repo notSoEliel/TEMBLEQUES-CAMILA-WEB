@@ -80,6 +80,38 @@ export interface RentalTermsAcceptance {
   user_agent: string;
 }
 
+export interface RentalProductSummary {
+  _id: string;
+  name: string;
+  name_en?: string;
+  category?: string[];
+  images?: string[];
+  rental_price?: number;
+  variants?: Array<{ size: string; stock: number }>;
+}
+
+export interface RentalStatusHistory {
+  status: string;
+  timestamp: string;
+  notes?: string;
+  updated_by?: string;
+}
+
+export interface RentalSummary {
+  _id: string;
+  order_group_id?: string;
+  selected_size: string;
+  start_date: string;
+  end_date: string;
+  total: number;
+  payment_type?: "reservation" | "full";
+  status: string;
+  payment_status: string;
+  status_history?: RentalStatusHistory[];
+  createdAt: string;
+  product_id?: RentalProductSummary;
+}
+
 export interface AdminRentalDetail {
   _id: string;
   order_group_id?: string;
@@ -390,11 +422,11 @@ export const rentalsApi = {
     if (params.limit) searchParams.set("limit", String(params.limit));
     if (params.view) searchParams.set("view", params.view);
     const query = searchParams.toString() ? `?${searchParams.toString()}` : "";
-    return api<PaginatedResponse<any>>(`/rentals/my${query}`, { token });
+    return api<PaginatedResponse<RentalSummary>>(`/rentals/my${query}`, { token });
   },
 
   get: (id: string, token: string) =>
-    api<{ rental: any }>(`/rentals/${id}`, { token }),
+    api<{ rental: RentalSummary }>(`/rentals/${id}`, { token }),
 
   cancel: (id: string, token: string) =>
     api<{ message: string; rental: any }>(`/rentals/${id}`, { method: "DELETE", token }),
