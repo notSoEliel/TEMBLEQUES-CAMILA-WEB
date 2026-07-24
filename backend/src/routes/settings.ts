@@ -9,12 +9,12 @@ const settings = new Hono();
 // Default settings fallback
 const DEFAULT_SETTINGS = {
   categories: [
-    { id: "pollera", label: "Polleras" },
-    { id: "vestuario_masculino", label: "Vestuario Masculino" },
-    { id: "infantil", label: "Infantil" },
-    { id: "tembleques", label: "Tembleques" },
-    { id: "accesorios", label: "Accesorios" },
-    { id: "paquete_completo", label: "Paquetes Completos" },
+    { id: "pollera", label: "Polleras", label_en: "Polleras" },
+    { id: "vestuario_masculino", label: "Vestuario Masculino", label_en: "Men's Attire" },
+    { id: "infantil", label: "Infantil", label_en: "Children's" },
+    { id: "tembleques", label: "Tembleques", label_en: "Tembleques" },
+    { id: "accesorios", label: "Accesorios", label_en: "Accessories" },
+    { id: "paquete_completo", label: "Paquetes Completos", label_en: "Complete Sets" },
   ],
   size_groups: [
     { label: "Adultos", sizes: ["S", "M", "L", "XL", "XXL"] },
@@ -43,6 +43,7 @@ const settingsSchema = z.object({
       _id: z.string().optional(),
       id: z.string().min(1),
       label: z.string().min(1),
+      label_en: z.string().optional(),
     })
   ),
   size_groups: z.array(

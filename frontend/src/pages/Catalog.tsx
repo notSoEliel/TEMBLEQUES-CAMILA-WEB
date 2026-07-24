@@ -77,6 +77,11 @@ export default function Catalog() {
   const [categories, setCategories] = useState<ICategoryConfig[]>([]);
   const [sizeGroups, setSizeGroups] = useState<ISizeGroupConfig[]>([]);
 
+  const getCategoryLabel = (categoryId: string): string => {
+    const category = categories.find((item) => item.id === categoryId);
+    return category ? getLocalizedText(category.label, category.label_en, language) : categoryId;
+  };
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -279,7 +284,7 @@ export default function Catalog() {
                   variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
                   onClick={() => toggleCategory(cat.id)}
                 >
-                  {cat.label}
+                  {getLocalizedText(cat.label, cat.label_en, language)}
                 </Button>
               ))}
             </div>
@@ -368,7 +373,7 @@ export default function Catalog() {
             const cat = categories.find(c => c.id === catId);
             return (
               <Badge key={catId} variant="secondary" className="gap-1">
-                {cat ? cat.label : catId}
+                {cat ? getLocalizedText(cat.label, cat.label_en, language) : catId}
                 <button onClick={() => toggleCategory(catId)}>
                   <X className="h-3 w-3" />
                 </button>
@@ -449,11 +454,11 @@ export default function Catalog() {
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           {Array.isArray(product.category) ? product.category.map(catId => (
                             <Badge key={catId} variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
-                              {categories.find(c => c.id === catId)?.label || catId}
+                              {getCategoryLabel(catId)}
                             </Badge>
                           )) : (
                             <Badge variant="outline" className="text-[10px] uppercase font-bold border-primary/20 bg-primary/5">
-                              {categories.find(c => c.id === product.category)?.label || product.category}
+                              {getCategoryLabel(product.category)}
                             </Badge>
                           )}
                         </div>
