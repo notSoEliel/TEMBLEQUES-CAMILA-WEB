@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { rentalsApi } from "@/services/api";
+import { rentalsApi, type RentalSummary } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -16,13 +16,12 @@ import {
   ChevronRight, 
   Package,
   Calendar,
-  Heart,
   Clock,
   Sparkles,
   CreditCard,
   ArrowUpRight
 } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, getLocalizedText, cn } from "@/lib/utils";
 import { useErrorModal } from "@/components/ErrorModal";
 import { useSearchParams, Link } from "react-router-dom";
 import { useI18n } from "@/i18n";
@@ -38,7 +37,20 @@ const STATUS_COLORS: Record<string, string> = {
   returned: "bg-slate-100 text-slate-700 border-slate-200",
   late: "bg-red-100 text-red-700 border-red-200",
   cancelled: "bg-gray-100 text-gray-400 border-gray-200",
+  damaged: "bg-orange-100 text-orange-700 border-orange-200",
 };
+
+function formatRentalDate(value: string, locale: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
 
 export default function Profile() {
   const { user, token, updateProfile, logout } = useAuth();
@@ -46,7 +58,11 @@ export default function Profile() {
   const { t, language } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [lastOrder, setLastOrder] = useState<any | null>(null);
+  const [lastOrder, setLastOrder] = useState<(RentalSummary & {
+    items: RentalSummary[];
+    isBundle: boolean;
+    totalPrice: number;
+  }) | null>(null);
   const [orderItemsCount, setOrderItemsCount] = useState(0);
   const [totalRentals, setTotalRentals] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -69,6 +85,7 @@ export default function Profile() {
     returned: t("status.returned"),
     late: t("status.late"),
     cancelled: t("status.cancelled"),
+    damaged: t("status.damaged"),
   };
 
   useEffect(() => {
@@ -100,12 +117,12 @@ export default function Profile() {
         const gid = latest.order_group_id;
         
         if (gid) {
-          const bundle = rawRentals.filter((r: any) => r.order_group_id === gid);
+          const bundle = rawRentals.filter((r) => r.order_group_id === gid);
           setLastOrder({
             ...latest,
             items: bundle,
             isBundle: bundle.length > 1,
-            totalPrice: bundle.reduce((sum: number, r: any) => sum + r.total, 0)
+            totalPrice: bundle.reduce((sum, r) => sum + r.total, 0)
           });
           setOrderItemsCount(bundle.length);
         } else {
@@ -183,7 +200,7 @@ export default function Profile() {
         </header>
 
         {/* 3-Tab Clean Navigation */}
-        <div className="flex gap-2 p-1 bg-muted/40 rounded-full border border-border/40 w-fit overflow-x-auto no-scrollbar">
+        <div role="tablist" aria-label={t("profile.navigation")} className="flex gap-2 p-1 bg-muted/40 rounded-full border border-border/40 w-fit overflow-x-auto no-scrollbar">
           {[
             { id: "account", label: t("profile.account"), icon: User },
             { id: "rentals", label: t("profile.rentals"), icon: ShoppingBag },
@@ -192,6 +209,10 @@ export default function Profile() {
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id as TabType)}
+              id={`profile-tab-${tab.id}`}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`profile-panel-${tab.id}`}
               className={cn(
                 "flex items-center gap-2 px-8 py-3 rounded-full text-sm font-bold transition-all whitespace-nowrap",
                 activeTab === tab.id 
@@ -199,7 +220,7 @@ export default function Profile() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
               )}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon aria-hidden="true" className="h-4 w-4" />
               {tab.label}
             </button>
           ))}
@@ -210,7 +231,7 @@ export default function Profile() {
           
           {/* MI CUENTA */}
           {activeTab === "account" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div id="profile-panel-account" role="tabpanel" aria-labelledby="profile-tab-account" className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="md:col-span-2 border-none shadow-elegant-lg rounded-[2.5rem] overflow-hidden">
                 <CardHeader className="p-10 pb-4">
                   <CardTitle className="text-3xl font-display font-bold">{t("profile.identity")}</CardTitle>
@@ -313,10 +334,11 @@ export default function Profile() {
 
           {/* MIS ALQUILERES */}
           {activeTab === "rentals" && (
-            <div className="space-y-12">
+            <div id="profile-panel-rentals" role="tabpanel" aria-labelledby="profile-tab-rentals" className="space-y-12">
               {loading ? (
-                <div className="h-64 flex items-center justify-center">
+                <div className="h-64 flex items-center justify-center" role="status" aria-live="polite">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                  <span className="sr-only">{t("profile.loadingRentals")}</span>
                 </div>
               ) : lastOrder ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -337,7 +359,7 @@ export default function Profile() {
                           <div className="sm:w-64 h-72 sm:h-auto overflow-hidden relative">
                             <img 
                               src={lastOrder.product_id?.images?.[0] || "/placeholder.png"} 
-                              alt="" 
+                              alt={getLocalizedText(lastOrder.product_id?.name || t("profile.rentalPiece"), lastOrder.product_id?.name_en, language)}
                               className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
                             />
                             {lastOrder.isBundle && (
@@ -351,23 +373,25 @@ export default function Profile() {
                               <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Ref: #{lastOrder._id.slice(-8).toUpperCase()}</p>
                                 <h4 className="text-3xl font-display font-bold leading-tight">
-                                  {lastOrder.isBundle ? t("profile.folkloreCollection") : lastOrder.product_id?.name}
+                                  {lastOrder.isBundle
+                                    ? t("profile.folkloreCollection")
+                                    : getLocalizedText(lastOrder.product_id?.name || t("profile.rentalPiece"), lastOrder.product_id?.name_en, language)}
                                 </h4>
                               </div>
-                              <Badge className={cn("rounded-full px-5 py-1.5 text-[9px] font-black tracking-widest uppercase border", STATUS_COLORS[lastOrder.status])}>
-                                {STATUS_LABELS[lastOrder.status]}
+                              <Badge className={cn("rounded-full px-5 py-1.5 text-[9px] font-black tracking-widest uppercase border", STATUS_COLORS[lastOrder.status] ?? "bg-muted text-muted-foreground border-border")}>
+                                {STATUS_LABELS[lastOrder.status] ?? t("status.unknown")}
                               </Badge>
                             </div>
                             
                             <div className="flex items-center gap-8 text-xs font-bold text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {new Date(lastOrder.start_date + "T12:00:00").toLocaleDateString(locale)}
+                                {formatRentalDate(lastOrder.start_date, locale)}
                               </div>
                               <ChevronRight className="h-3 w-3 opacity-20" />
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {new Date(lastOrder.end_date + "T12:00:00").toLocaleDateString(locale)}
+                                {formatRentalDate(lastOrder.end_date, locale)}
                               </div>
                             </div>
                             
@@ -394,18 +418,20 @@ export default function Profile() {
                     <h3 className="text-2xl font-display font-bold italic">{t("checkout.summaryTitle")}</h3>
                     <Card className="border-none shadow-elegant rounded-[2.5rem] p-10 space-y-10 bg-muted/20">
                       <div className="space-y-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("profile.totalRentals")}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("profile.activeRentals")}</p>
                         <p className="text-6xl font-display font-black">{totalRentals}</p>
                       </div>
                       <Separator className="bg-border/40" />
                       <div className="space-y-6">
                         <div className="flex items-center gap-4">
                           <div className="h-12 w-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
-                            <Heart className="h-6 w-6" />
+                            <Package aria-hidden="true" className="h-6 w-6" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">{t("profile.favoritePiece")}</p>
-                            <p className="text-xs text-muted-foreground">{t("profile.favoritePieceVal")}</p>
+                            <p className="text-sm font-bold">{t("profile.latestPiece")}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {getLocalizedText(lastOrder.product_id?.name || t("profile.rentalPiece"), lastOrder.product_id?.name_en, language)}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -433,7 +459,7 @@ export default function Profile() {
 
           {/* AJUSTES */}
           {activeTab === "settings" && (
-            <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
+            <div id="profile-panel-settings" role="tabpanel" aria-labelledby="profile-tab-settings" className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
               <div className="space-y-2">
                 <h3 className="text-3xl font-display font-bold">{t("profile.settings")}</h3>
                 <p className="text-sm text-muted-foreground">{t("profile.settingsDesc")}</p>
