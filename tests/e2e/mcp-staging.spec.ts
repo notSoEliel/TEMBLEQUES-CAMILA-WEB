@@ -130,7 +130,7 @@ test.describe("MCP remoto de staging", () => {
     const clientKey = key("client");
 
     const guestTools = await listTools(request);
-    expect(guestTools).toEqual(["catalog.products.search", "catalog.availability.check"]);
+    expect(guestTools).toEqual(["catalog_products_search", "catalog_availability_check"]);
 
     const unauthorized = await request.post(mcpUrl(), {
       headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -138,7 +138,7 @@ test.describe("MCP remoto de staging", () => {
         jsonrpc: "2.0",
         id: "guest-protected",
         method: "tools/call",
-        params: { name: "admin.dashboard.summary", arguments: {} },
+        params: { name: "admin_dashboard_summary", arguments: {} },
       },
     });
     expect(unauthorized.status()).toBe(401);
@@ -148,7 +148,7 @@ test.describe("MCP remoto de staging", () => {
     expect(adminTools).toHaveLength(18);
     const clientTools = await listTools(request, clientKey);
     expect(clientTools).toHaveLength(6);
-    expect(clientTools).not.toContain("admin.dashboard.summary");
+    expect(clientTools).not.toContain("admin_dashboard_summary");
 
     const productResponse = await request.get(`${backendUrl()}/api/products?page=1&limit=50`);
     expect(productResponse.ok()).toBeTruthy();
@@ -167,31 +167,31 @@ test.describe("MCP remoto de staging", () => {
     let statusRentalId: string | undefined;
 
     try {
-      await mcpCall(request, clientKey, "catalog.products.search", { search: product.name, page: 1, limit: 10 });
-      await mcpCall(request, clientKey, "catalog.availability.check", {
+      await mcpCall(request, clientKey, "catalog_products_search", { search: product.name, page: 1, limit: 10 });
+      await mcpCall(request, clientKey, "catalog_availability_check", {
         productId: product._id,
         from: startDate,
         to: endDate,
       });
-      await mcpCall(request, adminKey, "admin.dashboard.summary");
-      await mcpCall(request, adminKey, "admin.rentals.list", { search: product.name, page: 1, limit: 10 });
-      await mcpCall(request, adminKey, "admin.calendar.range", { from: startDate, to: endDate });
-      const users = await mcpCall(request, adminKey, "admin.users.search", { search: "", page: 1, limit: 10 });
-      await mcpCall(request, adminKey, "reports.operations.generate", { format: "summary" });
-      await mcpCall(request, adminKey, "security.audit.search", { page: 1, limit: 10 });
-      await mcpCall(request, adminKey, "ops.health.check");
-      await mcpCall(request, adminKey, "payments.reconcile.run");
+      await mcpCall(request, adminKey, "admin_dashboard_summary");
+      await mcpCall(request, adminKey, "admin_rentals_list", { search: product.name, page: 1, limit: 10 });
+      await mcpCall(request, adminKey, "admin_calendar_range", { from: startDate, to: endDate });
+      const users = await mcpCall(request, adminKey, "admin_users_search", { search: "", page: 1, limit: 10 });
+      await mcpCall(request, adminKey, "reports_operations_generate", { format: "summary" });
+      await mcpCall(request, adminKey, "security_audit_search", { page: 1, limit: 10 });
+      await mcpCall(request, adminKey, "ops_health_check");
+      await mcpCall(request, adminKey, "payments_reconcile_run");
 
       const userData = isRecord(users.data) ? users.data : {};
       const firstUser = Array.isArray(userData.data) && isRecord(userData.data[0]) ? userData.data[0] : undefined;
       const userId = typeof firstUser?._id === "string" ? firstUser._id : undefined;
       if (userId) {
-        const detail = await mcpCall(request, adminKey, "admin.users.detail", { userId, page: 1, limit: 10 });
+        const detail = await mcpCall(request, adminKey, "admin_users_detail", { userId, page: 1, limit: 10 });
         expect(JSON.stringify(detail)).not.toContain("user_agent");
         expect(JSON.stringify(detail)).not.toContain("ip_address");
       }
 
-      const draft = await mcpCall(request, clientKey, "rentals.draft.create", {
+      const draft = await mcpCall(request, clientKey, "rentals_draft_create", {
         productId: product._id,
         selectedSize: variant.size,
         startDate,
@@ -204,11 +204,11 @@ test.describe("MCP remoto de staging", () => {
       draftRentalId = typeof draftRental?._id === "string" ? draftRental._id : undefined;
       expect(draftRentalId).toBeTruthy();
 
-      await mcpCall(request, clientKey, "rentals.mine.list", { view: "active", page: 1, limit: 10 });
-      await mcpCall(request, clientKey, "payments.checkout.create", { rentalId: draftRentalId, paymentType: "reservation" });
-      await mcpCall(request, clientKey, "rentals.pending.cancel", { rentalId: draftRentalId });
+      await mcpCall(request, clientKey, "rentals_mine_list", { view: "active", page: 1, limit: 10 });
+      await mcpCall(request, clientKey, "payments_checkout_create", { rentalId: draftRentalId, paymentType: "reservation" });
+      await mcpCall(request, clientKey, "rentals_pending_cancel", { rentalId: draftRentalId });
 
-      const secondDraft = await mcpCall(request, clientKey, "rentals.draft.create", {
+      const secondDraft = await mcpCall(request, clientKey, "rentals_draft_create", {
         productId: product._id,
         selectedSize: variant.size,
         startDate: futureDate(24),
@@ -220,8 +220,8 @@ test.describe("MCP remoto de staging", () => {
       const secondRental = isRecord(secondData.rental) ? secondData.rental : undefined;
       statusRentalId = typeof secondRental?._id === "string" ? secondRental._id : undefined;
       expect(statusRentalId).toBeTruthy();
-      await mcpCall(request, adminKey, "admin.rentals.status.update", { rentalId: statusRentalId, status: "reserved" });
-      await mcpCall(request, adminKey, "admin.rentals.status.update", { rentalId: statusRentalId, status: "cancelled" });
+      await mcpCall(request, adminKey, "admin_rentals_status_update", { rentalId: statusRentalId, status: "reserved" });
+      await mcpCall(request, adminKey, "admin_rentals_status_update", { rentalId: statusRentalId, status: "cancelled" });
 
       const temporaryProductPayload = {
         name: `Smoke MCP ${Date.now()}`,
@@ -231,20 +231,20 @@ test.describe("MCP remoto de staging", () => {
         variants: [{ size: "Única", stock: 1, in_maintenance: false }],
         images: [],
       };
-      const created = await mcpCall(request, adminKey, "admin.products.upsert", { product: temporaryProductPayload });
+      const created = await mcpCall(request, adminKey, "admin_products_upsert", { product: temporaryProductPayload });
       const createdData = isRecord(created.data) ? created.data : {};
       const createdProduct = isRecord(createdData.product) ? createdData.product : undefined;
       const createdProductId = typeof createdProduct?._id === "string" ? createdProduct._id : undefined;
       expect(createdProductId).toBeTruthy();
       if (createdProductId) {
         createdProductIds.push(createdProductId);
-        await mcpCall(request, adminKey, "admin.inventory.variantMaintenance.set", {
+        await mcpCall(request, adminKey, "admin_inventory_variant_maintenance_set", {
           productId: createdProductId,
           selectedSize: "Única",
           inMaintenance: true,
           reason: "Smoke MCP de mantenimiento.",
         });
-        await mcpCall(request, adminKey, "admin.inventory.variantMaintenance.set", {
+        await mcpCall(request, adminKey, "admin_inventory_variant_maintenance_set", {
           productId: createdProductId,
           selectedSize: "Única",
           inMaintenance: false,
@@ -252,13 +252,13 @@ test.describe("MCP remoto de staging", () => {
         });
       }
 
-      await mcpCall(request, adminKey, "reports.operations.generate", {
+      await mcpCall(request, adminKey, "reports_operations_generate", {
         format: "json",
         productId: product._id,
         from: startDate,
         to: endDate,
       });
-      await mcpCall(request, adminKey, "reports.operations.generate", { format: "csv", category: "accesorios" });
+      await mcpCall(request, adminKey, "reports_operations_generate", { format: "csv", category: "accesorios" });
     } finally {
       for (const productId of createdProductIds) {
         await request.delete(`${backendUrl()}/api/admin/products/${productId}`, { headers: adminBackendHeaders() });
@@ -289,14 +289,14 @@ test.describe("MCP remoto de staging", () => {
 
     const clientTools = await listTools(request, oauthToken);
     expect(clientTools).toEqual(expect.arrayContaining([
-      "catalog.products.search",
-      "catalog.availability.check",
-      "rentals.draft.create",
-      "payments.checkout.create",
-      "rentals.mine.list",
-      "rentals.pending.cancel",
+      "catalog_products_search",
+      "catalog_availability_check",
+      "rentals_draft_create",
+      "payments_checkout_create",
+      "rentals_mine_list",
+      "rentals_pending_cancel",
     ]));
-    expect(clientTools).not.toContain("admin.dashboard.summary");
+    expect(clientTools).not.toContain("admin_dashboard_summary");
 
     const startDate = futureDate(30);
     const endDate = futureDate(31);
@@ -304,18 +304,18 @@ test.describe("MCP remoto de staging", () => {
     let cancelled = false;
 
     try {
-      await mcpCall(request, oauthToken, "catalog.products.search", {
+      await mcpCall(request, oauthToken, "catalog_products_search", {
         search: product.name,
         page: 1,
         limit: 10,
       });
-      await mcpCall(request, oauthToken, "catalog.availability.check", {
+      await mcpCall(request, oauthToken, "catalog_availability_check", {
         productId: product._id,
         from: startDate,
         to: endDate,
       });
 
-      const draft = await mcpCall(request, oauthToken, "rentals.draft.create", {
+      const draft = await mcpCall(request, oauthToken, "rentals_draft_create", {
         productId: product._id,
         selectedSize: variant.size,
         startDate,
@@ -330,7 +330,7 @@ test.describe("MCP remoto de staging", () => {
       expect(rental?.status).toBe("pending");
       if (!draftRentalId) throw new Error("La reserva OAuth no devolvió un identificador.");
 
-      const ownReservations = await mcpCall(request, oauthToken, "rentals.mine.list", {
+      const ownReservations = await mcpCall(request, oauthToken, "rentals_mine_list", {
         view: "active",
         page: 1,
         limit: 10,
@@ -339,7 +339,7 @@ test.describe("MCP remoto de staging", () => {
       const ownRows = Array.isArray(ownData.data) ? ownData.data : [];
       expect(ownRows.some((row) => isRecord(row) && row._id === draftRentalId)).toBeTruthy();
 
-      const checkout = await mcpCall(request, oauthToken, "payments.checkout.create", {
+      const checkout = await mcpCall(request, oauthToken, "payments_checkout_create", {
         rentalId: draftRentalId,
         paymentType: "reservation",
       });
@@ -347,7 +347,7 @@ test.describe("MCP remoto de staging", () => {
       expect(typeof checkoutData.url).toBe("string");
       expect(typeof checkoutData.sessionId).toBe("string");
 
-      const cancelledRental = await mcpCall(request, oauthToken, "rentals.pending.cancel", {
+      const cancelledRental = await mcpCall(request, oauthToken, "rentals_pending_cancel", {
         rentalId: draftRentalId,
       });
       const cancelledData = isRecord(cancelledRental.data) ? cancelledRental.data : {};
@@ -355,7 +355,7 @@ test.describe("MCP remoto de staging", () => {
       expect(cancelledRecord.status).toBe("cancelled");
       cancelled = true;
 
-      const remaining = await mcpCall(request, oauthToken, "rentals.mine.list", {
+      const remaining = await mcpCall(request, oauthToken, "rentals_mine_list", {
         view: "active",
         page: 1,
         limit: 10,
@@ -365,7 +365,7 @@ test.describe("MCP remoto de staging", () => {
       expect(remainingRows.some((row) => isRecord(row) && row._id === draftRentalId)).toBeFalsy();
     } finally {
       if (draftRentalId && !cancelled) {
-        await mcpCall(request, oauthToken, "rentals.pending.cancel", { rentalId: draftRentalId });
+        await mcpCall(request, oauthToken, "rentals_pending_cancel", { rentalId: draftRentalId });
       }
     }
   });
@@ -374,8 +374,8 @@ test.describe("MCP remoto de staging", () => {
     const oauthToken = optionalEnvironment("E2E_MCP_OAUTH_TOKEN");
     test.skip(!oauthToken, "Requiere E2E_MCP_OAUTH_TOKEN configurado en staging.");
     const tools = await listTools(request, oauthToken);
-    expect(tools).toContain("catalog.products.search");
-    expect(tools).toContain("catalog.availability.check");
-    expect(tools).not.toContain("payments.reconcile.run");
+    expect(tools).toContain("catalog_products_search");
+    expect(tools).toContain("catalog_availability_check");
+    expect(tools).not.toContain("payments_reconcile_run");
   });
 });
