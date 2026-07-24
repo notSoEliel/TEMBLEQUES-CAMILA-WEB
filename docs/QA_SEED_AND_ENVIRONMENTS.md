@@ -18,9 +18,9 @@ Los productos se identifican por `seed_key` y las reservas por `fixture_key`. Es
 
 ### Imágenes y contenido del catálogo
 
-Las imágenes, nombres, descripciones, precios, categorías, tallas, cantidades y configuración de depósito definidas en `backend/src/seed.ts` son valores iniciales para productos nuevos. El seeder no sobrescribe ningún producto existente en modo `upsert`; por tanto, conserva también las fotografías reales alojadas en Cloudinary y cualquier edición realizada desde el panel administrativo.
+Las imágenes, nombres, traducciones, descripciones, precios, categorías, tallas, cantidades y configuración de depósito de `backend/src/seed.ts` reflejan el catálogo vigente de staging y sirven como datos iniciales para productos nuevos. El seeder no sobrescribe ningún producto existente en modo `upsert`; por tanto, conserva también las fotografías reales alojadas en Cloudinary y cualquier edición realizada desde el panel administrativo.
 
-Las imágenes de `picsum.photos` son únicamente el fallback reproducible cuando se inserta un producto nuevo en una base limpia. El perfil `ci` parte normalmente de una base limpia, por lo que sus pruebas siguen siendo deterministas. El seeder continúa gestionando exactamente los 12 productos definidos en el fixture, pero no debe utilizarse para actualizar el catálogo operativo.
+El perfil `ci` parte normalmente de una base limpia y utiliza estos mismos 12 productos para mantener los contratos de disponibilidad y reservas reproducibles. El seeder no debe utilizarse para actualizar el catálogo operativo.
 
 - `upsert`: crea las fixtures que no existen y deja intactos los productos existentes; no borra ni actualiza productos reales.
 - `reset`: elimina únicamente el namespace semilla y lo reconstruye. Es el modo recomendado para CI.

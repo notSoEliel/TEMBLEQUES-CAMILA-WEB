@@ -6,8 +6,10 @@ describe("protección de productos existentes", () => {
     const fixture = {
       seed_key: "producto-de-prueba",
       name: "Producto de prueba",
+      name_en: "Test product",
       category: ["accesorios"],
       description: "Descripción de prueba",
+      description_en: "Test description",
       rental_price: 10,
       variants: [{ size: "Único", stock: 1, in_maintenance: false }],
       images: ["https://picsum.photos/seed/producto/600/800"],
