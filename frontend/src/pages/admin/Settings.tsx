@@ -18,7 +18,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/lib/utils";
+import { cn, getLocalizedCategoryLabel } from "@/lib/utils";
 import { useSearchParams, Link } from "react-router-dom";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
@@ -300,7 +300,7 @@ export default function AdminSettings() {
                         <div className="space-y-1.5 min-w-0">
                           <Label className="text-xs">Nombre público (inglés)</Label>
                           <Input
-                            value={cat.label_en || ""}
+                            value={cat.label_en ?? getLocalizedCategoryLabel(cat.id, cat, "en")}
                             onChange={e => updateCategory(globalIndex, "label_en", e.target.value)}
                             className="h-10 w-full"
                             placeholder="Visible al cambiar a inglés"
