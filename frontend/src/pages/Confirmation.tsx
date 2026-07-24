@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { rentalsApi } from "@/services/api";
+import { rentalsApi, type RentalSummary } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle, Calendar, ArrowRight, Loader2 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatLocalizedDate, getLocalizedText } from "@/lib/utils";
 import { useI18n } from "@/i18n";
 
 export default function Confirmation() {
   const [searchParams] = useSearchParams();
   const { token } = useAuth();
   const { t, language } = useI18n();
-  const [rental, setRental] = useState<any>(null);
+  const [rental, setRental] = useState<RentalSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const rentalId  = searchParams.get("rental");
@@ -22,6 +22,7 @@ export default function Confirmation() {
   const statusLabels: Record<string, string> = {
     paid:      t("status.paid"),
     pending:   t("status.pending"),
+    reserved:  t("status.reserved"),
     confirmed: t("status.confirmed"),
     cancelled: t("status.cancelled"),
     delivered: t("status.delivered"),
@@ -62,8 +63,6 @@ export default function Confirmation() {
     );
   }
 
-  const locale = language === "en" ? "en-US" : "es-PA";
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       {/* Hero */}
@@ -93,19 +92,21 @@ export default function Confirmation() {
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.productLabel")}</p>
-                <p className="font-bold text-primary">{rental.product_id?.name || "N/A"}</p>
+                <p className="font-bold text-primary">
+                  {getLocalizedText(rental.product_id?.name || t("profile.rentalPiece"), rental.product_id?.name_en, language)}
+                </p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.statusLabel")}</p>
-                <p className="font-bold">{statusLabels[rental.status] ?? rental.status}</p>
+                <p className="font-bold">{statusLabels[rental.status] ?? t("status.unknown")}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.startDateLabel")}</p>
-                <p className="font-bold">{new Date(rental.start_date + "T12:00:00").toLocaleDateString(locale)}</p>
+                <p className="font-bold">{formatLocalizedDate(rental.start_date, language)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.endDateLabel")}</p>
-                <p className="font-bold">{new Date(rental.end_date + "T12:00:00").toLocaleDateString(locale)}</p>
+                <p className="font-bold">{formatLocalizedDate(rental.end_date, language)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs mb-0.5 uppercase tracking-tighter font-bold">{t("confirm.totalLabel")}</p>

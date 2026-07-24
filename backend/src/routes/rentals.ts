@@ -103,7 +103,7 @@ rentals.get("/my", async (c) => {
 
   const [myRentals, total] = await Promise.all([
     Rental.find(filter)
-      .populate("product_id", "name category images rental_price variants")
+      .populate("product_id", "name name_en category images rental_price variants")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),

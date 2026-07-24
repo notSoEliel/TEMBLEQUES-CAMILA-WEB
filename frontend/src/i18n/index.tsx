@@ -76,6 +76,17 @@ const dictionaries: Record<Language, Dictionary> = {
     "language.es": "ES",
     "language.en": "EN",
 
+    "status.pending": "Pendiente",
+    "status.reserved": "Reservado",
+    "status.paid": "Pagado",
+    "status.confirmed": "Confirmado",
+    "status.delivered": "Entregado",
+    "status.returned": "Devuelto",
+    "status.late": "Atrasado",
+    "status.cancelled": "Cancelado",
+    "status.damaged": "Dañado",
+    "status.unknown": "Estado no disponible",
+
     "contact.titlePrefix": "Hablemos de",
     "contact.titleAccent": "Tradición",
     "contact.subtitle": "¿Tienes alguna duda sobre tu reserva o buscas una pieza especial? Nuestro equipo de curadores está listo para asesorarte.",
@@ -97,6 +108,7 @@ const dictionaries: Record<Language, Dictionary> = {
     "profile.account": "Mi Cuenta",
     "profile.rentals": "Mis Alquileres",
     "profile.settings": "Ajustes",
+    "profile.navigation": "Secciones del perfil",
     "profile.thanks": "Gracias por elegir la excelencia",
     "profile.starts": "Tu legado folclórico comienza aquí",
     "profile.subtitle": "Donde la tradición se encuentra con la distinción. Gestiona tus piezas y detalles de cuenta en un entorno de alta costura.",
@@ -124,6 +136,17 @@ const dictionaries: Record<Language, Dictionary> = {
     "profile.upcoming": "Próximos Alquileres",
     "profile.clubTitle": "Club Tembleques",
     "profile.clubDesc": "Accede a preventas exclusivas y eventos culturales.",
+    "profile.recentOrderTitle": "Alquiler reciente",
+    "profile.viewFullHistory": "Ver historial completo",
+    "profile.bundle": "Conjunto",
+    "profile.pieces": "piezas",
+    "profile.folkloreCollection": "Tu colección folclórica",
+    "profile.culturalInvestment": "Inversión cultural",
+    "profile.manageRental": "Gestionar alquiler",
+    "profile.activeRentals": "Alquileres activos",
+    "profile.latestPiece": "Última pieza alquilada",
+    "profile.rentalPiece": "Pieza alquilada",
+    "profile.loadingRentals": "Cargando tus alquileres",
 
     "notifications.title": "Notificaciones",
     "notifications.subtitle": "Mantente al tanto de tus reservas, pagos y novedades importantes.",
@@ -460,6 +483,14 @@ const dictionaries: Record<Language, Dictionary> = {
     "orders.rentalProgress": "Progreso del Alquiler",
     "orders.datesReservation": "Reserva de Fechas",
     "orders.returnPolicyDesc": "Las piezas deben ser entregadas antes del mediodía de la fecha final para evitar cargos adicionales.",
+    "orders.dateSeparator": "al",
+    "orders.statusUpdatedTo": "Estado actualizado a",
+    "orders.seedStatusNote": "Estado de demostración.",
+    "orders.receiptBtn": "Comprobante",
+    "orders.cancelBtn": "Cancelar reserva",
+    "orders.receiptError": "No se pudo descargar el comprobante.",
+    "orders.cancelError": "No se pudo cancelar la reserva.",
+    "orders.loading": "Cargando tus alquileres",
 
     "product.availLabel": "Disponible",
     "product.notAvailLabel": "No Disponible",
@@ -592,6 +623,7 @@ const dictionaries: Record<Language, Dictionary> = {
     "profile.account": "My Account",
     "profile.rentals": "My Rentals",
     "profile.settings": "Settings",
+    "profile.navigation": "Profile sections",
     "profile.thanks": "Thank you for choosing excellence",
     "profile.starts": "Your folkloric legacy starts here",
     "profile.subtitle": "Where tradition meets distinction. Manage your pieces and account details in a refined rental experience.",
@@ -630,6 +662,24 @@ const dictionaries: Record<Language, Dictionary> = {
     "profile.upcoming": "Upcoming Rentals",
     "profile.clubTitle": "Club Tembleques",
     "profile.clubDesc": "Access exclusive pre-sales and cultural events.",
+    "profile.recentOrderTitle": "Recent rental",
+    "profile.bundle": "Bundle",
+    "profile.pieces": "pieces",
+    "profile.activeRentals": "Active rentals",
+    "profile.latestPiece": "Latest rented piece",
+    "profile.rentalPiece": "Rented piece",
+    "profile.loadingRentals": "Loading your rentals",
+
+    "status.pending": "Pending",
+    "status.reserved": "Reserved",
+    "status.paid": "Paid",
+    "status.confirmed": "Confirmed",
+    "status.delivered": "Delivered",
+    "status.returned": "Returned",
+    "status.late": "Late",
+    "status.cancelled": "Cancelled",
+    "status.damaged": "Damaged",
+    "status.unknown": "Status unavailable",
 
     "notifications.title": "Notifications",
     "notifications.subtitle": "Stay up to date with your reservations, payments, and important updates.",
@@ -968,6 +1018,14 @@ const dictionaries: Record<Language, Dictionary> = {
     "orders.rentalProgress": "Rental Progress",
     "orders.datesReservation": "Date Reservation",
     "orders.returnPolicyDesc": "Pieces must be returned before noon on the final date to avoid additional charges.",
+    "orders.dateSeparator": "to",
+    "orders.statusUpdatedTo": "Status updated to",
+    "orders.seedStatusNote": "Demonstration status.",
+    "orders.receiptBtn": "Receipt",
+    "orders.cancelBtn": "Cancel booking",
+    "orders.receiptError": "The receipt could not be downloaded.",
+    "orders.cancelError": "The booking could not be cancelled.",
+    "orders.loading": "Loading your rentals",
 
     "product.availLabel": "Available",
     "product.notAvailLabel": "Not Available",
@@ -1019,6 +1077,14 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
+export function hasTranslation(language: Language, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(dictionaries[language], key);
+}
+
+export function translate(language: Language, key: string): string {
+  return dictionaries[language][key] ?? dictionaries.es[key] ?? key;
+}
+
 function getInitialLanguage(): Language {
   if (typeof window === "undefined") return "es";
   const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -1037,7 +1103,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18nContextValue>(() => ({
     language,
     setLanguage: setLanguageState,
-    t: (key: string) => dictionaries[language][key] ?? dictionaries.es[key] ?? key,
+    t: (key: string) => translate(language, key),
   }), [language]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
