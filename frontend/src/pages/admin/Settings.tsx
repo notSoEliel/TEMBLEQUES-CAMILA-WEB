@@ -257,8 +257,8 @@ export default function AdminSettings() {
               {pagedCategories.map((cat) => {
                 const globalIndex = categories.indexOf(cat);
                 return (
-                  <div key={globalIndex} className="flex items-start gap-3 p-3 bg-muted/50 border-2 border-border rounded-lg group">
-                    <div className="flex flex-col gap-1 mt-1">
+                  <div key={globalIndex} className="flex items-start gap-4 p-5 bg-muted/50 border-2 border-border rounded-[1.5rem] group">
+                    <div className="flex flex-col gap-1 pt-1 shrink-0">
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -278,38 +278,46 @@ export default function AdminSettings() {
                         <ChevronDown className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Nombre público (ES)</Label>
+                    <div className="flex-1 min-w-0 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Languages className="h-4 w-4" aria-hidden="true" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Traducciones visibles</p>
+                          <p className="text-xs text-muted-foreground">El texto mostrado cambia según el idioma seleccionado en la tienda.</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5 min-w-0">
+                          <Label className="text-xs">Nombre público (español)</Label>
                           <Input 
                             value={cat.label} 
                             onChange={e => updateCategory(globalIndex, "label", e.target.value)} 
-                            className="h-9"
+                            className="h-10 w-full"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs flex items-center gap-1">
-                            <Languages className="h-3.5 w-3.5 text-primary" />
-                            Nombre público (EN)
-                          </Label>
+                        <div className="space-y-1.5 min-w-0">
+                          <Label className="text-xs">Nombre público (inglés)</Label>
                           <Input
                             value={cat.label_en || ""}
                             onChange={e => updateCategory(globalIndex, "label_en", e.target.value)}
-                            className="h-9"
-                            placeholder="Visible al cambiar a English"
+                            className="h-10 w-full"
+                            placeholder="Visible al cambiar a inglés"
                           />
                         </div>
-                        <div className="space-y-1">
+                      </div>
+                      <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-end">
+                        <div className="min-w-0 flex-1 space-y-1.5">
                           <Label className="text-xs flex items-center gap-1">
                             ID Interno 
                             {unlockedIds[globalIndex] ? <Unlock className="h-3 w-3 text-green-600" /> : <Lock className="h-3 w-3 text-muted-foreground" />}
                           </Label>
                           {unlockedIds[globalIndex] ? (
-                            <Input 
-                              value={cat.id} 
-                              onChange={e => updateCategory(globalIndex, "id", e.target.value)} 
-                              className="h-9 font-mono text-xs border-primary focus-visible:ring-primary"
+                            <Input
+                              value={cat.id}
+                              onChange={e => updateCategory(globalIndex, "id", e.target.value)}
+                              className="h-10 font-mono text-xs border-primary focus-visible:ring-primary"
                               autoFocus
                             />
                           ) : (
@@ -320,10 +328,10 @@ export default function AdminSettings() {
                               onConfirm={() => setUnlockedIds({ ...unlockedIds, [globalIndex]: true })}
                             >
                               <div className="relative group cursor-pointer">
-                                <Input 
-                                  value={cat.id} 
+                                <Input
+                                  value={cat.id}
                                   readOnly
-                                  className="h-9 font-mono text-xs bg-muted/50 cursor-pointer group-hover:border-primary transition-colors"
+                                  className="h-10 font-mono text-xs bg-muted/50 cursor-pointer group-hover:border-primary transition-colors"
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-background/20 backdrop-blur-[1px]">
                                   <span className="text-[10px] font-bold bg-white px-2 py-1 border border-black">CLIC PARA EDITAR</span>
@@ -331,23 +339,24 @@ export default function AdminSettings() {
                               </div>
                             </ConfirmModal>
                           )}
+                          <p className="text-[11px] text-muted-foreground">
+                            El ID permanece estable para conservar los productos y filtros guardados. Solo cambia el texto visible.
+                          </p>
                         </div>
+                        <ConfirmModal
+                          title="Eliminar Categoría"
+                          description="¿Seguro que deseas eliminar esta categoría? Los productos existentes mantendrán el ID internamente pero no aparecerán en los filtros."
+                          confirmText="Eliminar"
+                          variant="destructive"
+                          onConfirm={() => removeCategory(globalIndex)}
+                        >
+                          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 self-end text-destructive hover:text-destructive sm:self-end">
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Eliminar categoría</span>
+                          </Button>
+                        </ConfirmModal>
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        El ID permanece estable para conservar los productos y filtros guardados. Solo cambia el texto visible.
-                      </p>
                     </div>
-                    <ConfirmModal
-                      title="Eliminar Categoría"
-                      description="¿Seguro que deseas eliminar esta categoría? Los productos existentes mantendrán el ID internamente pero no aparecerán en los filtros."
-                      confirmText="Eliminar"
-                      variant="destructive"
-                      onConfirm={() => removeCategory(globalIndex)}
-                    >
-                      <Button variant="ghost" size="icon" className="mt-6 text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </ConfirmModal>
                   </div>
                 );
               })}
