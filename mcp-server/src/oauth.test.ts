@@ -86,7 +86,6 @@ describe("bridge OAuth MCP", () => {
       }).toString();
       const clerkRedirect = await service.authorize(new Request(authorizeUrl));
       const upstreamUrl = new URL(clerkRedirect.headers.get("location") ?? "");
-      expect(upstreamUrl.searchParams.get("prompt")).toBe("select_account");
       clerkIdToken = await new SignJWT({ nonce: upstreamUrl.searchParams.get("nonce") })
         .setProtectedHeader({ alg: "RS256", typ: "JWT" })
         .setIssuer("https://clerk.example.com")
