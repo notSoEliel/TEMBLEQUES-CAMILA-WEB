@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,9 +24,27 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useI18n } from "@/i18n";
+import { settingsApi } from "@/services/api";
+import type { ICategoryConfig } from "@/types";
+import { getLocalizedText } from "@/lib/utils";
 
 export default function Landing() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const [categoryConfigs, setCategoryConfigs] = useState<ICategoryConfig[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    void settingsApi.get().then((response) => {
+      if (isMounted) setCategoryConfigs(response.settings.categories || []);
+    }).catch(() => {
+      // Los nombres del diccionario siguen siendo el fallback de la portada.
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const testimonials = [
     { name: "Ana García", role: t("landing.testimonial1Role"), text: t("landing.testimonial1Text"), rating: 5, initial: "A" },
@@ -48,6 +66,12 @@ export default function Landing() {
     { name: t("landing.catAccessories"), slug: "accesorios", icon: Sparkles, description: t("landing.catAccessoriesText"), gradient: "from-primary/10 to-secondary/30", iconColor: "text-primary" },
     { name: t("landing.catPackages"), slug: "paquete_completo", icon: Gift, description: t("landing.catPackagesText"), gradient: "from-pink-100 to-fuchsia-50", iconColor: "text-pink-600" },
   ];
+  const getCategoryName = (slug: string, fallback: string): string => {
+    const configuredCategory = categoryConfigs.find((category) => category.id === slug);
+    return configuredCategory
+      ? getLocalizedText(configuredCategory.label, configuredCategory.label_en, language)
+      : fallback;
+  };
   const steps = [
     { icon: Calendar, title: t("landing.step1Title"), description: t("landing.step1Text"), number: "01" },
     { icon: CreditCard, title: t("landing.step2Title"), description: t("landing.step2Text"), number: "02" },
@@ -151,7 +175,9 @@ export default function Landing() {
                       <div className="absolute -top-4 -left-4 w-16 h-16 rounded-full bg-white/15" />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-foreground text-sm">{cat.name}</h3>
+                      <h3 className="font-semibold text-foreground text-sm">
+                        {getCategoryName(cat.slug, cat.name)}
+                      </h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{cat.description}</p>
                     </div>
                   </CardContent>
