@@ -235,19 +235,25 @@ export default function Reports() {
               <CardDescription>Visualiza la rotación y rentabilidad de cada talla y producto.</CardDescription>
             </div>
 
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="relative w-full md:w-72 lg:w-80">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <Input
                 type="text"
                 placeholder="Buscar prenda..."
                 value={query}
                 onChange={handleSearchChange}
-                className="pl-10 rounded-[2rem] border border-border/80 h-10 px-4 focus:ring-2 focus:ring-primary/20"
+                className="h-10 rounded-[2rem] border border-border/80 pl-11 pr-4 focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <div className="grid grid-cols-2 gap-2 md:w-80">
-              <label className="text-xs font-semibold text-muted-foreground">Desde<Input type="date" value={from} onChange={(event) => setDateFilter("from", event.target.value)} /></label>
-              <label className="text-xs font-semibold text-muted-foreground">Hasta<Input type="date" value={to} onChange={(event) => setDateFilter("to", event.target.value)} /></label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                <span>Desde</span>
+                <Input className="h-10 rounded-[2rem] px-4" type="date" value={from} onChange={(event) => setDateFilter("from", event.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1 text-xs font-semibold text-muted-foreground">
+                <span>Hasta</span>
+                <Input className="h-10 rounded-[2rem] px-4" type="date" value={to} onChange={(event) => setDateFilter("to", event.target.value)} />
+              </label>
             </div>
           </div>
         </CardHeader>
