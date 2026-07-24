@@ -244,8 +244,10 @@ export default function AdminInventory() {
   const handleEdit = (product: any) => {
     setForm({
       name: product.name,
+      name_en: product.name_en ?? "",
       category: Array.isArray(product.category) ? product.category : [product.category],
       description: product.description,
+      description_en: product.description_en ?? "",
       rental_price: product.rental_price,
       variants: (product.variants || []).map((v: any) => ({
         size: v.size,
@@ -325,8 +327,10 @@ export default function AdminInventory() {
   const openPreviewFromProduct = (product: any) => {
     setPreviewProduct({
       name: product.name,
+      name_en: product.name_en ?? "",
       category: Array.isArray(product.category) ? product.category : [product.category],
       description: product.description,
+      description_en: product.description_en ?? "",
       rental_price: product.rental_price,
       variants: product.variants || [],
       images: product.images || [],
