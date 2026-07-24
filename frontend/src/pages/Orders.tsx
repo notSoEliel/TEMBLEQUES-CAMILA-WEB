@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { rentalsApi, type PaginationMetadata } from "@/services/api";
+import {
+  rentalsApi,
+  type PaginationMetadata,
+  type RentalStatusHistory,
+  type RentalSummary,
+} from "@/services/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -17,7 +22,12 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatLocalizedDate,
+  getLocalizedText,
+  cn,
+} from "@/lib/utils";
 import { useErrorModal } from "@/components/ErrorModal";
 import { useSearchParams, Link } from "react-router-dom";
 import {
@@ -28,8 +38,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useI18n } from "@/i18n";
-import { getLocalizedText } from "@/lib/utils";
-
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-50 text-amber-600 border-amber-100",
   reserved: "bg-blue-50 text-blue-600 border-blue-100",
@@ -39,11 +47,12 @@ const STATUS_COLORS: Record<string, string> = {
   returned: "bg-slate-50 text-slate-600 border-slate-100",
   late: "bg-red-50 text-red-600 border-red-100",
   cancelled: "bg-gray-50 text-gray-400 border-gray-100",
+  damaged: "bg-orange-50 text-orange-600 border-orange-100",
 };
 
 interface OrderGroup {
   id: string;
-  rentals: any[];
+  rentals: RentalSummary[];
   total: number;
   date: Date;
   status: string;
@@ -73,6 +82,21 @@ export default function Orders() {
     returned: t("status.returned"),
     late: t("status.late"),
     cancelled: t("status.cancelled"),
+    damaged: t("status.damaged"),
+  };
+
+  const getStatusLabel = (status: string) =>
+    STATUS_LABELS[status] ?? t("status.unknown");
+
+  const getHistoryNote = (entry: RentalStatusHistory): string | undefined => {
+    if (!entry.notes) return undefined;
+    if (entry.notes.startsWith("Estado de la reserva actualizado a:")) {
+      return `${t("orders.statusUpdatedTo")} ${getStatusLabel(entry.status)}.`;
+    }
+    if (entry.notes === "Estado semilla de demostración.") {
+      return t("orders.seedStatusNote");
+    }
+    return entry.notes;
   };
 
   useEffect(() => {
@@ -89,8 +113,8 @@ export default function Orders() {
       setPagination(response.pagination);
 
       // Grouping logic
-      const groups: Record<string, any[]> = {};
-      rawRentals.forEach((r: any) => {
+      const groups: Record<string, RentalSummary[]> = {};
+      rawRentals.forEach((r) => {
         const gid = r.order_group_id || r._id;
         if (!groups[gid]) groups[gid] = [];
         groups[gid].push(r);
@@ -131,7 +155,7 @@ export default function Orders() {
     try {
       await Promise.all(selectedOrder.rentals.map((rental) => rentalsApi.downloadReceipt(rental._id, token)));
     } catch (error) {
-      showError(error instanceof Error ? error.message : "No se pudo descargar el comprobante.");
+      showError(error instanceof Error ? error.message : t("orders.receiptError"));
     } finally {
       setActionLoading(null);
     }
@@ -145,13 +169,11 @@ export default function Orders() {
       setSelectedOrder(null);
       await loadOrders();
     } catch (error) {
-      showError(error instanceof Error ? error.message : "No se pudo cancelar la reserva.");
+      showError(error instanceof Error ? error.message : t("orders.cancelError"));
     } finally {
       setActionLoading(null);
     }
   };
-
-  const locale = language === "en" ? "en-US" : "es-PA";
 
   return (
     <div className="bg-background min-h-screen pt-24 pb-16 px-6">
@@ -189,8 +211,9 @@ export default function Orders() {
         {/* Content Section */}
         <div className="space-y-6">
           {loading ? (
-            <div className="h-64 flex items-center justify-center">
+            <div className="h-64 flex items-center justify-center" role="status" aria-live="polite">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <span className="sr-only">{t("orders.loading")}</span>
             </div>
           ) : groupedOrders.length === 0 ? (
             <Card className="border-2 border-dashed border-border/60 rounded-[3rem] p-20 text-center space-y-6 bg-muted/5">
@@ -210,7 +233,11 @@ export default function Orders() {
                     <CardContent className="p-0">
                        <div className="flex flex-col sm:flex-row items-center gap-6 p-6 sm:p-8">
                         <div className="w-20 h-20 shrink-0 rounded-2xl overflow-hidden border border-border/20 shadow-sm relative">
-                          <img src={order.rentals[0].product_id?.images?.[0] || "/placeholder.png"} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                          <img
+                            src={order.rentals[0].product_id?.images?.[0] || "/placeholder.png"}
+                            alt={getLocalizedText(order.rentals[0].product_id?.name || t("profile.rentalPiece"), order.rentals[0].product_id?.name_en, language)}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                          />
                           {order.rentals.length > 1 && (
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-[10px] font-black text-white">
                               +{order.rentals.length - 1}
@@ -221,8 +248,8 @@ export default function Orders() {
                         <div className="flex-1 space-y-2 text-center sm:text-left">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">ID: #{order.id.slice(-8).toUpperCase()}</p>
-                            <Badge className={cn("rounded-full px-3 py-0.5 text-[9px] font-black tracking-widest uppercase border mx-auto sm:mx-0", STATUS_COLORS[order.status])}>
-                              {STATUS_LABELS[order.status]}
+                            <Badge className={cn("rounded-full px-3 py-0.5 text-[9px] font-black tracking-widest uppercase border mx-auto sm:mx-0", STATUS_COLORS[order.status] ?? "bg-muted text-muted-foreground border-border")}>
+                              {getStatusLabel(order.status)}
                             </Badge>
                           </div>
                           <h4 className="text-xl font-display font-bold">
@@ -231,7 +258,7 @@ export default function Orders() {
                           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs font-medium text-muted-foreground">
                             <div className="flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5" />
-                              {order.date.toLocaleDateString(locale)}
+                              {formatLocalizedDate(order.date, language)}
                             </div>
                             <div className="flex items-center gap-1.5 font-bold text-primary">
                               {formatCurrency(order.total)}
@@ -299,7 +326,7 @@ export default function Orders() {
                   #{selectedOrder.id.slice(-8).toUpperCase()}
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground font-medium mt-1">
-                  {t("orders.orderPlacedOn")} {selectedOrder.date.toLocaleDateString(locale)}
+                  {t("orders.orderPlacedOn")} {formatLocalizedDate(selectedOrder.date, language)}
                 </DialogDescription>
               </div>
 
@@ -311,14 +338,18 @@ export default function Orders() {
                       <div key={item._id} className="flex flex-col gap-3 p-5 rounded-[1.5rem] bg-muted/20 border border-border/10 group hover:bg-muted/30 transition-all duration-300">
                         <div className="flex items-center gap-4">
                           <div className="h-16 w-16 rounded-xl overflow-hidden bg-white shadow-sm shrink-0">
-                            <img src={item.product_id?.images?.[0] || "/placeholder.png"} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                            <img
+                              src={item.product_id?.images?.[0] || "/placeholder.png"}
+                              alt={getLocalizedText(item.product_id?.name || t("profile.rentalPiece"), item.product_id?.name_en, language)}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                            />
                           </div>
                           <div className="flex-1 space-y-0.5">
                             <p className="font-bold text-foreground">{getLocalizedText(item.product_id?.name || "", item.product_id?.name_en, language)}</p>
                             <p className="text-xs text-muted-foreground">{t("cart.size")} {item.selected_size} • {formatCurrency(item.total)}</p>
                           </div>
-                          <Badge className={cn("rounded-full px-3 py-0.5 text-[8px] font-black tracking-widest uppercase border", STATUS_COLORS[item.status])}>
-                            {STATUS_LABELS[item.status]}
+                          <Badge className={cn("rounded-full px-3 py-0.5 text-[8px] font-black tracking-widest uppercase border", STATUS_COLORS[item.status] ?? "bg-muted text-muted-foreground border-border")}>
+                            {getStatusLabel(item.status)}
                           </Badge>
                         </div>
 
@@ -326,18 +357,22 @@ export default function Orders() {
                           <div className="mt-1 p-3 bg-white/60 rounded-xl border border-border/10 text-xs space-y-1.5">
                             <p className="font-bold text-[8px] uppercase tracking-wider text-muted-foreground">{t("orders.rentalProgress")}</p>
                             <div className="relative border-l border-primary/20 pl-3 ml-1 space-y-2">
-                              {item.status_history.map((h: any, hIdx: number) => (
-                                <div key={hIdx} className="relative">
+                              {item.status_history.map((historyEntry, historyIndex) => (
+                                <div key={`${historyEntry.timestamp}-${historyEntry.status}-${historyIndex}`} className="relative">
                                   <div className="absolute -left-[15.5px] top-1.5 w-1 h-1 rounded-full bg-primary" />
                                   <div className="flex justify-between items-start gap-4">
                                     <div>
                                       <span className="font-semibold text-foreground uppercase text-[9px]">
-                                        {STATUS_LABELS[h.status] || h.status}
+                                        {getStatusLabel(historyEntry.status)}
                                       </span>
-                                      {h.notes && <p className="text-[9px] text-muted-foreground mt-0.5">{h.notes}</p>}
+                                      {getHistoryNote(historyEntry) && (
+                                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                                          {getHistoryNote(historyEntry)}
+                                        </p>
+                                      )}
                                     </div>
                                     <span className="text-[8px] text-muted-foreground font-mono">
-                                      {new Date(h.timestamp).toLocaleDateString(locale)}
+                                      {formatLocalizedDate(historyEntry.timestamp, language)}
                                     </span>
                                   </div>
                                 </div>
@@ -359,7 +394,7 @@ export default function Orders() {
                         <div className="space-y-1">
                           <p className="text-sm font-bold">{t("orders.datesReservation")}</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            {new Date(selectedOrder.rentals[0].start_date + "T12:00:00").toLocaleDateString(locale)} al {new Date(selectedOrder.rentals[0].end_date + "T12:00:00").toLocaleDateString(locale)}
+                            {formatLocalizedDate(selectedOrder.rentals[0].start_date, language)} {t("orders.dateSeparator")} {formatLocalizedDate(selectedOrder.rentals[0].end_date, language)}
                           </p>
                         </div>
                       </div>
@@ -374,7 +409,7 @@ export default function Orders() {
                   </div>
 
                   <div className="space-y-4">
-                    <h5 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("confirmation.paymentSummaryTitle")}</h5>
+                    <h5 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{t("orders.financialSummary")}</h5>
                     <Card className="border-none shadow-elegant bg-primary/5 p-6 rounded-3xl">
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between text-muted-foreground">
@@ -402,24 +437,26 @@ export default function Orders() {
                 </Button>
                 <div className="flex gap-3 w-full sm:w-auto">
                   {selectedOrder.status === "pending" && (
-                    <Button className="flex-1 sm:flex-none rounded-full px-10 shadow-elegant font-bold">
-                      {t("orders.payRentalBtn")}
+                    <Button asChild className="flex-1 sm:flex-none rounded-full px-10 shadow-elegant font-bold">
+                      <Link to={`/checkout/review?orderGroupId=${encodeURIComponent(selectedOrder.id)}`}>
+                        {t("orders.payRentalBtn")}
+                      </Link>
                     </Button>
                   )}
                   {selectedOrder.rentals.every((rental) => ["completed", "refunded"].includes(rental.payment_status)) && (
                     <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40" onClick={handleReceipt} disabled={actionLoading !== null}>
                       {actionLoading === "receipt" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-                      Comprobante
+                      {t("orders.receiptBtn")}
                     </Button>
                   )}
                   {selectedOrder.rentals.every((rental) => ["pending", "reserved", "paid", "confirmed"].includes(rental.status)) && (
                     <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-destructive/30 text-destructive" onClick={handleCancel} disabled={actionLoading !== null}>
                       {actionLoading === "cancel" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <X className="h-4 w-4 mr-2" />}
-                      Cancelar reserva
+                      {t("orders.cancelBtn")}
                     </Button>
                   )}
-                  <Button variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40">
-                    {t("orders.supportBtn")}
+                  <Button asChild variant="outline" className="flex-1 sm:flex-none rounded-full px-8 font-bold border-border/40">
+                    <Link to="/contacto">{t("orders.supportBtn")}</Link>
                   </Button>
                 </div>
               </div>

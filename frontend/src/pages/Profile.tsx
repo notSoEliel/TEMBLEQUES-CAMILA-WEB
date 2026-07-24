@@ -21,7 +21,7 @@ import {
   CreditCard,
   ArrowUpRight
 } from "lucide-react";
-import { formatCurrency, getLocalizedText, cn } from "@/lib/utils";
+import { formatCurrency, formatLocalizedDate, getLocalizedText, cn } from "@/lib/utils";
 import { useErrorModal } from "@/components/ErrorModal";
 import { useSearchParams, Link } from "react-router-dom";
 import { useI18n } from "@/i18n";
@@ -39,18 +39,6 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-gray-100 text-gray-400 border-gray-200",
   damaged: "bg-orange-100 text-orange-700 border-orange-200",
 };
-
-function formatRentalDate(value: string, locale: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat(locale, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
 
 export default function Profile() {
   const { user, token, updateProfile, logout } = useAuth();
@@ -178,8 +166,6 @@ export default function Profile() {
 
   const nameParts = user?.name.split(" ") || ["", ""];
   const firstName = nameParts[0];
-  const locale = language === "en" ? "en-US" : "es-PA";
-
   return (
     <div className="bg-background min-h-screen pt-24 pb-16 px-6">
       {errorModal}
@@ -386,12 +372,12 @@ export default function Profile() {
                             <div className="flex items-center gap-8 text-xs font-bold text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {formatRentalDate(lastOrder.start_date, locale)}
+                                {formatLocalizedDate(lastOrder.start_date, language)}
                               </div>
                               <ChevronRight className="h-3 w-3 opacity-20" />
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-primary/40" />
-                                {formatRentalDate(lastOrder.end_date, locale)}
+                                {formatLocalizedDate(lastOrder.end_date, language)}
                               </div>
                             </div>
                             

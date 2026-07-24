@@ -11,6 +11,21 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+export function formatLocalizedDate(
+  value: string | Date,
+  currentLang: string,
+): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(currentLang === "en" ? "en-US" : "es-PA", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function getLocalizedText(esText: string, enText: string | undefined | null, currentLang: string): string {
   if (currentLang === "en" && enText && enText.trim().length > 0) {
     return enText;

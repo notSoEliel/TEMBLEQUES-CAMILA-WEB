@@ -483,6 +483,14 @@ const dictionaries: Record<Language, Dictionary> = {
     "orders.rentalProgress": "Progreso del Alquiler",
     "orders.datesReservation": "Reserva de Fechas",
     "orders.returnPolicyDesc": "Las piezas deben ser entregadas antes del mediodía de la fecha final para evitar cargos adicionales.",
+    "orders.dateSeparator": "al",
+    "orders.statusUpdatedTo": "Estado actualizado a",
+    "orders.seedStatusNote": "Estado de demostración.",
+    "orders.receiptBtn": "Comprobante",
+    "orders.cancelBtn": "Cancelar reserva",
+    "orders.receiptError": "No se pudo descargar el comprobante.",
+    "orders.cancelError": "No se pudo cancelar la reserva.",
+    "orders.loading": "Cargando tus alquileres",
 
     "product.availLabel": "Disponible",
     "product.notAvailLabel": "No Disponible",
@@ -1010,6 +1018,14 @@ const dictionaries: Record<Language, Dictionary> = {
     "orders.rentalProgress": "Rental Progress",
     "orders.datesReservation": "Date Reservation",
     "orders.returnPolicyDesc": "Pieces must be returned before noon on the final date to avoid additional charges.",
+    "orders.dateSeparator": "to",
+    "orders.statusUpdatedTo": "Status updated to",
+    "orders.seedStatusNote": "Demonstration status.",
+    "orders.receiptBtn": "Receipt",
+    "orders.cancelBtn": "Cancel booking",
+    "orders.receiptError": "The receipt could not be downloaded.",
+    "orders.cancelError": "The booking could not be cancelled.",
+    "orders.loading": "Loading your rentals",
 
     "product.availLabel": "Available",
     "product.notAvailLabel": "Not Available",
@@ -1061,6 +1077,14 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
 
+export function hasTranslation(language: Language, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(dictionaries[language], key);
+}
+
+export function translate(language: Language, key: string): string {
+  return dictionaries[language][key] ?? dictionaries.es[key] ?? key;
+}
+
 function getInitialLanguage(): Language {
   if (typeof window === "undefined") return "es";
   const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -1079,7 +1103,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18nContextValue>(() => ({
     language,
     setLanguage: setLanguageState,
-    t: (key: string) => dictionaries[language][key] ?? dictionaries.es[key] ?? key,
+    t: (key: string) => translate(language, key),
   }), [language]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
