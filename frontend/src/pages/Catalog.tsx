@@ -43,7 +43,7 @@ import {
 import { settingsApi } from "@/services/api";
 import { formatCurrency } from "@/lib/utils";
 import { useI18n } from "@/i18n";
-import { getLocalizedText } from "@/lib/utils";
+import { getLocalizedCategoryLabel, getLocalizedText } from "@/lib/utils";
 import { RequestState } from "@/components/ui/RequestState";
 
 export default function Catalog() {
@@ -79,7 +79,7 @@ export default function Catalog() {
 
   const getCategoryLabel = (categoryId: string): string => {
     const category = categories.find((item) => item.id === categoryId);
-    return category ? getLocalizedText(category.label, category.label_en, language) : categoryId;
+    return getLocalizedCategoryLabel(categoryId, category, language);
   };
 
   useEffect(() => {
@@ -284,7 +284,7 @@ export default function Catalog() {
                   variant={selectedCategories.includes(cat.id) ? "default" : "outline"}
                   onClick={() => toggleCategory(cat.id)}
                 >
-                  {getLocalizedText(cat.label, cat.label_en, language)}
+                  {getLocalizedCategoryLabel(cat.id, cat, language)}
                 </Button>
               ))}
             </div>
@@ -373,7 +373,7 @@ export default function Catalog() {
             const cat = categories.find(c => c.id === catId);
             return (
               <Badge key={catId} variant="secondary" className="gap-1">
-                {cat ? getLocalizedText(cat.label, cat.label_en, language) : catId}
+                {getLocalizedCategoryLabel(catId, cat, language)}
                 <button onClick={() => toggleCategory(catId)}>
                   <X className="h-3 w-3" />
                 </button>
