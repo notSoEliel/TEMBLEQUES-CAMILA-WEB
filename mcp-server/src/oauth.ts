@@ -413,7 +413,6 @@ export class McpOAuthService {
       upstreamUrl.searchParams.set("redirect_uri", this.clerkRedirectUri);
       upstreamUrl.searchParams.set("response_type", "code");
       upstreamUrl.searchParams.set("scope", UPSTREAM_SCOPE);
-      upstreamUrl.searchParams.set("prompt", "select_account");
       upstreamUrl.searchParams.set("state", upstreamState);
       upstreamUrl.searchParams.set("nonce", nonce);
       upstreamUrl.searchParams.set("code_challenge", upstreamChallenge);
